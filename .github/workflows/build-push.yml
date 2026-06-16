@@ -18,6 +18,7 @@ jobs:
       packages: write
 
     strategy:
+      fail-fast: false
       matrix:
         service:
           - auth-service
