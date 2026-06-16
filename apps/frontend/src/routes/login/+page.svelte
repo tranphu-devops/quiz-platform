@@ -27,7 +27,7 @@
     if (!browser) return
     await auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` }
+      options: { redirectTo: `${window.location.origin}/auth-callback` }
     })
   }
 </script>

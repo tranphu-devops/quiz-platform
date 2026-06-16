@@ -6,16 +6,7 @@
   let error = $state('')
 
   onMount(async () => {
-    const url = new URL(window.location.href)
-    const code = url.searchParams.get('code')
-
-    if (code) {
-      // PKCE flow: exchange code for session
-      const { error: err } = await auth.exchangeCodeForSession(window.location.href)
-      if (err) { error = err.message; return }
-    }
-    // Implicit flow: GoTrueClient (detectSessionInUrl:true) already set session from hash
-
+    // GoTrueClient (detectSessionInUrl:true) auto-detects #access_token= from implicit OAuth flow
     const { data: { session } } = await auth.getSession()
     if (session) { goto('/dashboard'); return }
 
