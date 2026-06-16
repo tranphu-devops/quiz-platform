@@ -1,4 +1,7 @@
 -- Auth schema: GoTrue manages its own tables here on startup
+CREATE SCHEMA IF NOT EXISTS auth;
+
+-- Legacy alias (unused but kept for search_path compat)
 CREATE SCHEMA IF NOT EXISTS quiz_auth;
 
 -- User profiles
