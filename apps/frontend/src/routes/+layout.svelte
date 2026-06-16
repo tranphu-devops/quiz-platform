@@ -2,8 +2,8 @@
   import { user, clearAuth } from '$lib/stores/auth'
   import { goto } from '$app/navigation'
 
-  function logout() {
-    clearAuth()
+  async function logout() {
+    await clearAuth()
     goto('/login')
   }
 </script>

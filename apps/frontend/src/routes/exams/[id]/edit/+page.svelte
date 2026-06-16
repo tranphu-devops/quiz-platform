@@ -3,18 +3,45 @@
   import { user } from '$lib/stores/auth'
   import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
+  import { page } from '$app/stores'
 
+  let exam = $state(null)
   let title = $state('')
   let description = $state('')
   let time_limit = $state(30)
   let passing_score = $state('')
   let questions = $state([])
+  let deletedQIds = $state([])
   let collapsed = $state(new Set())
-  let error = $state('')
+  let loading = $state(true)
   let saving = $state(false)
+  let error = $state('')
 
-  onMount(() => {
-    if (!$user || $user.role === 'student') goto('/exams')
+  onMount(async () => {
+    if (!$user || $user.role === 'student') { goto('/exams'); return }
+    const id = $page.params.id
+    try {
+      const res = await examApi.get(id)
+      if (!res.ok) { error = 'Không tìm thấy đề thi'; return }
+      exam = await res.json()
+
+      if ($user.role === 'teacher' && exam.created_by !== $user.id) {
+        goto(`/exams/${id}`)
+        return
+      }
+
+      title = exam.title
+      description = exam.description ?? ''
+      time_limit = exam.time_limit
+      passing_score = exam.passing_score != null ? exam.passing_score : ''
+      questions = (exam.questions ?? []).map(q => ({ ...q, _existing: true }))
+      // Collapse all existing questions by default
+      collapsed = new Set(questions.map((_, i) => i))
+    } catch {
+      error = 'Không thể kết nối server'
+    } finally {
+      loading = false
+    }
   })
 
   function addQuestion() {
@@ -22,11 +49,13 @@
       content: '', options: [
         { key: 'A', text: '' }, { key: 'B', text: '' },
         { key: 'C', text: '' }, { key: 'D', text: '' }
-      ], correct_answer: 'A', points: 1
+      ], correct_answer: 'A', points: 1, _existing: false
     }]
   }
 
   function removeQuestion(i) {
+    const q = questions[i]
+    if (q._existing && q.id) deletedQIds = [...deletedQIds, q.id]
     questions = questions.filter((_, idx) => idx !== i)
     collapsed = new Set([...collapsed].filter(x => x !== i).map(x => x > i ? x - 1 : x))
   }
@@ -42,18 +71,34 @@
     if (!title) { error = 'Vui lòng nhập tiêu đề'; return }
     saving = true
     try {
-      const res = await examApi.create({
+      const updateRes = await examApi.update(exam.id, {
         title, description,
         time_limit: Number(time_limit),
         passing_score: passing_score !== '' ? Number(passing_score) : null
       })
-      const data = await res.json()
-      if (!res.ok) { error = data.error; return }
+      if (!updateRes.ok) { const d = await updateRes.json(); error = d.error; return }
+
+      for (const qid of deletedQIds) {
+        await examApi.removeQuestion(exam.id, qid)
+      }
 
       for (let i = 0; i < questions.length; i++) {
-        await examApi.addQuestion(data.id, { ...questions[i], order_index: i })
+        const q = questions[i]
+        const payload = {
+          content: q.content,
+          options: q.options,
+          correct_answer: q.correct_answer,
+          points: q.points,
+          order_index: i
+        }
+        if (q._existing && q.id) {
+          await examApi.updateQuestion(exam.id, q.id, payload)
+        } else {
+          await examApi.addQuestion(exam.id, payload)
+        }
       }
-      goto(`/exams/${data.id}`)
+
+      goto(`/exams/${exam.id}`)
     } catch {
       error = 'Lỗi khi lưu đề thi'
     } finally {
@@ -83,21 +128,26 @@
   .btn-danger { background: #fee2e2; color: #dc2626; border: none; padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
   .btn-collapse { background: #f3f4f6; color: #374151; border: none; padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
   .q-preview { color: #6b7280; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 400px; }
+  .existing-badge { font-size: 0.7rem; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: 500; }
   .error { color: #dc2626; margin-bottom: 1rem; }
   .hint { font-size: 0.8rem; color: #6b7280; margin-top: 0.2rem; }
 </style>
 
-<h1>Tạo đề thi mới</h1>
+{#if loading}<p>Đang tải...</p>
+{:else if error}<p class="error">{error}</p>
+{:else if exam}
+
+<h1>Sửa đề thi</h1>
 {#if error}<p class="error">{error}</p>{/if}
 
 <div class="card">
   <div class="form-group">
     <label for="title">Tiêu đề *</label>
-    <input id="title" bind:value={title} placeholder="Nhập tiêu đề đề thi..." />
+    <input id="title" bind:value={title} />
   </div>
   <div class="form-group">
     <label for="desc">Mô tả</label>
-    <textarea id="desc" bind:value={description} placeholder="Mô tả về đề thi..."></textarea>
+    <textarea id="desc" bind:value={description}></textarea>
   </div>
   <div class="row2">
     <div class="form-group">
@@ -119,6 +169,7 @@
   <div class="q-header">
     <div class="q-header-left">
       <span>Câu {i + 1}</span>
+      {#if q._existing}<span class="existing-badge">Đã lưu</span>{/if}
       {#if collapsed.has(i) && q.content}
         <span class="q-preview">— {q.content}</span>
       {/if}
@@ -134,7 +185,7 @@
   {#if !collapsed.has(i)}
   <div class="form-group">
     <label for="qc_{i}">Nội dung câu hỏi</label>
-    <textarea id="qc_{i}" bind:value={q.content} placeholder="Nhập nội dung câu hỏi..."></textarea>
+    <textarea id="qc_{i}" bind:value={q.content}></textarea>
   </div>
   <label>Các đáp án</label>
   <div class="options">
@@ -165,7 +216,8 @@
 
 <div class="actions">
   <button class="btn btn-primary" onclick={save} disabled={saving}>
-    {saving ? 'Đang lưu...' : 'Lưu đề thi'}
+    {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
   </button>
-  <a href="/exams"><button class="btn btn-outline">Huỷ</button></a>
+  <a href="/exams/{exam.id}"><button class="btn btn-outline">Huỷ</button></a>
 </div>
+{/if}

@@ -1,11 +1,7 @@
 services:
-  auth-service:
-    build:
-      context: ./apps/auth-service
+  gotrue:
     ports:
-      - "4001:3001"
-    volumes:
-      - ./apps/auth-service/src:/app/src
+      - "9999:9999"
 
   user-service:
     build:

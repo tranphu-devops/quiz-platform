@@ -1,25 +1,18 @@
--- Auth schema
+-- Auth schema: GoTrue manages its own tables here on startup
 CREATE SCHEMA IF NOT EXISTS quiz_auth;
 
-CREATE TABLE IF NOT EXISTS quiz_auth.users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'student',
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Users schema
+-- User profiles
 CREATE SCHEMA IF NOT EXISTS quiz_users;
 
 CREATE TABLE IF NOT EXISTS quiz_users.profiles (
   id UUID PRIMARY KEY,
   full_name TEXT,
   avatar_url TEXT,
+  role TEXT NOT NULL DEFAULT 'student',
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Exams schema
+-- Exams
 CREATE SCHEMA IF NOT EXISTS quiz_exams;
 
 CREATE TABLE IF NOT EXISTS quiz_exams.exams (
@@ -27,6 +20,7 @@ CREATE TABLE IF NOT EXISTS quiz_exams.exams (
   title TEXT NOT NULL,
   description TEXT,
   time_limit INT DEFAULT 30,
+  passing_score FLOAT,
   created_by UUID NOT NULL,
   is_published BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -42,7 +36,7 @@ CREATE TABLE IF NOT EXISTS quiz_exams.questions (
   order_index INT DEFAULT 0
 );
 
--- Submissions schema
+-- Submissions
 CREATE SCHEMA IF NOT EXISTS quiz_submissions;
 
 CREATE TABLE IF NOT EXISTS quiz_submissions.submissions (

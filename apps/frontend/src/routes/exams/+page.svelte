@@ -41,6 +41,7 @@
   .actions { display: flex; gap: 0.5rem; }
   .actions a, .actions button { padding: 0.3rem 0.7rem; border-radius: 4px; font-size: 0.85rem; cursor: pointer; text-decoration: none; }
   .btn-view { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+  .btn-edit { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
   .btn-del { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
   .error { color: #dc2626; }
 </style>
@@ -67,7 +68,8 @@
       </span>
       <div class="actions">
         <a href="/exams/{exam.id}" class="btn-view">Xem</a>
-        {#if $user && $user.role !== 'student'}
+        {#if $user && $user.role !== 'student' && (exam.created_by === $user.id || $user.role === 'admin')}
+          <a href="/exams/{exam.id}/edit" class="btn-edit">Sửa</a>
           <button class="btn-del" onclick={() => deleteExam(exam.id)}>Xoá</button>
         {/if}
       </div>

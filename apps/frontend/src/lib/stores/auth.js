@@ -1,23 +1,31 @@
-import { writable } from 'svelte/store'
+import { writable, derived } from 'svelte/store'
 import { browser } from '$app/environment'
+import { auth } from '$lib/auth'
 
-export const user = writable(browser ? JSON.parse(localStorage.getItem('user') ?? 'null') : null)
-export const token = writable(browser ? (localStorage.getItem('token') ?? null) : null)
+export const session = writable(null)
 
-export function setAuth(userData, authToken) {
-  user.set(userData)
-  token.set(authToken)
-  if (browser) {
-    localStorage.setItem('user', JSON.stringify(userData))
-    localStorage.setItem('token', authToken)
-  }
+if (browser) {
+  auth.getSession().then(({ data: { session: s } }) => {
+    session.set(s)
+  })
+
+  auth.onAuthStateChange((_event, s) => {
+    session.set(s)
+  })
 }
 
-export function clearAuth() {
-  user.set(null)
-  token.set(null)
-  if (browser) {
-    localStorage.removeItem('user')
-    localStorage.removeItem('token')
+export const user = derived(session, ($session) => {
+  if (!$session?.user) return null
+  return {
+    id: $session.user.id,
+    email: $session.user.email,
+    role: $session.user.user_metadata?.role ?? 'student'
   }
+})
+
+export const token = derived(session, ($session) => $session?.access_token ?? null)
+
+export async function clearAuth() {
+  await auth.signOut()
+  session.set(null)
 }

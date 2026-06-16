@@ -1,7 +1,6 @@
 import { token } from '$lib/stores/auth'
 import { get } from 'svelte/store'
 
-const AUTH_URL = import.meta.env.PUBLIC_AUTH_URL ?? '/api/auth'
 const EXAM_URL = import.meta.env.PUBLIC_EXAM_URL ?? '/api/exams'
 const SUB_URL = import.meta.env.PUBLIC_SUBMISSION_URL ?? '/api/submissions'
 
@@ -11,21 +10,6 @@ function authHeaders(json = true) {
   if (json) headers['Content-Type'] = 'application/json'
   if (t) headers['Authorization'] = `Bearer ${t}`
   return headers
-}
-
-export const authApi = {
-  register: (data) =>
-    fetch(`${AUTH_URL}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    }),
-  login: (data) =>
-    fetch(`${AUTH_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    })
 }
 
 export const examApi = {

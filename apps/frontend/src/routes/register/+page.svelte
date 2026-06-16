@@ -1,5 +1,5 @@
 <script>
-  import { authApi } from '$lib/api'
+  import { auth } from '$lib/auth'
   import { goto } from '$app/navigation'
 
   let email = $state('')
@@ -13,10 +13,13 @@
     error = ''
     loading = true
     try {
-      const res = await authApi.register({ email, password, role })
-      const data = await res.json()
-      if (!res.ok) { error = data.error; return }
-      goto('/login')
+      const { error: err } = await auth.signUp({
+        email,
+        password,
+        options: { data: { role } }
+      })
+      if (err) { error = err.message; return }
+      goto('/dashboard')
     } catch {
       error = 'Không thể kết nối server'
     } finally {
@@ -41,9 +44,9 @@
   <h1>Đăng ký</h1>
   {#if error}<p class="error">{error}</p>{/if}
   <label>Email</label>
-  <input type="email" bind:value={email} required />
+  <input type="email" bind:value={email} required autocomplete="email" />
   <label>Mật khẩu</label>
-  <input type="password" bind:value={password} required minlength="6" />
+  <input type="password" bind:value={password} required minlength="6" autocomplete="new-password" />
   <label>Vai trò</label>
   <select bind:value={role}>
     <option value="student">Học sinh</option>

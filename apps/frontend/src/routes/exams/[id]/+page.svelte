@@ -65,12 +65,18 @@
         {exam.is_published ? 'Đã xuất bản' : 'Nháp'}
       </span>
     </h1>
-    <p class="meta">{exam.description ?? ''} · {exam.time_limit} phút · {exam.questions?.length ?? 0} câu</p>
+    <p class="meta">
+      {exam.description ?? ''} · {exam.time_limit} phút · {exam.questions?.length ?? 0} câu
+      {#if exam.passing_score != null} · Điểm đạt: <strong>{exam.passing_score}</strong>{/if}
+    </p>
   </div>
   <div class="actions">
     {#if $user?.role === 'student'}
       <a href="/exams/{exam.id}/take" class="btn btn-primary">Bắt đầu làm bài</a>
     {:else}
+      {#if exam.created_by === $user?.id || $user?.role === 'admin'}
+        <a href="/exams/{exam.id}/edit" class="btn btn-outline">Sửa đề</a>
+      {/if}
       <button class="btn {exam.is_published ? 'btn-outline' : 'btn-success'}" onclick={togglePublish} disabled={publishing}>
         {exam.is_published ? 'Gỡ xuất bản' : 'Xuất bản'}
       </button>

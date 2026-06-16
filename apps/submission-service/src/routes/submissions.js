@@ -1,16 +1,20 @@
+import { subject } from '@casl/ability'
 import { pool } from '../db.js'
 import { verifyAuth } from '../middleware/auth.js'
 
 export default async function submissionRoutes(fastify) {
   fastify.addHook('preHandler', async (req, reply) => {
     if (req.url === '/health') return
-    await verifyAuth(req, reply, fastify)
+    await verifyAuth(req, reply)
   })
 
   // POST /submissions — submit exam and auto-grade
   fastify.post('/submissions', async (req, reply) => {
-    const { exam_id, answers } = req.body ?? {}
+    if (req.ability.cannot('create', 'Submission')) {
+      return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+    }
 
+    const { exam_id, answers } = req.body ?? {}
     if (!exam_id || !answers) {
       return reply.status(400).send({ error: 'exam_id and answers required', statusCode: 400 })
     }
@@ -43,7 +47,7 @@ export default async function submissionRoutes(fastify) {
       const result = await pool.query(
         `INSERT INTO submissions (exam_id, user_id, answers, score, total_points, percentage)
          VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-        [exam_id, req.user.userId, JSON.stringify(answers), score, total_points, percentage]
+        [exam_id, req.user.id, JSON.stringify(answers), score, total_points, percentage]
       )
 
       return reply.status(201).send(result.rows[0])
@@ -64,7 +68,7 @@ export default async function submissionRoutes(fastify) {
       }
 
       const sub = result.rows[0]
-      if (sub.user_id !== req.user.userId && !['admin', 'teacher'].includes(req.user.role)) {
+      if (req.ability.cannot('read', subject('Submission', sub))) {
         return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
       }
 
@@ -89,13 +93,13 @@ export default async function submissionRoutes(fastify) {
       }
 
       if (userId) {
-        if (userId !== req.user.userId && !['admin', 'teacher'].includes(req.user.role)) {
+        if (userId !== req.user.id && !['admin', 'teacher'].includes(req.user.role)) {
           return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
         }
         params.push(userId)
         conditions.push(`user_id = $${params.length}`)
       } else if (req.user.role === 'student') {
-        params.push(req.user.userId)
+        params.push(req.user.id)
         conditions.push(`user_id = $${params.length}`)
       }
 

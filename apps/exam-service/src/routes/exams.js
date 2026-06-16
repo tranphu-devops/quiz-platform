@@ -1,13 +1,12 @@
+import { subject } from '@casl/ability'
 import { pool } from '../db.js'
 import { verifyAuth } from '../middleware/auth.js'
-
-const TEACHER_ROLES = ['teacher', 'admin']
 
 export default async function examRoutes(fastify) {
   fastify.addHook('preHandler', async (req, reply) => {
     if (req.url === '/health') return
     if (req.url.startsWith('/exams/internal/')) return
-    await verifyAuth(req, reply, fastify)
+    await verifyAuth(req, reply)
   })
 
   // Internal endpoint for submission-service grading (not via Nginx)
@@ -38,19 +37,19 @@ export default async function examRoutes(fastify) {
 
   // POST /exams
   fastify.post('/exams', async (req, reply) => {
-    if (!TEACHER_ROLES.includes(req.user.role)) {
+    if (req.ability.cannot('create', 'Exam')) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
 
-    const { title, description, time_limit = 30 } = req.body ?? {}
+    const { title, description, time_limit = 30, passing_score = null } = req.body ?? {}
     if (!title) {
       return reply.status(400).send({ error: 'Title required', statusCode: 400 })
     }
 
     try {
       const result = await pool.query(
-        'INSERT INTO exams (title, description, time_limit, created_by) VALUES ($1, $2, $3, $4) RETURNING *',
-        [title, description, time_limit, req.user.userId]
+        'INSERT INTO exams (title, description, time_limit, passing_score, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+        [title, description, time_limit, passing_score, req.user.id]
       )
       return reply.status(201).send(result.rows[0])
     } catch (err) {
@@ -68,7 +67,7 @@ export default async function examRoutes(fastify) {
         query = 'SELECT * FROM exams WHERE is_published = true ORDER BY created_at DESC'
       } else if (req.user.role === 'teacher') {
         query = 'SELECT * FROM exams WHERE created_by = $1 ORDER BY created_at DESC'
-        params = [req.user.userId]
+        params = [req.user.id]
       } else {
         query = 'SELECT * FROM exams ORDER BY created_at DESC'
       }
@@ -93,7 +92,7 @@ export default async function examRoutes(fastify) {
       }
 
       const exam = examResult.rows[0]
-      if (isStudent && !exam.is_published) {
+      if (req.ability.cannot('read', subject('Exam', exam))) {
         return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
       }
 
@@ -116,12 +115,8 @@ export default async function examRoutes(fastify) {
 
   // PUT /exams/:id
   fastify.put('/exams/:id', async (req, reply) => {
-    if (!TEACHER_ROLES.includes(req.user.role)) {
-      return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
-    }
-
     const { id } = req.params
-    const { title, description, time_limit, is_published } = req.body ?? {}
+    const { title, description, time_limit, passing_score, is_published } = req.body ?? {}
 
     try {
       const examResult = await pool.query('SELECT * FROM exams WHERE id = $1', [id])
@@ -130,7 +125,7 @@ export default async function examRoutes(fastify) {
       }
 
       const exam = examResult.rows[0]
-      if (req.user.role === 'teacher' && exam.created_by !== req.user.userId) {
+      if (req.ability.cannot('update', subject('Exam', exam))) {
         return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
       }
 
@@ -139,9 +134,10 @@ export default async function examRoutes(fastify) {
           title = COALESCE($1, title),
           description = COALESCE($2, description),
           time_limit = COALESCE($3, time_limit),
-          is_published = COALESCE($4, is_published)
-         WHERE id = $5 RETURNING *`,
-        [title, description, time_limit, is_published, id]
+          passing_score = CASE WHEN $4::float IS NOT NULL THEN $4::float ELSE passing_score END,
+          is_published = COALESCE($5, is_published)
+         WHERE id = $6 RETURNING *`,
+        [title, description, time_limit, passing_score ?? null, is_published, id]
       )
       return result.rows[0]
     } catch (err) {
@@ -152,10 +148,6 @@ export default async function examRoutes(fastify) {
 
   // DELETE /exams/:id
   fastify.delete('/exams/:id', async (req, reply) => {
-    if (!TEACHER_ROLES.includes(req.user.role)) {
-      return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
-    }
-
     const { id } = req.params
 
     try {
@@ -165,7 +157,7 @@ export default async function examRoutes(fastify) {
       }
 
       const exam = examResult.rows[0]
-      if (req.user.role === 'teacher' && exam.created_by !== req.user.userId) {
+      if (req.ability.cannot('delete', subject('Exam', exam))) {
         return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
       }
 
@@ -179,10 +171,6 @@ export default async function examRoutes(fastify) {
 
   // POST /exams/:id/questions
   fastify.post('/exams/:id/questions', async (req, reply) => {
-    if (!TEACHER_ROLES.includes(req.user.role)) {
-      return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
-    }
-
     const { id } = req.params
     const { content, options, correct_answer, points = 1.0, order_index = 0 } = req.body ?? {}
 
@@ -191,6 +179,15 @@ export default async function examRoutes(fastify) {
     }
 
     try {
+      const examResult = await pool.query('SELECT * FROM exams WHERE id = $1', [id])
+      if (examResult.rows.length === 0) {
+        return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
+      }
+
+      if (req.ability.cannot('update', subject('Exam', examResult.rows[0]))) {
+        return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+      }
+
       const result = await pool.query(
         `INSERT INTO questions (exam_id, content, options, correct_answer, points, order_index)
          VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
@@ -205,14 +202,19 @@ export default async function examRoutes(fastify) {
 
   // PUT /exams/:id/questions/:qid
   fastify.put('/exams/:id/questions/:qid', async (req, reply) => {
-    if (!TEACHER_ROLES.includes(req.user.role)) {
-      return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
-    }
-
     const { id, qid } = req.params
     const { content, options, correct_answer, points, order_index } = req.body ?? {}
 
     try {
+      const examResult = await pool.query('SELECT * FROM exams WHERE id = $1', [id])
+      if (examResult.rows.length === 0) {
+        return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
+      }
+
+      if (req.ability.cannot('update', subject('Exam', examResult.rows[0]))) {
+        return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+      }
+
       const result = await pool.query(
         `UPDATE questions SET
           content = COALESCE($1, content),
@@ -236,13 +238,18 @@ export default async function examRoutes(fastify) {
 
   // DELETE /exams/:id/questions/:qid
   fastify.delete('/exams/:id/questions/:qid', async (req, reply) => {
-    if (!TEACHER_ROLES.includes(req.user.role)) {
-      return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
-    }
-
     const { id, qid } = req.params
 
     try {
+      const examResult = await pool.query('SELECT * FROM exams WHERE id = $1', [id])
+      if (examResult.rows.length === 0) {
+        return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
+      }
+
+      if (req.ability.cannot('update', subject('Exam', examResult.rows[0]))) {
+        return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+      }
+
       await pool.query('DELETE FROM questions WHERE id = $1 AND exam_id = $2', [qid, id])
       return reply.status(204).send()
     } catch (err) {
