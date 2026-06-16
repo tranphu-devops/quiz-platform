@@ -1,0 +1,46 @@
+services:
+  auth-service:
+    build:
+      context: ./apps/auth-service
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./apps/auth-service/src:/app/src
+
+  user-service:
+    build:
+      context: ./apps/user-service
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./apps/user-service/src:/app/src
+
+  exam-service:
+    build:
+      context: ./apps/exam-service
+    ports:
+      - "3003:3003"
+    volumes:
+      - ./apps/exam-service/src:/app/src
+
+  submission-service:
+    build:
+      context: ./apps/submission-service
+    ports:
+      - "3004:3004"
+    volumes:
+      - ./apps/submission-service/src:/app/src
+
+  frontend:
+    build:
+      context: ./apps/frontend
+    ports:
+      - "3000:3000"
+    environment:
+      PUBLIC_AUTH_URL: http://localhost:3001
+      PUBLIC_EXAM_URL: http://localhost:3003
+      PUBLIC_SUBMISSION_URL: http://localhost:3004
+
+  postgres:
+    ports:
+      - "5432:5432"

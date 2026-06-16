@@ -1,0 +1,112 @@
+import { pool } from '../db.js'
+import { verifyAuth } from '../middleware/auth.js'
+
+export default async function submissionRoutes(fastify) {
+  fastify.addHook('preHandler', async (req, reply) => {
+    if (req.url === '/health') return
+    await verifyAuth(req, reply, fastify)
+  })
+
+  // POST /submissions — submit exam and auto-grade
+  fastify.post('/submissions', async (req, reply) => {
+    const { exam_id, answers } = req.body ?? {}
+
+    if (!exam_id || !answers) {
+      return reply.status(400).send({ error: 'exam_id and answers required', statusCode: 400 })
+    }
+
+    try {
+      const examRes = await fetch(
+        `${process.env.EXAM_SERVICE_URL}/exams/internal/${exam_id}`,
+        { headers: { 'x-internal-key': process.env.INTERNAL_API_KEY } }
+      )
+
+      if (!examRes.ok) {
+        return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
+      }
+
+      const exam = await examRes.json()
+      const questions = exam.questions
+
+      let score = 0
+      let total_points = 0
+
+      for (const q of questions) {
+        total_points += q.points ?? 1
+        if (answers[q.id] === q.correct_answer) {
+          score += q.points ?? 1
+        }
+      }
+
+      const percentage = total_points > 0 ? (score / total_points) * 100 : 0
+
+      const result = await pool.query(
+        `INSERT INTO submissions (exam_id, user_id, answers, score, total_points, percentage)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [exam_id, req.user.userId, JSON.stringify(answers), score, total_points, percentage]
+      )
+
+      return reply.status(201).send(result.rows[0])
+    } catch (err) {
+      fastify.log.error(err)
+      return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
+    }
+  })
+
+  // GET /submissions/:id
+  fastify.get('/submissions/:id', async (req, reply) => {
+    const { id } = req.params
+
+    try {
+      const result = await pool.query('SELECT * FROM submissions WHERE id = $1', [id])
+      if (result.rows.length === 0) {
+        return reply.status(404).send({ error: 'Submission not found', statusCode: 404 })
+      }
+
+      const sub = result.rows[0]
+      if (sub.user_id !== req.user.userId && !['admin', 'teacher'].includes(req.user.role)) {
+        return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+      }
+
+      return sub
+    } catch (err) {
+      fastify.log.error(err)
+      return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
+    }
+  })
+
+  // GET /submissions?examId=&userId=
+  fastify.get('/submissions', async (req, reply) => {
+    const { examId, userId } = req.query
+
+    try {
+      const conditions = ['1=1']
+      const params = []
+
+      if (examId) {
+        params.push(examId)
+        conditions.push(`exam_id = $${params.length}`)
+      }
+
+      if (userId) {
+        if (userId !== req.user.userId && !['admin', 'teacher'].includes(req.user.role)) {
+          return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+        }
+        params.push(userId)
+        conditions.push(`user_id = $${params.length}`)
+      } else if (req.user.role === 'student') {
+        params.push(req.user.userId)
+        conditions.push(`user_id = $${params.length}`)
+      }
+
+      const result = await pool.query(
+        `SELECT * FROM submissions WHERE ${conditions.join(' AND ')} ORDER BY submitted_at DESC`,
+        params
+      )
+      return result.rows
+    } catch (err) {
+      fastify.log.error(err)
+      return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
+    }
+  })
+}

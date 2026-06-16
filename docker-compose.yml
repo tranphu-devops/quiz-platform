@@ -1,0 +1,100 @@
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - auth-service
+      - user-service
+      - exam-service
+      - submission-service
+      - frontend
+    restart: unless-stopped
+
+  auth-service:
+    image: ghcr.io/${GITHUB_ORG}/auth-service:${TAG:-latest}
+    build:
+      context: ./apps/auth-service
+    environment:
+      DATABASE_URL: ${AUTH_DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: 7d
+      PORT: 3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  user-service:
+    image: ghcr.io/${GITHUB_ORG}/user-service:${TAG:-latest}
+    build:
+      context: ./apps/user-service
+    environment:
+      DATABASE_URL: ${USER_DATABASE_URL}
+      AUTH_SERVICE_URL: http://auth-service:3001
+      PORT: 3002
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  exam-service:
+    image: ghcr.io/${GITHUB_ORG}/exam-service:${TAG:-latest}
+    build:
+      context: ./apps/exam-service
+    environment:
+      DATABASE_URL: ${EXAM_DATABASE_URL}
+      AUTH_SERVICE_URL: http://auth-service:3001
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      PORT: 3003
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  submission-service:
+    image: ghcr.io/${GITHUB_ORG}/submission-service:${TAG:-latest}
+    build:
+      context: ./apps/submission-service
+    environment:
+      DATABASE_URL: ${SUBMISSION_DATABASE_URL}
+      AUTH_SERVICE_URL: http://auth-service:3001
+      EXAM_SERVICE_URL: http://exam-service:3003
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      PORT: 3004
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    image: ghcr.io/${GITHUB_ORG}/frontend:${TAG:-latest}
+    build:
+      context: ./apps/frontend
+    environment:
+      PUBLIC_AUTH_URL: http://localhost/api/auth
+      PUBLIC_EXAM_URL: http://localhost/api/exams
+      PUBLIC_SUBMISSION_URL: http://localhost/api/submissions
+      PORT: 3000
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: quizdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d quizdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
