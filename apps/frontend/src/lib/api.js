@@ -1,9 +1,9 @@
 import { token } from '$lib/stores/auth'
 import { get } from 'svelte/store'
 
-const AUTH_URL = import.meta.env.PUBLIC_AUTH_URL ?? 'http://localhost:3001'
-const EXAM_URL = import.meta.env.PUBLIC_EXAM_URL ?? 'http://localhost:3003'
-const SUB_URL = import.meta.env.PUBLIC_SUBMISSION_URL ?? 'http://localhost:3004'
+const AUTH_URL = import.meta.env.PUBLIC_AUTH_URL ?? '/api/auth'
+const EXAM_URL = import.meta.env.PUBLIC_EXAM_URL ?? '/api/exams'
+const SUB_URL = import.meta.env.PUBLIC_SUBMISSION_URL ?? '/api/submissions'
 
 function authHeaders(json = true) {
   const t = get(token)
