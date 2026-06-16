@@ -1,10 +1,9 @@
 FROM node:24-alpine AS builder
 WORKDIR /app
-RUN npm install -g pnpm
 COPY package.json ./
-RUN pnpm install --no-frozen-lockfile
+RUN npm install
 COPY . .
-RUN pnpm run build
+RUN npm run build
 
 FROM node:24-alpine
 WORKDIR /app
