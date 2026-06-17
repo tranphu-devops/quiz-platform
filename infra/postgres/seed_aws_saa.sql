@@ -15,7 +15,7 @@ BEGIN;
 -- ============================================================
 -- EXAM 1 — Compute & Storage
 -- ============================================================
-INSERT INTO exams (id, title, description, time_limit, passing_score, created_by, is_published, tags, show_explanation, allow_retake)
+INSERT INTO quiz_exams.exams (id, title, description, time_limit, passing_score, created_by, is_published, tags, show_explanation, allow_retake)
 VALUES (
   'c1000000-0000-0000-0000-000000000001',
   'AWS SAA - Compute & Storage',
@@ -27,7 +27,7 @@ VALUES (
   true, true
 ) ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO questions (id, exam_id, content, options, correct_answer, points, order_index, explanation, question_type) VALUES
+INSERT INTO quiz_exams.questions (id, exam_id, content, options, correct_answer, points, order_index, explanation, question_type) VALUES
 
 ('d1000000-0000-0000-0000-000000000001',
  'c1000000-0000-0000-0000-000000000001',
@@ -258,7 +258,7 @@ Cả hai đều có minimum storage duration 30 ngày và minimum object size 12
 -- ============================================================
 -- EXAM 2 — Database & Networking
 -- ============================================================
-INSERT INTO exams (id, title, description, time_limit, passing_score, created_by, is_published, tags, show_explanation, allow_retake)
+INSERT INTO quiz_exams.exams (id, title, description, time_limit, passing_score, created_by, is_published, tags, show_explanation, allow_retake)
 VALUES (
   'c2000000-0000-0000-0000-000000000001',
   'AWS SAA - Database & Networking',
@@ -270,7 +270,7 @@ VALUES (
   true, true
 ) ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO questions (id, exam_id, content, options, correct_answer, points, order_index, explanation, question_type) VALUES
+INSERT INTO quiz_exams.questions (id, exam_id, content, options, correct_answer, points, order_index, explanation, question_type) VALUES
 
 ('d2000000-0000-0000-0000-000000000001',
  'c2000000-0000-0000-0000-000000000001',
@@ -531,7 +531,7 @@ Serverless v2 cải thiện đáng kể so v1: scale nhanh hơn nhiều (100x), 
 -- ============================================================
 -- EXAM 3 — Security, Management & Analytics
 -- ============================================================
-INSERT INTO exams (id, title, description, time_limit, passing_score, created_by, is_published, tags, show_explanation, allow_retake)
+INSERT INTO quiz_exams.exams (id, title, description, time_limit, passing_score, created_by, is_published, tags, show_explanation, allow_retake)
 VALUES (
   'c3000000-0000-0000-0000-000000000001',
   'AWS SAA - Security & Management',
@@ -543,7 +543,7 @@ VALUES (
   true, true
 ) ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO questions (id, exam_id, content, options, correct_answer, points, order_index, explanation, question_type) VALUES
+INSERT INTO quiz_exams.questions (id, exam_id, content, options, correct_answer, points, order_index, explanation, question_type) VALUES
 
 ('d3000000-0000-0000-0000-000000000001',
  'c3000000-0000-0000-0000-000000000001',
