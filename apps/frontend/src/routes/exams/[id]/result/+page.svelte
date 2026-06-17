@@ -1,5 +1,5 @@
 <script>
-  import { submissionApi } from '$lib/api'
+  import { submissionApi, examApi } from '$lib/api'
   import { user } from '$lib/stores/auth'
   import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
@@ -7,6 +7,7 @@
   import { marked } from 'marked'
 
   let submission = $state(null)
+  let exam = $state(null)
   let loading = $state(true)
   let error = $state('')
 
@@ -18,6 +19,9 @@
       const res = await submissionApi.get(submissionId)
       if (!res.ok) { error = 'Không tìm thấy kết quả'; return }
       submission = await res.json()
+      // fetch exam để lấy passing_score chính xác (không phụ thuộc results_detail cũ)
+      const examRes = await examApi.get(submission.exam_id)
+      if (examRes.ok) exam = await examRes.json()
     } catch {
       error = 'Không thể tải kết quả'
     } finally {
@@ -32,10 +36,10 @@
     return { label: 'Chưa đạt', color: '#dc2626' }
   }
 
+  // dùng exam.passing_score (từ API) để tránh null trong results_detail cũ
   const hasPassed = $derived(
     submission != null && (
-      submission.results_detail?.passing_score == null ||
-      submission.percentage >= submission.results_detail.passing_score
+      exam?.passing_score == null || submission.percentage >= exam.passing_score
     )
   )
 
@@ -145,7 +149,7 @@
 {:else if !hasPassed}
 <div class="locked-box">
   <strong>Chưa đạt — không xem được bài làm</strong>
-  <p>Cần đạt {submission.results_detail?.passing_score}% để mở khoá xem lại. Hãy làm lại bài!</p>
+  <p>Cần đạt {exam?.passing_score ?? submission.results_detail?.passing_score}% để mở khoá xem lại. Hãy làm lại bài!</p>
 </div>
 {/if}
 {/if}
