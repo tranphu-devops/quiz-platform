@@ -16,24 +16,18 @@
   let showConfirm = $state(false)
 
   function sessionKey(id) { return `quiz-session-${id}` }
-
   function saveSession(id) {
-    try {
-      localStorage.setItem(sessionKey(id), JSON.stringify({ answers, timeLeft, savedAt: Date.now() }))
-    } catch {}
+    try { localStorage.setItem(sessionKey(id), JSON.stringify({ answers, timeLeft, savedAt: Date.now() })) } catch {}
   }
-
   function loadSession(id) {
     try {
       const raw = localStorage.getItem(sessionKey(id))
       if (!raw) return null
       const s = JSON.parse(raw)
-      const elapsed = Math.floor((Date.now() - s.savedAt) / 1000)
-      s.timeLeft = Math.max(0, s.timeLeft - elapsed)
+      s.timeLeft = Math.max(0, s.timeLeft - Math.floor((Date.now() - s.savedAt) / 1000))
       return s
     } catch { return null }
   }
-
   function clearSession(id) {
     try { localStorage.removeItem(sessionKey(id)) } catch {}
   }
@@ -46,9 +40,10 @@
   }
 
   let answeredCount = $derived((exam?.questions ?? []).filter(q => isAnswered(q)).length)
-  let totalCount = $derived(exam?.questions?.length ?? 0)
-  let pct = $derived(totalCount > 0 ? Math.round(answeredCount / totalCount * 100) : 0)
-  let currentQ = $derived(exam?.questions?.[currentIdx] ?? null)
+  let totalCount    = $derived(exam?.questions?.length ?? 0)
+  let pct           = $derived(totalCount > 0 ? Math.round(answeredCount / totalCount * 100) : 0)
+  let currentQ      = $derived(exam?.questions?.[currentIdx] ?? null)
+  let isUrgent      = $derived(timeLeft > 0 && timeLeft < 60)
 
   function toggleMultiAnswer(qid, key) {
     const cur = answers[qid] ?? []
@@ -56,7 +51,6 @@
     answers = { ...answers, [qid]: next }
     saveSession(exam.id)
   }
-
   function setAnswer(qid, value) {
     answers = { ...answers, [qid]: value }
     saveSession(exam.id)
@@ -70,29 +64,20 @@
       if (!res.ok) { error = 'Không tìm thấy đề thi'; return }
       exam = await res.json()
 
-      // Guard: block retake if official mode + already passed
       if ($user.role === 'student' && !exam.allow_retake) {
         const subRes = await submissionApi.list({ examId: id })
         if (subRes.ok) {
           const subs = await subRes.json()
           const latest = subs[0] ?? null
-          if (latest) {
-            const passed = exam.passing_score == null || latest.percentage >= exam.passing_score
-            if (passed) {
-              goto(`/exams/${id}`)
-              return
-            }
+          if (latest && (exam.passing_score == null || latest.percentage >= exam.passing_score)) {
+            goto(`/exams/${id}`); return
           }
         }
       }
 
       const saved = loadSession(id)
-      if (saved && saved.timeLeft > 0) {
-        answers = saved.answers
-        timeLeft = saved.timeLeft
-      } else {
-        timeLeft = (exam.time_limit ?? 30) * 60
-      }
+      if (saved && saved.timeLeft > 0) { answers = saved.answers; timeLeft = saved.timeLeft }
+      else timeLeft = (exam.time_limit ?? 30) * 60
 
       timer = setInterval(() => {
         timeLeft--
@@ -108,8 +93,7 @@
   })
 
   function formatTime(s) {
-    const m = Math.floor(s / 60)
-    const sec = s % 60
+    const m = Math.floor(s / 60), sec = s % 60
     return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
   }
 
@@ -120,9 +104,7 @@
   }
 
   async function submitExam() {
-    showConfirm = false
-    clearInterval(timer)
-    submitting = true
+    showConfirm = false; clearInterval(timer); submitting = true
     try {
       const res = await submissionApi.submit({ exam_id: exam.id, answers })
       const data = await res.json()
@@ -130,97 +112,211 @@
       clearSession(exam.id)
       goto(`/exams/${exam.id}/result?submissionId=${data.id}`)
     } catch {
-      error = 'Lỗi khi nộp bài'
-      submitting = false
+      error = 'Lỗi khi nộp bài'; submitting = false
     }
   }
 </script>
 
 <style>
-  .layout { display: grid; grid-template-columns: 1fr 240px; gap: 1.25rem; align-items: start; }
+  /* ── Top bar ─────────────────────────────────────────────────────────────────*/
+  .top-bar {
+    position: sticky; top: 60px; z-index: 30;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 0.85rem 1.25rem;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 1rem; margin: -2rem -1.5rem 1.5rem;
+    box-shadow: 0 2px 12px rgba(99,102,241,0.06);
+  }
+  .exam-title {
+    font-weight: 700; font-size: 0.95rem; color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 60%;
+  }
+  .timer {
+    font-size: 1.35rem; font-weight: 800; color: var(--primary);
+    font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+    flex-shrink: 0;
+  }
+  .timer.urgent {
+    color: var(--danger);
+    animation: pulse 1s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
 
-  /* top bar */
-  .top-bar { display: flex; justify-content: space-between; align-items: center; background: white; padding: 0.875rem 1.25rem; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 1.25rem; }
-  .exam-title { font-weight: 700; font-size: 1rem; }
-  .timer { font-size: 1.25rem; font-weight: 700; color: #1e40af; font-variant-numeric: tabular-nums; }
-  .timer.urgent { color: #dc2626; }
+  /* ── Progress ─────────────────────────────────────────────────────────────────*/
+  .progress-wrap { margin-bottom: 1.5rem; }
+  .progress-meta {
+    display: flex; justify-content: space-between;
+    font-size: 0.85rem; color: var(--muted); margin-bottom: 0.5rem; font-weight: 500;
+  }
+  .progress-meta .pct { color: var(--primary); font-weight: 700; }
+  .progress-meta .pct.done { color: var(--success); }
+  .bar-track { background: var(--border); border-radius: 99px; height: 8px; overflow: hidden; }
+  .bar-fill {
+    height: 100%; border-radius: 99px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    transition: width 0.35s ease;
+  }
+  .bar-fill.done { background: linear-gradient(90deg, #22c55e, #16a34a); }
 
-  /* progress bar */
-  .progress-wrap { margin-bottom: 1.25rem; }
-  .progress-meta { display: flex; justify-content: space-between; font-size: 0.85rem; color: #6b7280; margin-bottom: 0.4rem; }
-  .progress-meta .pct { font-weight: 700; color: #1e40af; }
-  .progress-meta .pct.done { color: #16a34a; }
-  .bar-track { background: #e5e7eb; border-radius: 99px; height: 8px; overflow: hidden; }
-  .bar-fill { height: 100%; border-radius: 99px; background: #1e40af; transition: width 0.3s ease; }
-  .bar-fill.done { background: #16a34a; }
+  /* ── Layout ───────────────────────────────────────────────────────────────────*/
+  .layout { display: grid; grid-template-columns: 1fr 260px; gap: 1.5rem; align-items: start; }
 
-  /* question card */
-  .q-card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
-  .q-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1rem; }
-  .q-label { font-weight: 700; font-size: 1rem; color: #1e40af; }
-  .q-points { font-size: 0.8rem; color: #6b7280; }
-  .q-content { font-size: 1rem; line-height: 1.6; margin-bottom: 1rem; }
-  .q-image { display: block; max-width: 100%; max-height: 320px; border-radius: 8px; margin-bottom: 1.25rem; object-fit: contain; border: 1px solid #e5e7eb; }
-  .options { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
-  .options label { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; padding: 0.65rem 1rem; border-radius: 8px; border: 1.5px solid #e5e7eb; transition: all 0.15s; font-size: 0.95rem; }
-  .options label:hover { border-color: #93c5fd; background: #f0f9ff; }
-  .options label.selected { background: #eff6ff; border-color: #1e40af; }
-  .options input[type=radio] { accent-color: #1e40af; width: 16px; height: 16px; flex-shrink: 0; }
-  .opt-key { font-weight: 700; color: #1e40af; min-width: 1rem; }
+  /* ── Question card ────────────────────────────────────────────────────────────*/
+  .q-card {
+    background: var(--surface); border-radius: var(--radius-card);
+    padding: 1.75rem; box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+  }
+  .q-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
+  .q-label {
+    font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--primary);
+    background: var(--primary-light); padding: 0.25rem 0.75rem; border-radius: 99px;
+  }
+  .q-points { font-size: 0.82rem; color: var(--muted); font-weight: 500; }
+  .q-content { font-size: 1.05rem; line-height: 1.65; margin-bottom: 1.25rem; color: var(--text); }
+  .q-image {
+    display: block; max-width: 100%; max-height: 300px;
+    border-radius: 10px; margin-bottom: 1.25rem; object-fit: contain;
+    border: 1px solid var(--border);
+  }
+  .multi-hint {
+    font-size: 0.8rem; color: var(--muted); margin-bottom: 0.75rem;
+    background: #fef9c3; padding: 0.35rem 0.75rem; border-radius: 8px; display: inline-block;
+  }
 
-  /* nav buttons */
-  .nav-row { display: flex; justify-content: space-between; align-items: center; margin-top: 1.25rem; gap: 0.75rem; }
-  .btn { padding: 0.6rem 1.25rem; border-radius: 6px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: opacity 0.15s; }
-  .btn:disabled { opacity: 0.4; cursor: default; }
-  .btn-prev { background: #f3f4f6; color: #374151; }
-  .btn-prev:not(:disabled):hover { background: #e5e7eb; }
-  .btn-next { background: #1e40af; color: white; }
-  .btn-next:not(:disabled):hover { background: #1d3899; }
-  .q-counter { font-size: 0.85rem; color: #6b7280; }
+  .options { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
+  .options label {
+    display: flex; align-items: flex-start; gap: 0.9rem;
+    cursor: pointer; padding: 0.85rem 1rem; border-radius: 12px;
+    border: 1.5px solid var(--border); background: white;
+    transition: all 0.15s; font-size: 0.95rem; line-height: 1.5;
+    color: var(--text);
+  }
+  .options label:hover { border-color: var(--primary); background: var(--primary-light); }
+  .options label.selected {
+    border-color: var(--primary); background: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+  }
+  .options input[type=radio], .options input[type=checkbox] {
+    accent-color: var(--primary); width: 17px; height: 17px; flex-shrink: 0; margin-top: 2px;
+  }
+  .opt-key { font-weight: 700; color: var(--primary); min-width: 1.1rem; flex-shrink: 0; }
 
-  /* sidebar */
-  .sidebar { position: sticky; top: 1rem; }
-  .sidebar-card { background: white; border-radius: 8px; padding: 1rem; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
-  .sidebar-title { font-size: 0.8rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
+  /* ── Nav row ──────────────────────────────────────────────────────────────────*/
+  .nav-row {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 1.25rem; gap: 0.75rem;
+  }
+  .btn { border: none; cursor: pointer; font-weight: 600; transition: all 0.15s; }
+  .btn:disabled { opacity: 0.35; cursor: default; }
+  .btn-prev {
+    padding: 0.6rem 1.25rem; border-radius: var(--radius-btn);
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  }
+  .btn-prev:not(:disabled):hover { border-color: var(--primary); color: var(--primary); }
+  .btn-next {
+    padding: 0.6rem 1.25rem; border-radius: var(--radius-btn);
+    background: linear-gradient(135deg, var(--primary), var(--accent)); color: white;
+    box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+  }
+  .btn-next:not(:disabled):hover { box-shadow: 0 6px 18px rgba(99,102,241,0.4); }
+  .q-counter { font-size: 0.85rem; color: var(--muted); font-weight: 500; }
+
+  /* ── Sidebar ──────────────────────────────────────────────────────────────────*/
+  .sidebar { position: sticky; top: calc(60px + 57px + 1rem); }
+  .sidebar-card {
+    background: var(--surface); border-radius: var(--radius-card);
+    padding: 1.1rem; box-shadow: var(--shadow); border: 1px solid var(--border);
+  }
+  .sidebar-title {
+    font-size: 0.75rem; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.85rem;
+  }
   .q-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.4rem; margin-bottom: 1rem; }
-  .q-dot { width: 100%; aspect-ratio: 1; border-radius: 6px; border: 1.5px solid #e5e7eb; background: white; font-size: 0.75rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #374151; transition: all 0.15s; }
-  .q-dot:hover { border-color: #93c5fd; }
-  .q-dot.answered { background: #eff6ff; border-color: #1e40af; color: #1e40af; }
-  .q-dot.current { background: #1e40af; border-color: #1e40af; color: white; }
-  .legend { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; font-size: 0.78rem; color: #6b7280; }
-  .legend-item { display: flex; align-items: center; gap: 0.4rem; }
-  .legend-dot { width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid; flex-shrink: 0; }
-  .legend-dot.answered { background: #eff6ff; border-color: #1e40af; }
-  .legend-dot.current { background: #1e40af; border-color: #1e40af; }
-  .legend-dot.empty { background: white; border-color: #e5e7eb; }
+  .q-dot {
+    width: 100%; aspect-ratio: 1; border-radius: 8px;
+    border: 1.5px solid var(--border); background: white;
+    font-size: 0.72rem; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); transition: all 0.15s;
+  }
+  .q-dot:hover { border-color: var(--primary); color: var(--primary); }
+  .q-dot.answered { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+  .q-dot.current  { background: var(--primary); border-color: var(--primary); color: white; }
 
-  .btn-submit { width: 100%; background: #16a34a; color: white; padding: 0.7rem; border: none; border-radius: 6px; font-size: 0.9rem; font-weight: 700; cursor: pointer; margin-top: 0.25rem; }
-  .btn-submit:hover:not(:disabled) { background: #15803d; }
+  .legend { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 1rem; font-size: 0.78rem; color: var(--muted); }
+  .legend-item { display: flex; align-items: center; gap: 0.5rem; }
+  .legend-dot { width: 11px; height: 11px; border-radius: 3px; border: 1.5px solid; flex-shrink: 0; }
+  .legend-dot.answered { background: var(--primary-light); border-color: var(--primary); }
+  .legend-dot.current  { background: var(--primary); border-color: var(--primary); }
+  .legend-dot.empty    { background: white; border-color: var(--border); }
+
+  .btn-submit {
+    width: 100%; padding: 0.8rem;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: white; border: none; border-radius: var(--radius-btn);
+    font-size: 0.9rem; font-weight: 700; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(34,197,94,0.3);
+    transition: all 0.2s;
+  }
+  .btn-submit:hover:not(:disabled) { box-shadow: 0 6px 18px rgba(34,197,94,0.4); }
   .btn-submit:disabled { opacity: 0.6; cursor: default; }
 
-  .error { color: #dc2626; }
+  /* ── Modal ────────────────────────────────────────────────────────────────────*/
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(26,23,48,0.55); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center; z-index: 100;
+  }
+  .modal {
+    background: white; border-radius: 20px; padding: 2rem;
+    max-width: 380px; width: 90%;
+    box-shadow: 0 20px 60px rgba(99,102,241,0.2);
+    border: 1px solid var(--border);
+  }
+  .modal h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+  .modal p { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; line-height: 1.5; }
+  .modal-actions { display: flex; gap: 0.75rem; }
+  .btn-outline {
+    flex: 1; padding: 0.65rem; border-radius: var(--radius-btn);
+    border: 1px solid var(--border); background: white; color: var(--text);
+    font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.15s;
+  }
+  .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+  .btn-confirm {
+    flex: 1; padding: 0.65rem; border-radius: var(--radius-btn);
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: white; border: none; font-size: 0.9rem; font-weight: 700;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn-confirm:disabled { opacity: 0.6; cursor: default; }
+  .btn-confirm:not(:disabled):hover { box-shadow: 0 4px 12px rgba(34,197,94,0.4); }
 
-  /* confirm modal */
-  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 100; }
-  .modal { background: white; border-radius: 12px; padding: 1.75rem; max-width: 380px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,.18); }
-  .modal h3 { margin: 0 0 0.5rem; font-size: 1.1rem; }
-  .modal p { color: #6b7280; font-size: 0.9rem; margin: 0 0 1.25rem; }
-  .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+  .error { color: var(--danger); margin-top: 0.75rem; font-size: 0.9rem; }
 
-  @media (max-width: 680px) {
+  /* ── Mobile ───────────────────────────────────────────────────────────────────*/
+  @media (max-width: 720px) {
+    .top-bar { margin: -1.25rem -1rem 1.25rem; top: 60px; }
     .layout { grid-template-columns: 1fr; }
     .sidebar { position: static; }
-    .q-grid { grid-template-columns: repeat(8, 1fr); }
+    .q-grid { grid-template-columns: repeat(8, 1fr); overflow-x: auto; }
+    .q-dot { min-width: 36px; }
   }
 </style>
 
-{#if loading}<p>Đang tải...</p>
-{:else if error}<p class="error">{error}</p>
+{#if loading}
+  <div style="text-align:center;padding:4rem 0;color:var(--muted)">Đang tải đề thi...</div>
+{:else if error}
+  <p class="error">{error}</p>
 {:else if exam}
 
 <div class="top-bar">
   <span class="exam-title">{exam.title}</span>
-  <span class="timer {timeLeft < 60 ? 'urgent' : ''}">{formatTime(timeLeft)}</span>
+  <span class="timer {isUrgent ? 'urgent' : ''}">{formatTime(timeLeft)}</span>
 </div>
 
 <div class="progress-wrap">
@@ -229,12 +325,11 @@
     <span class="pct {pct === 100 ? 'done' : ''}">{pct}%</span>
   </div>
   <div class="bar-track">
-    <div class="bar-fill {pct === 100 ? 'done' : ''}" style="width: {pct}%"></div>
+    <div class="bar-fill {pct === 100 ? 'done' : ''}" style="width:{pct}%"></div>
   </div>
 </div>
 
 <div class="layout">
-  <!-- main question -->
   <div>
     {#if currentQ}
     <div class="q-card">
@@ -244,12 +339,10 @@
       </div>
       <p class="q-content">{currentQ.content}</p>
       {#if currentQ.image_url}
-        <img src={currentQ.image_url} alt="Ảnh minh hoạ câu hỏi" class="q-image" />
+        <img src={currentQ.image_url} alt="Hình minh họa" class="q-image" />
       {/if}
       {#if currentQ.question_type === 'multiple'}
-        <p style="font-size:0.82rem; color:#6b7280; margin-bottom:0.5rem">
-          Chọn {currentQ.correct_count ?? '?'} đáp án đúng
-        </p>
+        <span class="multi-hint">Chọn {currentQ.correct_count ?? '?'} đáp án đúng</span>
       {/if}
       <ul class="options">
         {#each currentQ.options as opt}
@@ -259,8 +352,7 @@
             <label class="{chosen.includes(opt.key) ? 'selected' : ''}">
               <input type="checkbox"
                 checked={chosen.includes(opt.key)}
-                onchange={() => toggleMultiAnswer(currentQ.id, opt.key)}
-                style="accent-color:#1e40af; width:16px; height:16px; flex-shrink:0" />
+                onchange={() => toggleMultiAnswer(currentQ.id, opt.key)} />
               <span class="opt-key">{opt.key}.</span>
               {opt.text}
             </label>
@@ -284,24 +376,24 @@
       <span class="q-counter">{currentIdx + 1} / {totalCount}</span>
       <button class="btn btn-next" disabled={currentIdx === totalCount - 1} onclick={() => currentIdx++}>Câu sau →</button>
     </div>
+    {#if error}<p class="error">{error}</p>{/if}
   </div>
 
-  <!-- sidebar -->
   <div class="sidebar">
     <div class="sidebar-card">
       <div class="sidebar-title">Danh sách câu hỏi</div>
       <div class="q-grid">
         {#each exam.questions ?? [] as q, i}
-        <button
-          class="q-dot {i === currentIdx ? 'current' : answers[q.id] ? 'answered' : ''}"
-          onclick={() => currentIdx = i}
-        >{i + 1}</button>
+          <button
+            class="q-dot {i === currentIdx ? 'current' : isAnswered(q) ? 'answered' : ''}"
+            onclick={() => currentIdx = i}
+          >{i + 1}</button>
         {/each}
       </div>
       <div class="legend">
-        <div class="legend-item"><div class="legend-dot current"></div> Đang làm</div>
-        <div class="legend-item"><div class="legend-dot answered"></div> Đã trả lời</div>
-        <div class="legend-item"><div class="legend-dot empty"></div> Chưa trả lời</div>
+        <div class="legend-item"><div class="legend-dot current"></div>Đang làm</div>
+        <div class="legend-item"><div class="legend-dot answered"></div>Đã trả lời</div>
+        <div class="legend-item"><div class="legend-dot empty"></div>Chưa trả lời</div>
       </div>
       <button class="btn-submit" onclick={requestSubmit} disabled={submitting}>
         {submitting ? 'Đang nộp...' : 'Nộp bài'}
@@ -316,10 +408,10 @@
 <div class="overlay" role="dialog" aria-modal="true">
   <div class="modal">
     <h3>Xác nhận nộp bài</h3>
-    <p>Bạn còn <strong>{unanswered} câu chưa trả lời</strong>. Những câu này sẽ bị tính 0 điểm. Vẫn muốn nộp?</p>
+    <p>Còn <strong>{unanswered} câu chưa trả lời</strong>. Những câu này sẽ bị tính 0 điểm. Bạn có chắc muốn nộp?</p>
     <div class="modal-actions">
-      <button class="btn btn-outline" onclick={() => showConfirm = false}>Quay lại làm tiếp</button>
-      <button class="btn btn-primary" onclick={submitExam} disabled={submitting}>
+      <button class="btn-outline" onclick={() => showConfirm = false}>Làm tiếp</button>
+      <button class="btn-confirm" onclick={submitExam} disabled={submitting}>
         {submitting ? 'Đang nộp...' : 'Xác nhận nộp'}
       </button>
     </div>

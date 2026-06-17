@@ -1,37 +1,32 @@
 <script>
   import { examApi, submissionApi, userApi } from '$lib/api'
-  import { user } from '$lib/stores/auth'
+  import { user, session } from '$lib/stores/auth'
   import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
 
   let loading = $state(true)
   let error = $state('')
 
-  // --- student ---
+  // student
   let mySubmissions = $state([])
-  let examMap = $state({})         // examId → exam
+  let examMap = $state({})
 
-  // --- teacher / admin ---
+  // teacher / admin
   let myExams = $state([])
   let allSubs = $state([])
-  let userMap = $state({})         // userId → user (admin only)
+  let userMap = $state({})
 
   function examStats(examId) {
     const subs = allSubs.filter(s => s.exam_id === examId)
     const exam = myExams.find(e => e.id === examId)
-    const passed = subs.filter(s =>
-      exam?.passing_score == null || s.percentage >= exam.passing_score
-    ).length
+    const passed = subs.filter(s => exam?.passing_score == null || s.percentage >= exam.passing_score).length
     return { count: subs.length, passed, rate: subs.length > 0 ? Math.round(passed / subs.length * 100) : null }
   }
 
   const adminStats = $derived({
     exams: myExams.length,
     totalSubs: allSubs.length,
-    passed: allSubs.filter(s => {
-      const e = myExams.find(ex => ex.id === s.exam_id)
-      return e?.passing_score == null || s.percentage >= e.passing_score
-    }).length,
+    passed: allSubs.filter(s => { const e = myExams.find(ex => ex.id === s.exam_id); return e?.passing_score == null || s.percentage >= e.passing_score }).length,
     users: Object.keys(userMap).length
   })
 
@@ -40,29 +35,19 @@
     try {
       if ($user.role === 'student') {
         const [subRes, examRes] = await Promise.all([submissionApi.list(), examApi.list()])
-        if (subRes.ok) mySubmissions = await subRes.json()
-        if (examRes.ok) {
-          const exams = await examRes.json()
-          examMap = Object.fromEntries(exams.map(e => [e.id, e]))
-        }
+        if (subRes.ok)  mySubmissions = await subRes.json()
+        if (examRes.ok) { const exams = await examRes.json(); examMap = Object.fromEntries(exams.map(e => [e.id, e])) }
       } else {
         const [examRes, subRes] = await Promise.all([examApi.list(), submissionApi.list()])
         if (examRes.ok) myExams = await examRes.json()
-        if (subRes.ok) allSubs = await subRes.json()
-
+        if (subRes.ok)  allSubs = await subRes.json()
         if ($user.role === 'admin') {
           const uRes = await userApi.adminListUsers()
-          if (uRes.ok) {
-            const users = await uRes.json()
-            userMap = Object.fromEntries(users.map(u => [u.id, u]))
-          }
+          if (uRes.ok) { const users = await uRes.json(); userMap = Object.fromEntries(users.map(u => [u.id, u])) }
         }
       }
-    } catch {
-      error = 'Không thể tải dữ liệu'
-    } finally {
-      loading = false
-    }
+    } catch { error = 'Không thể tải dữ liệu' }
+    finally  { loading = false }
   })
 
   function isPassed(sub) {
@@ -74,7 +59,6 @@
     return new Date(s).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
   }
 
-  // latest submission per exam (student)
   const studentRows = $derived(
     Object.values(
       mySubmissions.reduce((acc, s) => {
@@ -84,73 +68,150 @@
       }, {})
     ).sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at))
   )
-
   const studentPassed = $derived(studentRows.filter(s => isPassed(s)).length)
 </script>
 
 <style>
-  .page-header { margin-bottom: 1.5rem; }
-  .page-header h1 { font-size: 1.5rem; margin-bottom: 0.3rem; }
-  .role-badge { display: inline-block; padding: 0.2rem 0.75rem; border-radius: 999px; font-size: 0.82rem; font-weight: 600; }
-  .badge-student { background: #dbeafe; color: #1e40af; }
-  .badge-teacher { background: #fef9c3; color: #854d0e; }
-  .badge-admin   { background: #fce7f3; color: #9d174d; }
+  /* ── Header ─────────────────────────────────────────────────────────────────── */
+  .page-header { margin-bottom: 2rem; }
+  .greeting {
+    font-size: 1.7rem; font-weight: 800; letter-spacing: -0.02em;
+    color: var(--text); margin-bottom: 0.3rem;
+  }
+  .greeting span {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .role-pill {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    padding: 0.25rem 0.8rem; border-radius: 99px;
+    font-size: 0.8rem; font-weight: 700;
+  }
+  .role-pill.student { background: var(--primary-light); color: var(--primary); }
+  .role-pill.teacher { background: #fef9c3; color: #854d0e; }
+  .role-pill.admin   { background: #fce7f3; color: #9d174d; }
 
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-  .stat { background: white; border-radius: 10px; padding: 1.25rem 1rem; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
-  .stat-num { font-size: 2rem; font-weight: 800; color: #1e40af; line-height: 1; margin-bottom: 0.3rem; }
-  .stat-num.green { color: #15803d; }
-  .stat-num.red   { color: #dc2626; }
-  .stat-label { font-size: 0.82rem; color: #6b7280; }
+  /* ── Stats ───────────────────────────────────────────────────────────────────── */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+  .stat {
+    background: var(--surface); border-radius: var(--radius-card);
+    padding: 1.35rem 1.1rem;
+    box-shadow: var(--shadow); border: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 0.35rem;
+    transition: all 0.2s;
+  }
+  .stat:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+  .stat-icon { font-size: 1.4rem; }
+  .stat-num {
+    font-size: 2rem; font-weight: 800; line-height: 1; color: var(--text);
+    letter-spacing: -0.03em;
+  }
+  .stat-num.indigo { color: var(--primary); }
+  .stat-num.green  { color: #15803d; }
+  .stat-num.red    { color: var(--danger); }
+  .stat-num.amber  { color: #92400e; }
+  .stat-label { font-size: 0.82rem; color: var(--muted); font-weight: 500; }
+  .stat-bar { height: 3px; border-radius: 99px; background: var(--border); margin-top: 0.25rem; overflow: hidden; }
+  .stat-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--primary), var(--accent)); }
 
-  .section-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.75rem; }
-  .table-wrap { background: white; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.08); overflow: hidden; }
+  /* ── Section ─────────────────────────────────────────────────────────────────── */
+  .section-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 1rem;
+  }
+  .section-title { font-size: 1rem; font-weight: 700; color: var(--text); }
+  .section-link { font-size: 0.85rem; color: var(--primary); font-weight: 600; text-decoration: none; }
+  .section-link:hover { text-decoration: underline; }
+
+  /* ── Table ───────────────────────────────────────────────────────────────────── */
+  .table-wrap {
+    background: var(--surface); border-radius: var(--radius-card);
+    box-shadow: var(--shadow); border: 1px solid var(--border); overflow: hidden;
+  }
   table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-  th { text-align: left; padding: 0.6rem 1rem; border-bottom: 2px solid #e5e7eb; color: #6b7280; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
-  td { padding: 0.7rem 1rem; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+  th {
+    text-align: left; padding: 0.75rem 1.1rem;
+    border-bottom: 2px solid var(--border); color: var(--muted);
+    font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em;
+    font-weight: 700; white-space: nowrap; background: var(--bg);
+  }
+  td { padding: 0.8rem 1.1rem; border-bottom: 1px solid #f5f3ff; vertical-align: middle; }
   tr:last-child td { border-bottom: none; }
-  tr:hover td { background: #fafafa; }
-
-  .pass { color: #15803d; font-weight: 600; }
-  .fail { color: #dc2626; }
-  .link { color: #1e40af; text-decoration: none; }
+  tr:hover td { background: #f5f3ff; }
+  .link { color: var(--primary); text-decoration: none; font-weight: 600; }
   .link:hover { text-decoration: underline; }
-  .error { color: #dc2626; }
-  .empty { color: #9ca3af; text-align: center; padding: 2rem 1rem; }
+  .pass { color: #15803d; font-weight: 700; }
+  .fail { color: var(--danger); font-weight: 600; }
 
+  /* ── Bar ─────────────────────────────────────────────────────────────────────── */
   .bar-wrap { display: flex; align-items: center; gap: 0.5rem; }
-  .bar-bg { flex: 1; height: 6px; background: #e5e7eb; border-radius: 99px; overflow: hidden; min-width: 50px; }
-  .bar-fill { height: 100%; border-radius: 99px; background: #1e40af; }
-  .bar-fill.good { background: #22c55e; }
+  .bar-bg { flex: 1; height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; min-width: 60px; }
+  .bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--primary), var(--accent)); }
+  .bar-fill.good { background: linear-gradient(90deg, #22c55e, #16a34a); }
 
-  .btn { padding: 0.3rem 0.65rem; border-radius: 4px; font-size: 0.82rem; text-decoration: none; cursor: pointer; border: none; display: inline-block; }
-  .btn-blue { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
-  .btn-gray { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+  /* ── Buttons ────────────────────────────────────────────────────────────────── */
+  .btn {
+    padding: 0.3rem 0.7rem; border-radius: 8px; font-size: 0.8rem;
+    font-weight: 600; text-decoration: none; cursor: pointer; border: none;
+    display: inline-block; transition: all 0.15s;
+  }
+  .btn-indigo { background: var(--primary-light); color: var(--primary); border: 1px solid #c4b5fd; }
+  .btn-indigo:hover { background: #ddd6fe; }
+  .btn-gray  { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  .btn-gray:hover  { border-color: var(--primary); color: var(--primary); }
+
+  .empty { color: var(--muted); text-align: center; padding: 2.5rem 1rem; font-size: 0.9rem; }
+  .empty a { color: var(--primary); font-weight: 600; }
+  .error { color: var(--danger); }
+
+  @media (max-width: 600px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    th:nth-child(n+4), td:nth-child(n+4) { display: none; }
+  }
 </style>
 
 {#if loading}
-  <p>Đang tải...</p>
+  <div style="color:var(--muted);padding:2rem 0">Đang tải...</div>
 {:else if error}
   <p class="error">{error}</p>
 {:else}
 
-<!-- ===== STUDENT ===== -->
+<!-- ── STUDENT ─────────────────────────────────────────────────────────────── -->
 {#if $user.role === 'student'}
 <div class="page-header">
-  <h1>Xin chào, {$user.user_metadata?.full_name || $user.email}!</h1>
-  <span class="role-badge badge-student">Học sinh</span>
+  <h1 class="greeting">Xin chào, <span>{$session?.user?.user_metadata?.full_name?.split(' ').pop() || 'bạn'}!</span></h1>
+  <span class="role-pill student">🎓 Học sinh</span>
 </div>
 
 <div class="stats">
-  <div class="stat"><div class="stat-num">{studentRows.length}</div><div class="stat-label">Đề đã thi</div></div>
-  <div class="stat"><div class="stat-num green">{studentPassed}</div><div class="stat-label">Đã pass</div></div>
-  <div class="stat"><div class="stat-num red">{studentRows.length - studentPassed}</div><div class="stat-label">Chưa pass</div></div>
+  <div class="stat">
+    <div class="stat-icon">📝</div>
+    <div class="stat-num indigo">{studentRows.length}</div>
+    <div class="stat-label">Đề đã thi</div>
+  </div>
+  <div class="stat">
+    <div class="stat-icon">✅</div>
+    <div class="stat-num green">{studentPassed}</div>
+    <div class="stat-label">Đã pass</div>
+    {#if studentRows.length > 0}
+      <div class="stat-bar"><div class="stat-bar-fill" style="width:{Math.round(studentPassed/studentRows.length*100)}%"></div></div>
+    {/if}
+  </div>
+  <div class="stat">
+    <div class="stat-icon">⏳</div>
+    <div class="stat-num red">{studentRows.length - studentPassed}</div>
+    <div class="stat-label">Chưa pass</div>
+  </div>
 </div>
 
-<p class="section-title">Bài thi của bạn</p>
+<div class="section-header">
+  <span class="section-title">Bài thi của bạn</span>
+  <a href="/exams" class="section-link">Xem tất cả đề →</a>
+</div>
 <div class="table-wrap">
   {#if studentRows.length === 0}
-    <p class="empty">Bạn chưa tham gia bài thi nào. <a href="/exams" class="link">Xem danh sách đề →</a></p>
+    <p class="empty">Bạn chưa tham gia bài thi nào. <a href="/exams">Xem danh sách đề →</a></p>
   {:else}
     <table>
       <thead><tr><th>Đề thi</th><th>Điểm</th><th>%</th><th>Kết quả</th><th>Ngày nộp</th><th></th></tr></thead>
@@ -163,10 +224,10 @@
           <td>{sub.score}/{sub.total_points}</td>
           <td>{sub.percentage?.toFixed(1)}%</td>
           <td class="{passed ? 'pass' : 'fail'}">{passed ? '✓ Đạt' : '✗ Chưa đạt'}</td>
-          <td style="color:#6b7280; font-size:0.85rem">{fmtDate(sub.submitted_at)}</td>
+          <td style="color:var(--muted);font-size:0.83rem">{fmtDate(sub.submitted_at)}</td>
           <td>
             {#if passed}
-              <a href="/exams/{sub.exam_id}/result?submissionId={sub.id}" class="btn btn-blue">Xem KQ</a>
+              <a href="/exams/{sub.exam_id}/result?submissionId={sub.id}" class="btn btn-indigo">Xem KQ</a>
             {:else}
               <a href="/exams/{sub.exam_id}/take" class="btn btn-gray">Làm lại</a>
             {/if}
@@ -178,48 +239,62 @@
   {/if}
 </div>
 
-<!-- ===== TEACHER ===== -->
+<!-- ── TEACHER ────────────────────────────────────────────────────────────── -->
 {:else if $user.role === 'teacher'}
 {@const teacherSubs = allSubs.filter(s => myExams.some(e => e.id === s.exam_id))}
 <div class="page-header">
-  <h1>Xin chào, {$user.user_metadata?.full_name || $user.email}!</h1>
-  <span class="role-badge badge-teacher">Giáo viên</span>
+  <h1 class="greeting">Xin chào, <span>{$session?.user?.user_metadata?.full_name?.split(' ').pop() || 'giáo viên'}!</span></h1>
+  <span class="role-pill teacher">👨‍🏫 Giáo viên</span>
 </div>
 
 <div class="stats">
-  <div class="stat"><div class="stat-num">{myExams.length}</div><div class="stat-label">Đề đã tạo</div></div>
-  <div class="stat"><div class="stat-num">{teacherSubs.length}</div><div class="stat-label">Lượt thi</div></div>
-  <div class="stat"><div class="stat-num">{myExams.filter(e => e.is_published).length}</div><div class="stat-label">Đã xuất bản</div></div>
+  <div class="stat">
+    <div class="stat-icon">📚</div>
+    <div class="stat-num indigo">{myExams.length}</div>
+    <div class="stat-label">Đề đã tạo</div>
+  </div>
+  <div class="stat">
+    <div class="stat-icon">✅</div>
+    <div class="stat-num green">{myExams.filter(e => e.is_published).length}</div>
+    <div class="stat-label">Đã xuất bản</div>
+  </div>
+  <div class="stat">
+    <div class="stat-icon">👥</div>
+    <div class="stat-num indigo">{teacherSubs.length}</div>
+    <div class="stat-label">Lượt thi</div>
+  </div>
 </div>
 
-<p class="section-title">Đề thi của bạn</p>
+<div class="section-header">
+  <span class="section-title">Đề thi của bạn</span>
+  <a href="/exams/create" class="section-link">＋ Tạo đề mới</a>
+</div>
 <div class="table-wrap">
   {#if myExams.length === 0}
-    <p class="empty">Bạn chưa tạo đề thi nào. <a href="/exams/create" class="link">Tạo đề thi →</a></p>
+    <p class="empty">Bạn chưa tạo đề thi nào. <a href="/exams/create">Tạo đề thi →</a></p>
   {:else}
     <table>
-      <thead><tr><th>Tên đề</th><th>Lượt thi</th><th>Tỷ lệ pass</th><th>Chế độ</th><th>Trạng thái</th><th></th></tr></thead>
+      <thead><tr><th>Tên đề</th><th>Lượt thi</th><th>Tỷ lệ pass</th><th>Trạng thái</th><th></th></tr></thead>
       <tbody>
         {#each myExams as exam}
         {@const s = examStats(exam.id)}
         <tr>
           <td>
             <a href="/exams/{exam.id}" class="link">{exam.title}</a>
-            {#if exam.passing_score != null}<span style="font-size:0.78rem;color:#9ca3af"> · ≥{exam.passing_score}%</span>{/if}
+            {#if exam.passing_score != null}<span style="font-size:0.77rem;color:var(--muted)"> · ≥{exam.passing_score}%</span>{/if}
           </td>
           <td>{s.count}</td>
           <td>
             {#if s.count > 0}
               <div class="bar-wrap">
                 <div class="bar-bg"><div class="bar-fill {s.rate >= 60 ? 'good' : ''}" style="width:{s.rate}%"></div></div>
-                <span style="font-size:0.82rem;min-width:2.5rem">{s.rate}%</span>
+                <span style="font-size:0.82rem;min-width:2.5rem;color:var(--muted)">{s.rate}%</span>
               </div>
             {:else}—{/if}
           </td>
-          <td style="font-size:0.82rem;color:#6b7280">{exam.allow_retake ? 'Thực hành' : 'Chính thức'}</td>
-          <td style="font-size:0.82rem">{exam.is_published ? '✓ Xuất bản' : 'Nháp'}</td>
+          <td style="font-size:0.83rem">{exam.is_published ? '<span style="color:#15803d">✓ Xuất bản</span>' : '<span style="color:var(--muted)">Nháp</span>'}</td>
           <td style="display:flex;gap:0.4rem">
-            <a href="/exams/{exam.id}" class="btn btn-blue">Xem</a>
+            <a href="/exams/{exam.id}" class="btn btn-indigo">Xem</a>
             <a href="/exams/{exam.id}/edit" class="btn btn-gray">Sửa</a>
           </td>
         </tr>
@@ -229,32 +304,49 @@
   {/if}
 </div>
 
-<!-- ===== ADMIN ===== -->
+<!-- ── ADMIN ───────────────────────────────────────────────────────────────── -->
 {:else if $user.role === 'admin'}
 <div class="page-header">
-  <h1>Admin Dashboard</h1>
-  <span class="role-badge badge-admin">Admin</span>
+  <h1 class="greeting">Admin <span>Dashboard</span></h1>
+  <span class="role-pill admin">⚙️ Admin</span>
 </div>
 
 <div class="stats">
-  <div class="stat"><div class="stat-num">{adminStats.exams}</div><div class="stat-label">Tổng đề thi</div></div>
-  <div class="stat"><div class="stat-num">{adminStats.users}</div><div class="stat-label">Người dùng</div></div>
-  <div class="stat"><div class="stat-num">{adminStats.totalSubs}</div><div class="stat-label">Lượt thi</div></div>
   <div class="stat">
-    <div class="stat-num green">
-      {adminStats.totalSubs > 0 ? Math.round(adminStats.passed / adminStats.totalSubs * 100) : 0}%
-    </div>
+    <div class="stat-icon">📚</div>
+    <div class="stat-num indigo">{adminStats.exams}</div>
+    <div class="stat-label">Tổng đề thi</div>
+  </div>
+  <div class="stat">
+    <div class="stat-icon">👥</div>
+    <div class="stat-num indigo">{adminStats.users}</div>
+    <div class="stat-label">Người dùng</div>
+  </div>
+  <div class="stat">
+    <div class="stat-icon">🎯</div>
+    <div class="stat-num indigo">{adminStats.totalSubs}</div>
+    <div class="stat-label">Lượt thi</div>
+  </div>
+  <div class="stat">
+    <div class="stat-icon">📈</div>
+    <div class="stat-num green">{adminStats.totalSubs > 0 ? Math.round(adminStats.passed / adminStats.totalSubs * 100) : 0}%</div>
     <div class="stat-label">Tỷ lệ pass</div>
+    {#if adminStats.totalSubs > 0}
+      <div class="stat-bar"><div class="stat-bar-fill" style="width:{Math.round(adminStats.passed/adminStats.totalSubs*100)}%"></div></div>
+    {/if}
   </div>
 </div>
 
-<p class="section-title">Tất cả đề thi</p>
+<div class="section-header">
+  <span class="section-title">Tất cả đề thi</span>
+  <a href="/admin" class="section-link">Quản lý →</a>
+</div>
 <div class="table-wrap">
   {#if myExams.length === 0}
     <p class="empty">Chưa có đề thi nào.</p>
   {:else}
     <table>
-      <thead><tr><th>Tên đề</th><th>Tác giả</th><th>Lượt thi</th><th>Tỷ lệ pass</th><th>Chế độ</th><th>XB</th><th></th></tr></thead>
+      <thead><tr><th>Tên đề</th><th>Tác giả</th><th>Lượt thi</th><th>Tỷ lệ pass</th><th>XB</th><th></th></tr></thead>
       <tbody>
         {#each myExams as exam}
         {@const s = examStats(exam.id)}
@@ -262,24 +354,23 @@
         <tr>
           <td>
             <a href="/exams/{exam.id}" class="link">{exam.title}</a>
-            {#if exam.passing_score != null}<span style="font-size:0.78rem;color:#9ca3af"> · ≥{exam.passing_score}%</span>{/if}
+            {#if exam.passing_score != null}<span style="font-size:0.77rem;color:var(--muted)"> · ≥{exam.passing_score}%</span>{/if}
           </td>
           <td style="font-size:0.85rem">
-            <span style="display:block">{author?.full_name ?? ''}</span>
-            <span style="color:#9ca3af;font-size:0.78rem">{author?.email ?? exam.created_by}</span>
+            <span style="font-weight:600">{author?.full_name ?? ''}</span>
+            <span style="display:block;color:var(--muted);font-size:0.78rem">{author?.email ?? exam.created_by.slice(0,8)+'…'}</span>
           </td>
           <td>{s.count}</td>
           <td>
             {#if s.count > 0}
               <div class="bar-wrap">
                 <div class="bar-bg"><div class="bar-fill {s.rate >= 60 ? 'good' : ''}" style="width:{s.rate}%"></div></div>
-                <span style="font-size:0.82rem;min-width:2.5rem">{s.rate}%</span>
+                <span style="font-size:0.82rem;min-width:2.5rem;color:var(--muted)">{s.rate}%</span>
               </div>
             {:else}—{/if}
           </td>
-          <td style="font-size:0.82rem;color:#6b7280">{exam.allow_retake ? 'Thực hành' : 'Chính thức'}</td>
-          <td style="font-size:0.82rem">{exam.is_published ? '✓' : '—'}</td>
-          <td><a href="/exams/{exam.id}" class="btn btn-blue">Xem</a></td>
+          <td style="font-size:0.85rem">{exam.is_published ? '✓' : '—'}</td>
+          <td><a href="/exams/{exam.id}" class="btn btn-indigo">Xem</a></td>
         </tr>
         {/each}
       </tbody>
