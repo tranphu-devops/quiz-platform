@@ -359,33 +359,33 @@ docker compose -f "$COMPOSE_FILE" up -d --build
 log "All containers started"
 
 # =============================================================================
-# PHASE 9 — Health check
+# PHASE 9 — Health check + Nginx restart
 # =============================================================================
 hr
-info "Phase 9: Health check (waiting up to 60s)"
+info "Phase 9: Health check + Nginx restart"
 hr
 
 SERVICES=("user-service" "exam-service" "submission-service")
-PORTS=(3002 3003 3004)
 
-sleep 5  # give Postgres time to initialize
+sleep 8  # give Postgres + services time to initialize
 
-for i in "${!SERVICES[@]}"; do
-  SVC="${SERVICES[$i]}"
-  PORT="${PORTS[$i]}"
+for SVC in "${SERVICES[@]}"; do
   info "Waiting for ${SVC}..."
   for ATTEMPT in {1..12}; do
-    if docker compose -f "$COMPOSE_FILE" exec -T "$SVC" \
-        wget -qO- "http://localhost:${PORT}/health" &>/dev/null; then
-      log "${SVC} healthy"
+    CID=$(docker compose -f "$COMPOSE_FILE" ps -q "$SVC" 2>/dev/null | head -1)
+    if [[ -n "$CID" ]] && docker inspect --format='{{.State.Running}}' "$CID" 2>/dev/null | grep -q "true"; then
+      log "${SVC} is running"
       break
     fi
     if [[ $ATTEMPT -eq 12 ]]; then
-      warn "${SVC} health check timed out — check logs: docker compose logs ${SVC}"
+      warn "${SVC} not running — check: docker compose -f $COMPOSE_FILE logs $SVC"
     fi
     sleep 5
   done
 done
+
+info "Restarting nginx..."
+docker compose -f "$COMPOSE_FILE" restart nginx 2>/dev/null && log "nginx restarted" || warn "nginx restart failed"
 
 # =============================================================================
 # PHASE 10 — Optional: migrate / seed data / admin
