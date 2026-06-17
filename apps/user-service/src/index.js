@@ -12,7 +12,7 @@ fastify.get('/health', async () => ({
   timestamp: new Date().toISOString()
 }))
 
-fastify.register(userRoutes, { prefix: '/users' })
+fastify.register(userRoutes, { prefix: '/' })
 
 try {
   await fastify.listen({ port: Number(process.env.PORT) || 3002, host: '0.0.0.0' })

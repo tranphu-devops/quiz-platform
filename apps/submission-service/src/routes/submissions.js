@@ -32,22 +32,50 @@ export default async function submissionRoutes(fastify) {
       const exam = await examRes.json()
       const questions = exam.questions
 
+      function isCorrect(q, studentAnswer) {
+        if (q.question_type === 'multiple') {
+          const sorted = Array.isArray(studentAnswer) ? [...studentAnswer].sort().join(',') : ''
+          return sorted === q.correct_answer
+        }
+        return studentAnswer === q.correct_answer
+      }
+
       let score = 0
       let total_points = 0
 
       for (const q of questions) {
         total_points += q.points ?? 1
-        if (answers[q.id] === q.correct_answer) {
+        if (isCorrect(q, answers[q.id])) {
           score += q.points ?? 1
         }
       }
 
       const percentage = total_points > 0 ? (score / total_points) * 100 : 0
 
+      const results_detail = {
+        show_explanation: exam.show_explanation ?? false,
+        questions: questions.map(q => {
+          const sa = answers[q.id] ?? null
+          const correct = isCorrect(q, sa)
+          return {
+            id: q.id,
+            content: q.content,
+            options: q.options,
+            question_type: q.question_type ?? 'single',
+            correct_answer: q.correct_answer,
+            student_answer: sa,
+            is_correct: correct,
+            points: q.points ?? 1,
+            earned: correct ? (q.points ?? 1) : 0,
+            explanation: q.explanation ?? null
+          }
+        })
+      }
+
       const result = await pool.query(
-        `INSERT INTO submissions (exam_id, user_id, answers, score, total_points, percentage)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-        [exam_id, req.user.id, JSON.stringify(answers), score, total_points, percentage]
+        `INSERT INTO submissions (exam_id, user_id, answers, score, total_points, percentage, results_detail)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+        [exam_id, req.user.id, JSON.stringify(answers), score, total_points, percentage, JSON.stringify(results_detail)]
       )
 
       return reply.status(201).send(result.rows[0])

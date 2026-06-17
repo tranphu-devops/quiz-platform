@@ -14,10 +14,23 @@
   let timer = null
   let currentIdx = $state(0)
 
-  let answeredCount = $derived(Object.keys(answers).length)
+  function isAnswered(q) {
+    const a = answers[q.id]
+    if (!a) return false
+    if (q.question_type === 'multiple') return Array.isArray(a) && a.length > 0
+    return true
+  }
+
+  let answeredCount = $derived((exam?.questions ?? []).filter(q => isAnswered(q)).length)
   let totalCount = $derived(exam?.questions?.length ?? 0)
   let pct = $derived(totalCount > 0 ? Math.round(answeredCount / totalCount * 100) : 0)
   let currentQ = $derived(exam?.questions?.[currentIdx] ?? null)
+
+  function toggleMultiAnswer(qid, key) {
+    const cur = answers[qid] ?? []
+    const next = cur.includes(key) ? cur.filter(k => k !== key) : [...cur, key]
+    answers = { ...answers, [qid]: next }
+  }
 
   onMount(async () => {
     if (!$user) { goto('/login'); return }
@@ -159,16 +172,33 @@
         <span class="q-points">{currentQ.points} điểm</span>
       </div>
       <p class="q-content">{currentQ.content}</p>
+      {#if currentQ.question_type === 'multiple'}
+        <p style="font-size:0.82rem; color:#6b7280; margin-bottom:0.5rem">
+          Chọn {currentQ.correct_count ?? '?'} đáp án đúng
+        </p>
+      {/if}
       <ul class="options">
         {#each currentQ.options as opt}
         <li>
-          <label class="{answers[currentQ.id] === opt.key ? 'selected' : ''}">
-            <input type="radio" name="q_{currentQ.id}" value={opt.key}
-              checked={answers[currentQ.id] === opt.key}
-              onchange={() => answers = { ...answers, [currentQ.id]: opt.key }} />
-            <span class="opt-key">{opt.key}.</span>
-            {opt.text}
-          </label>
+          {#if currentQ.question_type === 'multiple'}
+            {@const chosen = (answers[currentQ.id] ?? [])}
+            <label class="{chosen.includes(opt.key) ? 'selected' : ''}">
+              <input type="checkbox"
+                checked={chosen.includes(opt.key)}
+                onchange={() => toggleMultiAnswer(currentQ.id, opt.key)}
+                style="accent-color:#1e40af; width:16px; height:16px; flex-shrink:0" />
+              <span class="opt-key">{opt.key}.</span>
+              {opt.text}
+            </label>
+          {:else}
+            <label class="{answers[currentQ.id] === opt.key ? 'selected' : ''}">
+              <input type="radio" name="q_{currentQ.id}" value={opt.key}
+                checked={answers[currentQ.id] === opt.key}
+                onchange={() => answers = { ...answers, [currentQ.id]: opt.key }} />
+              <span class="opt-key">{opt.key}.</span>
+              {opt.text}
+            </label>
+          {/if}
         </li>
         {/each}
       </ul>

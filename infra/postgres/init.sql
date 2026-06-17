@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS quiz_exams.exams (
   passing_score FLOAT,
   created_by UUID NOT NULL,
   is_published BOOLEAN DEFAULT false,
+  tags TEXT[] DEFAULT '{}',
+  show_explanation BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -36,7 +38,9 @@ CREATE TABLE IF NOT EXISTS quiz_exams.questions (
   options JSONB NOT NULL,
   correct_answer TEXT NOT NULL,
   points FLOAT DEFAULT 1.0,
-  order_index INT DEFAULT 0
+  order_index INT DEFAULT 0,
+  explanation TEXT,
+  question_type TEXT DEFAULT 'single'
 );
 
 -- Submissions
@@ -50,5 +54,6 @@ CREATE TABLE IF NOT EXISTS quiz_submissions.submissions (
   score FLOAT,
   total_points FLOAT,
   percentage FLOAT,
+  results_detail JSONB,
   submitted_at TIMESTAMPTZ DEFAULT NOW()
 );

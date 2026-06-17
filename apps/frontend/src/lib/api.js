@@ -3,6 +3,7 @@ import { get } from 'svelte/store'
 
 const EXAM_URL = import.meta.env.PUBLIC_EXAM_URL ?? '/api/exams'
 const SUB_URL = import.meta.env.PUBLIC_SUBMISSION_URL ?? '/api/submissions'
+const USER_URL = import.meta.env.PUBLIC_USER_URL ?? '/api/users'
 
 function authHeaders(json = true) {
   const t = get(token)
@@ -60,4 +61,14 @@ export const submissionApi = {
     const qs = new URLSearchParams(params).toString()
     return fetch(`${SUB_URL}/submissions?${qs}`, { headers: authHeaders(false) })
   }
+}
+
+export const userApi = {
+  adminListUsers: () => fetch(`${USER_URL}/admin/users`, { headers: authHeaders(false) }),
+  adminUpdateRole: (id, role) =>
+    fetch(`${USER_URL}/admin/users/${id}/role`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: JSON.stringify({ role })
+    })
 }

@@ -25,6 +25,9 @@
   {#if $user}
     <a href="/dashboard">Dashboard</a>
     <a href="/exams">Đề thi</a>
+    {#if $user?.role === 'admin'}
+      <a href="/admin">Admin</a>
+    {/if}
     <span class="spacer"></span>
     <span>{$user.email} ({$user.role})</span>
     <button onclick={logout}>Đăng xuất</button>

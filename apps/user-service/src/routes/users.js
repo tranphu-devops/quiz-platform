@@ -53,4 +53,30 @@ export default async function userRoutes(fastify) {
       return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
     }
   })
+
+  fastify.get('/admin/users', async (req, reply) => {
+    if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+    const { rows } = await pool.query(`
+      SELECT id, email,
+             raw_user_meta_data->>'role' AS role,
+             raw_user_meta_data->>'full_name' AS full_name,
+             created_at, last_sign_in_at, confirmed_at IS NOT NULL AS confirmed
+      FROM auth.users
+      ORDER BY created_at DESC
+    `)
+    return rows
+  })
+
+  fastify.patch('/admin/users/:id/role', async (req, reply) => {
+    if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+    const { id } = req.params
+    const { role } = req.body ?? {}
+    if (!['admin', 'teacher', 'student'].includes(role))
+      return reply.status(400).send({ error: 'Invalid role', statusCode: 400 })
+    await pool.query(
+      `UPDATE auth.users SET raw_user_meta_data = raw_user_meta_data || $1::jsonb WHERE id = $2`,
+      [JSON.stringify({ role }), id]
+    )
+    return { success: true }
+  })
 }

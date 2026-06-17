@@ -41,15 +41,15 @@ export default async function examRoutes(fastify) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
 
-    const { title, description, time_limit = 30, passing_score = null } = req.body ?? {}
+    const { title, description, time_limit = 30, passing_score = null, tags = [], show_explanation = false } = req.body ?? {}
     if (!title) {
       return reply.status(400).send({ error: 'Title required', statusCode: 400 })
     }
 
     try {
       const result = await pool.query(
-        'INSERT INTO exams (title, description, time_limit, passing_score, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-        [title, description, time_limit, passing_score, req.user.id]
+        'INSERT INTO exams (title, description, time_limit, passing_score, created_by, tags, show_explanation) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+        [title, description, time_limit, passing_score, req.user.id, tags, show_explanation]
       )
       return reply.status(201).send(result.rows[0])
     } catch (err) {
@@ -103,7 +103,13 @@ export default async function examRoutes(fastify) {
 
       let questions = questionsResult.rows
       if (isStudent) {
-        questions = questions.map(({ correct_answer, ...q }) => q)
+        questions = questions.map(({ correct_answer, explanation, ...q }) => {
+          if (q.question_type === 'multiple') {
+            const correct_count = (correct_answer ?? '').split(',').filter(Boolean).length
+            return { ...q, correct_count }
+          }
+          return q
+        })
       }
 
       return { ...exam, questions }
@@ -116,7 +122,7 @@ export default async function examRoutes(fastify) {
   // PUT /exams/:id
   fastify.put('/exams/:id', async (req, reply) => {
     const { id } = req.params
-    const { title, description, time_limit, passing_score, is_published } = req.body ?? {}
+    const { title, description, time_limit, passing_score, is_published, tags, show_explanation } = req.body ?? {}
 
     try {
       const examResult = await pool.query('SELECT * FROM exams WHERE id = $1', [id])
@@ -135,9 +141,11 @@ export default async function examRoutes(fastify) {
           description = COALESCE($2, description),
           time_limit = COALESCE($3, time_limit),
           passing_score = CASE WHEN $4::float IS NOT NULL THEN $4::float ELSE passing_score END,
-          is_published = COALESCE($5, is_published)
-         WHERE id = $6 RETURNING *`,
-        [title, description, time_limit, passing_score ?? null, is_published, id]
+          is_published = COALESCE($5, is_published),
+          tags = COALESCE($6, tags),
+          show_explanation = COALESCE($7, show_explanation)
+         WHERE id = $8 RETURNING *`,
+        [title, description, time_limit, passing_score ?? null, is_published, tags ?? null, show_explanation ?? null, id]
       )
       return result.rows[0]
     } catch (err) {
@@ -172,7 +180,8 @@ export default async function examRoutes(fastify) {
   // POST /exams/:id/questions
   fastify.post('/exams/:id/questions', async (req, reply) => {
     const { id } = req.params
-    const { content, options, correct_answer, points = 1.0, order_index = 0 } = req.body ?? {}
+    const { content, options, correct_answer: ca, points = 1.0, order_index = 0, explanation = null, question_type = 'single' } = req.body ?? {}
+    const correct_answer = Array.isArray(ca) ? [...ca].sort().join(',') : ca
 
     if (!content || !options || !correct_answer) {
       return reply.status(400).send({ error: 'content, options, correct_answer required', statusCode: 400 })
@@ -189,9 +198,9 @@ export default async function examRoutes(fastify) {
       }
 
       const result = await pool.query(
-        `INSERT INTO questions (exam_id, content, options, correct_answer, points, order_index)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-        [id, content, JSON.stringify(options), correct_answer, points, order_index]
+        `INSERT INTO questions (exam_id, content, options, correct_answer, points, order_index, explanation, question_type)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+        [id, content, JSON.stringify(options), correct_answer, points, order_index, explanation, question_type]
       )
       return reply.status(201).send(result.rows[0])
     } catch (err) {
@@ -203,7 +212,8 @@ export default async function examRoutes(fastify) {
   // PUT /exams/:id/questions/:qid
   fastify.put('/exams/:id/questions/:qid', async (req, reply) => {
     const { id, qid } = req.params
-    const { content, options, correct_answer, points, order_index } = req.body ?? {}
+    const { content, options, correct_answer: ca2, points, order_index, explanation, question_type } = req.body ?? {}
+    const correct_answer = ca2 != null ? (Array.isArray(ca2) ? [...ca2].sort().join(',') : ca2) : undefined
 
     try {
       const examResult = await pool.query('SELECT * FROM exams WHERE id = $1', [id])
@@ -221,9 +231,11 @@ export default async function examRoutes(fastify) {
           options = COALESCE($2, options),
           correct_answer = COALESCE($3, correct_answer),
           points = COALESCE($4, points),
-          order_index = COALESCE($5, order_index)
-         WHERE id = $6 AND exam_id = $7 RETURNING *`,
-        [content, options ? JSON.stringify(options) : null, correct_answer, points, order_index, qid, id]
+          order_index = COALESCE($5, order_index),
+          explanation = COALESCE($6, explanation),
+          question_type = COALESCE($7, question_type)
+         WHERE id = $8 AND exam_id = $9 RETURNING *`,
+        [content, options ? JSON.stringify(options) : null, correct_answer ?? null, points, order_index, explanation ?? null, question_type ?? null, qid, id]
       )
 
       if (result.rows.length === 0) {
