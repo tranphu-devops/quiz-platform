@@ -1,11 +1,24 @@
 <script>
   import { user, session, clearAuth } from '$lib/stores/auth'
+  import { userApi } from '$lib/api'
   import { goto } from '$app/navigation'
   import { page } from '$app/stores'
 
   let { children } = $props()
 
   let sidebarOpen = $state(false)
+  let avatarUrl = $state(null)
+
+  $effect(() => {
+    const u = $user
+    if (u?.id) {
+      userApi.getProfile(u.id).then(r => r.ok ? r.json() : null).then(p => {
+        avatarUrl = p?.avatar_url ?? null
+      }).catch(() => {})
+    } else {
+      avatarUrl = null
+    }
+  })
 
   async function logout() {
     sidebarOpen = false
@@ -82,13 +95,25 @@
 
   .nav-right { display: flex; align-items: center; gap: 0.75rem; }
   .user-chip {
+    display: flex; align-items: center; gap: 0.5rem;
     font-size: 0.85rem; font-weight: 500; color: var(--muted);
-    padding: 0.35rem 0.75rem; border-radius: 99px; background: var(--bg);
+    padding: 0.3rem 0.75rem 0.3rem 0.3rem; border-radius: 99px; background: var(--bg);
     border: 1px solid var(--border); text-decoration: none;
     transition: border-color 0.15s;
-    max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 200px;
   }
   .user-chip:hover { border-color: var(--primary); color: var(--primary); }
+  .user-chip .chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .avatar {
+    width: 28px; height: 28px; border-radius: 50%; object-fit: cover;
+    flex-shrink: 0; border: 1.5px solid var(--border);
+  }
+  .avatar-initials {
+    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.72rem; font-weight: 700; color: white;
+  }
   .btn-logout {
     background: none; border: 1px solid var(--border); color: var(--muted);
     padding: 0.35rem 0.75rem; border-radius: var(--radius-btn);
@@ -165,12 +190,15 @@
   .role-pill.teacher { background: #fef9c3; color: #854d0e; }
   .role-pill.admin   { background: #fce7f3; color: #9d174d; }
 
-  .sidebar-nav { flex: 1; padding: 0.75rem; overflow-y: auto; }
+  .sidebar-nav {
+    flex: 1; padding: 0.75rem; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 0.25rem;
+  }
   .sidebar-nav a {
     display: flex; align-items: center; gap: 0.75rem;
     padding: 0.75rem 1rem; border-radius: 10px;
     color: var(--text); text-decoration: none; font-size: 0.95rem; font-weight: 500;
-    transition: all 0.15s; margin-bottom: 0.25rem;
+    transition: all 0.15s; width: 100%;
   }
   .sidebar-nav a:hover  { background: var(--primary-light); color: var(--primary); }
   .sidebar-nav a.active { background: var(--primary-light); color: var(--primary); font-weight: 600; }
@@ -218,7 +246,16 @@
     </div>
     <div class="spacer"></div>
     <div class="nav-right">
-      <a href="/profile" class="user-chip">{$session?.user?.user_metadata?.full_name || $user.email}</a>
+      <a href="/profile" class="user-chip">
+        {#if avatarUrl}
+          <img src={avatarUrl} alt="avatar" class="avatar" />
+        {:else}
+          <div class="avatar-initials">
+            {($session?.user?.user_metadata?.full_name || $user.email).charAt(0).toUpperCase()}
+          </div>
+        {/if}
+        <span class="chip-name">{$session?.user?.user_metadata?.full_name || $user.email}</span>
+      </a>
       <button class="btn-logout" onclick={logout}>Đăng xuất</button>
     </div>
     <button class="hamburger {sidebarOpen ? 'open' : ''}" onclick={() => sidebarOpen = !sidebarOpen} aria-label="Menu">
@@ -241,10 +278,21 @@
       <button class="sidebar-close" onclick={closeSidebar}>✕</button>
     </div>
     <div class="sidebar-user">
-      <div class="name">{$user.user_metadata?.full_name || 'Người dùng'}</div>
-      <div class="email">{$user.email}</div>
+      <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.6rem">
+        {#if avatarUrl}
+          <img src={avatarUrl} alt="avatar" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--border);flex-shrink:0" />
+        {:else}
+          <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:800;color:white;flex-shrink:0">
+            {($session?.user?.user_metadata?.full_name || $user.email).charAt(0).toUpperCase()}
+          </div>
+        {/if}
+        <div>
+          <div class="name">{$session?.user?.user_metadata?.full_name || 'Người dùng'}</div>
+          <div class="email">{$user.email}</div>
+        </div>
+      </div>
       <span class="role-pill {$user.role}">
-        {$user.role === 'student' ? 'Học sinh' : $user.role === 'teacher' ? 'Giáo viên' : 'Admin'}
+        {$user.role === 'student' ? '🎓 Học sinh' : $user.role === 'teacher' ? '👨‍🏫 Giáo viên' : '⚙️ Admin'}
       </span>
     </div>
     <nav class="sidebar-nav">
