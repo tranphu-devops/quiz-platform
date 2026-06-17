@@ -14,6 +14,29 @@
   let timer = null
   let currentIdx = $state(0)
 
+  function sessionKey(id) { return `quiz-session-${id}` }
+
+  function saveSession(id) {
+    try {
+      localStorage.setItem(sessionKey(id), JSON.stringify({ answers, timeLeft, savedAt: Date.now() }))
+    } catch {}
+  }
+
+  function loadSession(id) {
+    try {
+      const raw = localStorage.getItem(sessionKey(id))
+      if (!raw) return null
+      const s = JSON.parse(raw)
+      const elapsed = Math.floor((Date.now() - s.savedAt) / 1000)
+      s.timeLeft = Math.max(0, s.timeLeft - elapsed)
+      return s
+    } catch { return null }
+  }
+
+  function clearSession(id) {
+    try { localStorage.removeItem(sessionKey(id)) } catch {}
+  }
+
   function isAnswered(q) {
     const a = answers[q.id]
     if (!a) return false
@@ -30,6 +53,12 @@
     const cur = answers[qid] ?? []
     const next = cur.includes(key) ? cur.filter(k => k !== key) : [...cur, key]
     answers = { ...answers, [qid]: next }
+    saveSession(exam.id)
+  }
+
+  function setAnswer(qid, value) {
+    answers = { ...answers, [qid]: value }
+    saveSession(exam.id)
   }
 
   onMount(async () => {
@@ -39,9 +68,18 @@
       const res = await examApi.get(id)
       if (!res.ok) { error = 'Không tìm thấy đề thi'; return }
       exam = await res.json()
-      timeLeft = (exam.time_limit ?? 30) * 60
+
+      const saved = loadSession(id)
+      if (saved && saved.timeLeft > 0) {
+        answers = saved.answers
+        timeLeft = saved.timeLeft
+      } else {
+        timeLeft = (exam.time_limit ?? 30) * 60
+      }
+
       timer = setInterval(() => {
         timeLeft--
+        saveSession(exam.id)
         if (timeLeft <= 0) { clearInterval(timer); submitExam() }
       }, 1000)
     } catch {
@@ -65,6 +103,7 @@
       const res = await submissionApi.submit({ exam_id: exam.id, answers })
       const data = await res.json()
       if (!res.ok) { error = data.error; submitting = false; return }
+      clearSession(exam.id)
       goto(`/exams/${exam.id}/result?submissionId=${data.id}`)
     } catch {
       error = 'Lỗi khi nộp bài'
@@ -194,7 +233,7 @@
             <label class="{answers[currentQ.id] === opt.key ? 'selected' : ''}">
               <input type="radio" name="q_{currentQ.id}" value={opt.key}
                 checked={answers[currentQ.id] === opt.key}
-                onchange={() => answers = { ...answers, [currentQ.id]: opt.key }} />
+                onchange={() => setAnswer(currentQ.id, opt.key)} />
               <span class="opt-key">{opt.key}.</span>
               {opt.text}
             </label>

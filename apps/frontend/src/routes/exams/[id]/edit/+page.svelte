@@ -232,7 +232,7 @@
 <div class="card">
   <div class="form-group">
     <label for="title">Tiêu đề *</label>
-    <input id="title" bind:value={title} />
+    <input type="text" id="title" bind:value={title} />
   </div>
   <div class="form-group">
     <label for="desc">Mô tả</label>
@@ -326,7 +326,7 @@
         />
       {/if}
       <span class="opt-key">{opt.key}.</span>
-      <input bind:value={opt.text} placeholder="Đáp án {opt.key}" />
+      <input type="text" bind:value={opt.text} placeholder="Đáp án {opt.key}" />
       {#if q.question_type === 'multiple' && q.options.length > 2}
         <button type="button" class="btn-danger" style="padding:0.2rem 0.4rem; flex-shrink:0" onclick={() => removeOption(q, opt.key)}>×</button>
       {/if}

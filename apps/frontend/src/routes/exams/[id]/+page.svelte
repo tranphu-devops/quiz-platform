@@ -1,5 +1,5 @@
 <script>
-  import { examApi } from '$lib/api'
+  import { examApi, submissionApi } from '$lib/api'
   import { user } from '$lib/stores/auth'
   import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
@@ -7,6 +7,7 @@
   import { marked } from 'marked'
 
   let exam = $state(null)
+  let mySubmission = $state(null)
   let loading = $state(true)
   let error = $state('')
   let publishing = $state(false)
@@ -19,6 +20,14 @@
       const res = await examApi.get(id)
       if (!res.ok) { error = 'Không tìm thấy đề thi'; return }
       exam = await res.json()
+
+      if ($user.role === 'student') {
+        const subRes = await submissionApi.list({ examId: id })
+        if (subRes.ok) {
+          const subs = await subRes.json()
+          mySubmission = subs[0] ?? null
+        }
+      }
     } catch {
       error = 'Không thể kết nối server'
     } finally {
@@ -110,7 +119,11 @@
   </div>
   <div class="actions">
     {#if $user?.role === 'student'}
-      <a href="/exams/{exam.id}/take" class="btn btn-primary">Bắt đầu làm bài</a>
+      {#if mySubmission}
+        <a href="/exams/{exam.id}/result?submissionId={mySubmission.id}" class="btn btn-success">Xem kết quả</a>
+      {:else}
+        <a href="/exams/{exam.id}/take" class="btn btn-primary">Bắt đầu làm bài</a>
+      {/if}
     {:else}
       {#if exam.created_by === $user?.id || $user?.role === 'admin'}
         <a href="/exams/{exam.id}/edit" class="btn btn-outline">Sửa đề</a>
@@ -123,6 +136,7 @@
   </div>
 </div>
 
+{#if isTeacher}
 {#each exam.questions ?? [] as q, i}
 {@const corrects = correctAnswers(q)}
 <div class="card">
@@ -138,13 +152,13 @@
   {/if}
   <ul class="options">
     {#each q.options ?? [] as opt}
-      <li class="{corrects.includes(opt.key) && isTeacher ? 'correct' : ''}">
+      <li class="{corrects.includes(opt.key) ? 'correct' : ''}">
         {opt.key}. {opt.text}
-        {#if corrects.includes(opt.key) && isTeacher} ✓{/if}
+        {#if corrects.includes(opt.key)} ✓{/if}
       </li>
     {/each}
   </ul>
-  {#if isTeacher && q.explanation}
+  {#if q.explanation}
     <button class="expl-toggle" onclick={() => toggleExpl(i)}>
       {expandedExpl.has(i) ? '▲ Ẩn giải thích' : '▼ Xem giải thích'}
     </button>
@@ -154,4 +168,7 @@
   {/if}
 </div>
 {/each}
+{:else if mySubmission}
+  <p class="hint-multi" style="text-align:center; margin-top:2rem">Bạn đã hoàn thành bài thi này. <a href="/exams/{exam.id}/result?submissionId={mySubmission.id}">Xem kết quả →</a></p>
+{/if}
 {/if}
