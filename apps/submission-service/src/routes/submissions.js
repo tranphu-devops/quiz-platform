@@ -54,6 +54,8 @@ export default async function submissionRoutes(fastify) {
 
       const results_detail = {
         show_explanation: exam.show_explanation ?? false,
+        passing_score: exam.passing_score ?? null,
+        allow_retake: exam.allow_retake ?? false,
         questions: questions.map(q => {
           const sa = answers[q.id] ?? null
           const correct = isCorrect(q, sa)

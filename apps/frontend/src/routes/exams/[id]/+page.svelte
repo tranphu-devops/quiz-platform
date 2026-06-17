@@ -7,11 +7,13 @@
   import { marked } from 'marked'
 
   let exam = $state(null)
-  let mySubmission = $state(null)
+  let mySubmissions = $state([])   // all attempts, newest first
   let loading = $state(true)
   let error = $state('')
   let publishing = $state(false)
   let expandedExpl = $state(new Set())
+
+  const mySubmission = $derived(mySubmissions[0] ?? null)
 
   onMount(async () => {
     if (!$user) { goto('/login'); return }
@@ -24,8 +26,7 @@
       if ($user.role === 'student') {
         const subRes = await submissionApi.list({ examId: id })
         if (subRes.ok) {
-          const subs = await subRes.json()
-          mySubmission = subs[0] ?? null
+          mySubmissions = await subRes.json()
         }
       }
     } catch {
@@ -108,6 +109,17 @@
   .status-title.failed { color: #dc2626; }
   .status-desc { font-size: 0.9rem; color: #6b7280; margin-bottom: 1rem; }
   .status-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+  /* History table */
+  .history-section { margin-top: 2rem; }
+  .history-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  .history-table th { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 2px solid #e5e7eb; color: #6b7280; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .history-table td { padding: 0.6rem 0.75rem; border-bottom: 1px solid #f3f4f6; }
+  .history-table tr:last-child td { border-bottom: none; }
+  .history-table tr:hover td { background: #f9fafb; }
+  .h-pass { color: #15803d; font-weight: 600; }
+  .h-fail { color: #dc2626; }
+  .h-link { color: #1e40af; text-decoration: none; font-size: 0.85rem; }
+  .h-link:hover { text-decoration: underline; }
 </style>
 
 {#if loading}<p>Đang tải...</p>
@@ -230,6 +242,43 @@
         <a href="/exams/{exam.id}/take" class="btn btn-primary">Làm lại</a>
       </div>
     </div>
+  {/if}
+
+  {#if exam.allow_retake && mySubmissions.length > 0}
+  <div class="history-section">
+    <h2>Lịch sử làm bài ({mySubmissions.length} lần)</h2>
+    <div class="card" style="padding:0; overflow:hidden">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Lần</th>
+            <th>Điểm</th>
+            <th>%</th>
+            <th>Kết quả</th>
+            <th>Thời gian nộp</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each mySubmissions as sub, i}
+          {@const subPassed = exam.passing_score == null || sub.percentage >= exam.passing_score}
+          <tr>
+            <td>{mySubmissions.length - i}</td>
+            <td>{sub.score}/{sub.total_points}</td>
+            <td>{sub.percentage?.toFixed(1)}%</td>
+            <td class="{subPassed ? 'h-pass' : 'h-fail'}">{subPassed ? 'Đạt' : 'Chưa đạt'}</td>
+            <td style="color:#6b7280; font-size:0.85rem">{new Date(sub.submitted_at).toLocaleString('vi-VN')}</td>
+            <td>
+              {#if subPassed}
+                <a href="/exams/{exam.id}/result?submissionId={sub.id}" class="h-link">Xem →</a>
+              {/if}
+            </td>
+          </tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
+  </div>
   {/if}
 {/if}
 {/if}

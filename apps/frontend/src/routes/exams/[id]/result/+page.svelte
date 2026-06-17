@@ -32,6 +32,13 @@
     return { label: 'Chưa đạt', color: '#dc2626' }
   }
 
+  const hasPassed = $derived(
+    submission != null && (
+      submission.results_detail?.passing_score == null ||
+      submission.percentage >= submission.results_detail.passing_score
+    )
+  )
+
   function optClass(q, optKey) {
     const corrects = q.correct_answer.split(',').filter(Boolean)
     const studentAnswers = Array.isArray(q.student_answer) ? q.student_answer : (q.student_answer ? [q.student_answer] : [])
@@ -73,6 +80,8 @@
   .expl-box :global(code) { background: #e5e7eb; padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.88em; }
   .expl-box :global(ul), .expl-box :global(ol) { padding-left: 1.4rem; margin: 0.25rem 0; }
   .hint-multi { font-size: 0.8rem; color: #6b7280; margin-bottom: 0.4rem; }
+  .locked-box { background: #fef2f2; border: 1.5px solid #fca5a5; border-radius: 10px; padding: 1.5rem; text-align: center; color: #dc2626; margin-top: 1.5rem; }
+  .locked-box p { margin: 0.3rem 0; color: #6b7280; font-size: 0.9rem; }
 </style>
 
 {#if loading}<p>Đang tải kết quả...</p>
@@ -90,12 +99,17 @@
     <p>Nộp lúc: {new Date(submission.submitted_at).toLocaleString('vi-VN')}</p>
   </div>
   <div class="actions">
-    <a href="/exams/{submission.exam_id}" class="btn btn-outline">Xem lại đề</a>
+    {#if hasPassed}
+      <a href="/exams/{submission.exam_id}" class="btn btn-outline">Xem lại đề</a>
+    {/if}
     <a href="/exams" class="btn btn-primary">Về danh sách đề</a>
+    {#if !hasPassed}
+      <a href="/exams/{submission.exam_id}/take" class="btn btn-outline">Làm lại</a>
+    {/if}
   </div>
 </div>
 
-{#if submission.results_detail?.show_explanation && submission.results_detail?.questions?.length}
+{#if hasPassed && submission.results_detail?.show_explanation && submission.results_detail?.questions?.length}
 <h2>Xem lại bài làm</h2>
 {#each submission.results_detail.questions as q, i}
 {@const corrects = q.correct_answer.split(',').filter(Boolean)}
@@ -128,5 +142,10 @@
   {/if}
 </div>
 {/each}
+{:else if !hasPassed}
+<div class="locked-box">
+  <strong>Chưa đạt — không xem được bài làm</strong>
+  <p>Cần đạt {submission.results_detail?.passing_score}% để mở khoá xem lại. Hãy làm lại bài!</p>
+</div>
 {/if}
 {/if}
