@@ -40,7 +40,7 @@ services:
     restart: unless-stopped
 
   user-service:
-    image: ghcr.io/${GITHUB_ORG}/user-service:${TAG:-latest}
+    image: quiz-platform/user-service:latest
     build:
       context: ./apps/user-service
     environment:
@@ -59,7 +59,7 @@ services:
     restart: unless-stopped
 
   exam-service:
-    image: ghcr.io/${GITHUB_ORG}/exam-service:${TAG:-latest}
+    image: quiz-platform/exam-service:latest
     build:
       context: ./apps/exam-service
     environment:
@@ -73,7 +73,7 @@ services:
     restart: unless-stopped
 
   submission-service:
-    image: ghcr.io/${GITHUB_ORG}/submission-service:${TAG:-latest}
+    image: quiz-platform/submission-service:latest
     build:
       context: ./apps/submission-service
     environment:
@@ -88,7 +88,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: ghcr.io/${GITHUB_ORG}/frontend:${TAG:-latest}
+    image: quiz-platform/frontend:latest
     build:
       context: ./apps/frontend
     environment:
