@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS quiz_exams.exams (
   is_published BOOLEAN DEFAULT false,
   tags TEXT[] DEFAULT '{}',
   show_explanation BOOLEAN DEFAULT false,
+  allow_retake BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

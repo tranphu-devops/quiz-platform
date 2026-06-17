@@ -13,6 +13,7 @@
   let timeLeft = $state(0)
   let timer = null
   let currentIdx = $state(0)
+  let showConfirm = $state(false)
 
   function sessionKey(id) { return `quiz-session-${id}` }
 
@@ -69,6 +70,22 @@
       if (!res.ok) { error = 'Không tìm thấy đề thi'; return }
       exam = await res.json()
 
+      // Guard: block retake if official mode + already passed
+      if ($user.role === 'student' && !exam.allow_retake) {
+        const subRes = await submissionApi.list({ examId: id })
+        if (subRes.ok) {
+          const subs = await subRes.json()
+          const latest = subs[0] ?? null
+          if (latest) {
+            const passed = exam.passing_score == null || latest.percentage >= exam.passing_score
+            if (passed) {
+              goto(`/exams/${id}`)
+              return
+            }
+          }
+        }
+      }
+
       const saved = loadSession(id)
       if (saved && saved.timeLeft > 0) {
         answers = saved.answers
@@ -96,7 +113,14 @@
     return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
   }
 
+  function requestSubmit() {
+    const unanswered = (exam?.questions ?? []).filter(q => !isAnswered(q)).length
+    if (unanswered > 0) { showConfirm = true; return }
+    submitExam()
+  }
+
   async function submitExam() {
+    showConfirm = false
     clearInterval(timer)
     submitting = true
     try {
@@ -174,6 +198,13 @@
   .btn-submit:disabled { opacity: 0.6; cursor: default; }
 
   .error { color: #dc2626; }
+
+  /* confirm modal */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .modal { background: white; border-radius: 12px; padding: 1.75rem; max-width: 380px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,.18); }
+  .modal h3 { margin: 0 0 0.5rem; font-size: 1.1rem; }
+  .modal p { color: #6b7280; font-size: 0.9rem; margin: 0 0 1.25rem; }
+  .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
 
   @media (max-width: 680px) {
     .layout { grid-template-columns: 1fr; }
@@ -268,8 +299,24 @@
         <div class="legend-item"><div class="legend-dot answered"></div> Đã trả lời</div>
         <div class="legend-item"><div class="legend-dot empty"></div> Chưa trả lời</div>
       </div>
-      <button class="btn-submit" onclick={submitExam} disabled={submitting}>
+      <button class="btn-submit" onclick={requestSubmit} disabled={submitting}>
         {submitting ? 'Đang nộp...' : 'Nộp bài'}
+      </button>
+    </div>
+  </div>
+</div>
+{/if}
+
+{#if showConfirm}
+{@const unanswered = (exam?.questions ?? []).filter(q => !isAnswered(q)).length}
+<div class="overlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <h3>Xác nhận nộp bài</h3>
+    <p>Bạn còn <strong>{unanswered} câu chưa trả lời</strong>. Những câu này sẽ bị tính 0 điểm. Vẫn muốn nộp?</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick={() => showConfirm = false}>Quay lại làm tiếp</button>
+      <button class="btn btn-primary" onclick={submitExam} disabled={submitting}>
+        {submitting ? 'Đang nộp...' : 'Xác nhận nộp'}
       </button>
     </div>
   </div>

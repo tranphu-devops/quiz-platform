@@ -41,15 +41,15 @@ export default async function examRoutes(fastify) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
 
-    const { title, description, time_limit = 30, passing_score = null, tags = [], show_explanation = false } = req.body ?? {}
+    const { title, description, time_limit = 30, passing_score = null, tags = [], show_explanation = false, allow_retake = false } = req.body ?? {}
     if (!title) {
       return reply.status(400).send({ error: 'Title required', statusCode: 400 })
     }
 
     try {
       const result = await pool.query(
-        'INSERT INTO exams (title, description, time_limit, passing_score, created_by, tags, show_explanation) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-        [title, description, time_limit, passing_score, req.user.id, tags, show_explanation]
+        'INSERT INTO exams (title, description, time_limit, passing_score, created_by, tags, show_explanation, allow_retake) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+        [title, description, time_limit, passing_score, req.user.id, tags, show_explanation, allow_retake]
       )
       return reply.status(201).send(result.rows[0])
     } catch (err) {
@@ -122,7 +122,7 @@ export default async function examRoutes(fastify) {
   // PUT /exams/:id
   fastify.put('/exams/:id', async (req, reply) => {
     const { id } = req.params
-    const { title, description, time_limit, passing_score, is_published, tags, show_explanation } = req.body ?? {}
+    const { title, description, time_limit, passing_score, is_published, tags, show_explanation, allow_retake } = req.body ?? {}
 
     try {
       const examResult = await pool.query('SELECT * FROM exams WHERE id = $1', [id])
@@ -143,9 +143,10 @@ export default async function examRoutes(fastify) {
           passing_score = CASE WHEN $4::float IS NOT NULL THEN $4::float ELSE passing_score END,
           is_published = COALESCE($5, is_published),
           tags = COALESCE($6, tags),
-          show_explanation = COALESCE($7, show_explanation)
+          show_explanation = COALESCE($7, show_explanation),
+          allow_retake = COALESCE($9, allow_retake)
          WHERE id = $8 RETURNING *`,
-        [title, description, time_limit, passing_score ?? null, is_published, tags ?? null, show_explanation ?? null, id]
+        [title, description, time_limit, passing_score ?? null, is_published, tags ?? null, show_explanation ?? null, id, allow_retake ?? null]
       )
       return result.rows[0]
     } catch (err) {

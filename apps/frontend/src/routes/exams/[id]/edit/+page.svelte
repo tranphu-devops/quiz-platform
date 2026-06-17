@@ -13,6 +13,7 @@
   let passing_score = $state('')
   let tags = $state([])
   let show_explanation = $state(false)
+  let allow_retake = $state(false)
   let tagInput = $state('')
   let questions = $state([])
   let deletedQIds = $state([])
@@ -42,6 +43,7 @@
       passing_score = exam.passing_score != null ? exam.passing_score : ''
       tags = exam.tags ?? []
       show_explanation = exam.show_explanation ?? false
+      allow_retake = exam.allow_retake ?? false
 
       questions = (exam.questions ?? []).map(q => {
         const opts = Array.isArray(q.options)
@@ -159,7 +161,7 @@
         title, description,
         time_limit: Number(time_limit),
         passing_score: passing_score !== '' ? Number(passing_score) : null,
-        tags, show_explanation
+        tags, show_explanation, allow_retake
       })
       if (!updateRes.ok) { const d = await updateRes.json(); error = d.error; return }
 
@@ -269,6 +271,13 @@
       {/if}
     </div>
     <p class="hint">Ví dụ: Toán, Lớp 10, Đại số</p>
+  </div>
+  <div class="form-group">
+    <label for="exam_mode">Chế độ thi</label>
+    <select id="exam_mode" bind:value={allow_retake} style="width:auto">
+      <option value={false}>Thi chính thức — pass 1 lần, không thi lại</option>
+      <option value={true}>Thi thực hành — làm đi làm lại nhiều lần</option>
+    </select>
   </div>
   <div class="form-group" style="display:flex; align-items:center; gap:0.6rem">
     <input id="show_expl" type="checkbox" bind:checked={show_explanation} style="width:auto" />

@@ -57,6 +57,13 @@
   }
 
   const isTeacher = $derived($user?.role === 'teacher' || $user?.role === 'admin')
+  const hasPassed = $derived(
+    mySubmission != null && (
+      exam?.passing_score == null || mySubmission.percentage >= exam.passing_score
+    )
+  )
+  // can start/retake: no submission yet, OR allow_retake, OR failed (can always retry)
+  const canStart = $derived(!mySubmission || !!exam?.allow_retake || !hasPassed)
 </script>
 
 <style>
@@ -91,6 +98,16 @@
   .expl-box :global(ul), .expl-box :global(ol) { padding-left: 1.4rem; margin: 0.25rem 0; }
   .hint-multi { font-size: 0.82rem; color: #6b7280; margin-top: 0.3rem; }
   .expl-meta { font-size: 0.8rem; color: #6b7280; margin-top: 0.25rem; }
+  .mode-badge { font-size: 0.78rem; background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; border-radius: 99px; padding: 0.1rem 0.6rem; display: inline-block; }
+  .status-box { border-radius: 10px; padding: 1.25rem 1.5rem; margin-top: 1.5rem; text-align: center; }
+  .status-box.passed { background: #f0fdf4; border: 1.5px solid #86efac; }
+  .status-box.failed { background: #fef2f2; border: 1.5px solid #fca5a5; }
+  .status-icon { font-size: 2.5rem; line-height: 1; margin-bottom: 0.5rem; }
+  .status-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.3rem; }
+  .status-title.passed { color: #15803d; }
+  .status-title.failed { color: #dc2626; }
+  .status-desc { font-size: 0.9rem; color: #6b7280; margin-bottom: 1rem; }
+  .status-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
 </style>
 
 {#if loading}<p>Đang tải...</p>
@@ -114,15 +131,22 @@
       </div>
     {/if}
     {#if isTeacher}
-      <p class="expl-meta">Giải thích sau nộp bài: <strong>{exam.show_explanation ? 'Hiển thị' : 'Ẩn'}</strong></p>
+      <p class="expl-meta">
+        Giải thích sau nộp bài: <strong>{exam.show_explanation ? 'Hiển thị' : 'Ẩn'}</strong>
+        &nbsp;·&nbsp;
+        <span class="mode-badge">{exam.allow_retake ? 'Thi thực hành' : 'Thi chính thức'}</span>
+      </p>
     {/if}
   </div>
   <div class="actions">
     {#if $user?.role === 'student'}
-      {#if mySubmission}
-        <a href="/exams/{exam.id}/result?submissionId={mySubmission.id}" class="btn btn-success">Xem kết quả</a>
-      {:else}
+      {#if !mySubmission}
         <a href="/exams/{exam.id}/take" class="btn btn-primary">Bắt đầu làm bài</a>
+      {:else}
+        <a href="/exams/{exam.id}/result?submissionId={mySubmission.id}" class="btn btn-success">Xem kết quả</a>
+        {#if canStart}
+          <a href="/exams/{exam.id}/take" class="btn btn-outline">Làm lại</a>
+        {/if}
       {/if}
     {:else}
       {#if exam.created_by === $user?.id || $user?.role === 'admin'}
@@ -137,38 +161,75 @@
 </div>
 
 {#if isTeacher}
-{#each exam.questions ?? [] as q, i}
-{@const corrects = correctAnswers(q)}
-<div class="card">
-  <p class="q-num">
-    Câu {i + 1} · {q.points} điểm
-    <span class="type-badge" class:multi={q.question_type === 'multiple'}>
-      {q.question_type === 'multiple' ? 'Nhiều đáp án' : '1 đáp án'}
-    </span>
-  </p>
-  <p>{q.content}</p>
-  {#if q.question_type === 'multiple'}
-    <p class="hint-multi">Chọn {corrects.length} đáp án đúng</p>
-  {/if}
-  <ul class="options">
-    {#each q.options ?? [] as opt}
-      <li class="{corrects.includes(opt.key) ? 'correct' : ''}">
-        {opt.key}. {opt.text}
-        {#if corrects.includes(opt.key)} ✓{/if}
-      </li>
-    {/each}
-  </ul>
-  {#if q.explanation}
-    <button class="expl-toggle" onclick={() => toggleExpl(i)}>
-      {expandedExpl.has(i) ? '▲ Ẩn giải thích' : '▼ Xem giải thích'}
-    </button>
-    {#if expandedExpl.has(i)}
-      <div class="expl-box">{@html marked(q.explanation)}</div>
+  {#each exam.questions ?? [] as q, i}
+  {@const corrects = correctAnswers(q)}
+  <div class="card">
+    <p class="q-num">
+      Câu {i + 1} · {q.points} điểm
+      <span class="type-badge" class:multi={q.question_type === 'multiple'}>
+        {q.question_type === 'multiple' ? 'Nhiều đáp án' : '1 đáp án'}
+      </span>
+    </p>
+    <p>{q.content}</p>
+    {#if q.question_type === 'multiple'}
+      <p class="hint-multi">Chọn {corrects.length} đáp án đúng</p>
     {/if}
-  {/if}
-</div>
-{/each}
+    <ul class="options">
+      {#each q.options ?? [] as opt}
+        <li class="{corrects.includes(opt.key) ? 'correct' : ''}">
+          {opt.key}. {opt.text}
+          {#if corrects.includes(opt.key)} ✓{/if}
+        </li>
+      {/each}
+    </ul>
+    {#if q.explanation}
+      <button class="expl-toggle" onclick={() => toggleExpl(i)}>
+        {expandedExpl.has(i) ? '▲ Ẩn giải thích' : '▼ Xem giải thích'}
+      </button>
+      {#if expandedExpl.has(i)}
+        <div class="expl-box">{@html marked(q.explanation)}</div>
+      {/if}
+    {/if}
+  </div>
+  {/each}
 {:else if mySubmission}
-  <p class="hint-multi" style="text-align:center; margin-top:2rem">Bạn đã hoàn thành bài thi này. <a href="/exams/{exam.id}/result?submissionId={mySubmission.id}">Xem kết quả →</a></p>
+  {#if hasPassed}
+    <div class="status-box passed">
+      <div class="status-icon">🎉</div>
+      <p class="status-title passed">Chúc mừng! Bạn đã pass bài thi này</p>
+      <p class="status-desc">Điểm: <strong>{mySubmission.score}/{mySubmission.total_points}</strong> ({mySubmission.percentage?.toFixed(1)}%)</p>
+      <div class="status-actions">
+        <a href="/exams/{exam.id}/result?submissionId={mySubmission.id}" class="btn btn-success">Xem kết quả chi tiết</a>
+        {#if exam.allow_retake}
+          <a href="/exams/{exam.id}/take" class="btn btn-outline">Làm lại</a>
+        {/if}
+      </div>
+    </div>
+    <h2 style="margin: 1.5rem 0 1rem">Nội dung đề thi</h2>
+    {#each exam.questions ?? [] as q, i}
+    <div class="card">
+      <p class="q-num">Câu {i + 1} · {q.points} điểm</p>
+      <p>{q.content}</p>
+      <ul class="options">
+        {#each q.options ?? [] as opt}
+          <li>{opt.key}. {opt.text}</li>
+        {/each}
+      </ul>
+    </div>
+    {/each}
+  {:else}
+    <div class="status-box failed">
+      <div class="status-icon">❌</div>
+      <p class="status-title failed">Chưa đạt — không xem được nội dung đề thi</p>
+      <p class="status-desc">
+        Điểm: <strong>{mySubmission.score}/{mySubmission.total_points}</strong> ({mySubmission.percentage?.toFixed(1)}%)
+        · Cần đạt: <strong>{exam.passing_score}%</strong>
+      </p>
+      <div class="status-actions">
+        <a href="/exams/{exam.id}/result?submissionId={mySubmission.id}" class="btn btn-outline">Xem kết quả</a>
+        <a href="/exams/{exam.id}/take" class="btn btn-primary">Làm lại</a>
+      </div>
+    </div>
+  {/if}
 {/if}
 {/if}
