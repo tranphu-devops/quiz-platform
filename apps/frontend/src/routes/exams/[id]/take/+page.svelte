@@ -159,7 +159,8 @@
   .q-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1rem; }
   .q-label { font-weight: 700; font-size: 1rem; color: #1e40af; }
   .q-points { font-size: 0.8rem; color: #6b7280; }
-  .q-content { font-size: 1rem; line-height: 1.6; margin-bottom: 1.25rem; }
+  .q-content { font-size: 1rem; line-height: 1.6; margin-bottom: 1rem; }
+  .q-image { display: block; max-width: 100%; max-height: 320px; border-radius: 8px; margin-bottom: 1.25rem; object-fit: contain; border: 1px solid #e5e7eb; }
   .options { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
   .options label { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; padding: 0.65rem 1rem; border-radius: 8px; border: 1.5px solid #e5e7eb; transition: all 0.15s; font-size: 0.95rem; }
   .options label:hover { border-color: #93c5fd; background: #f0f9ff; }
@@ -242,6 +243,9 @@
         <span class="q-points">{currentQ.points} điểm</span>
       </div>
       <p class="q-content">{currentQ.content}</p>
+      {#if currentQ.image_url}
+        <img src={currentQ.image_url} alt="Ảnh minh hoạ câu hỏi" class="q-image" />
+      {/if}
       {#if currentQ.question_type === 'multiple'}
         <p style="font-size:0.82rem; color:#6b7280; margin-bottom:0.5rem">
           Chọn {currentQ.correct_count ?? '?'} đáp án đúng

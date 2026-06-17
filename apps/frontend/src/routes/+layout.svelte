@@ -29,7 +29,7 @@
       <a href="/admin">Admin</a>
     {/if}
     <span class="spacer"></span>
-    <span>{$user.email} ({$user.role})</span>
+    <a href="/profile">{$user.email} ({$user.role})</a>
     <button onclick={logout}>Đăng xuất</button>
   {:else}
     <span class="spacer"></span>

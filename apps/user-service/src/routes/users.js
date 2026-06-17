@@ -79,4 +79,23 @@ export default async function userRoutes(fastify) {
     )
     return { success: true }
   })
+
+  fastify.get('/admin/settings', async (req, reply) => {
+    if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+    const { rows } = await pool.query('SELECT key, value FROM admin_settings ORDER BY key')
+    return Object.fromEntries(rows.map(r => [r.key, r.value]))
+  })
+
+  fastify.put('/admin/settings', async (req, reply) => {
+    if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+    const settings = req.body ?? {}
+    for (const [key, value] of Object.entries(settings)) {
+      await pool.query(
+        `INSERT INTO admin_settings (key, value, updated_at) VALUES ($1, $2, NOW())
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+        [key, String(value)]
+      )
+    }
+    return { success: true }
+  })
 }

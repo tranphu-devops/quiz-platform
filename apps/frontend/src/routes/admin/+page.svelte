@@ -4,16 +4,51 @@
   import { user } from '$lib/stores/auth'
   import { userApi } from '$lib/api'
 
+  let tab = $state('users')
+
+  // Users tab
   let users = $state([])
   let loading = $state(true)
   let error = $state('')
   let updating = $state({})
 
+  // Settings tab
+  let settings = $state({ upload_max_size_mb: '5', upload_allowed_types: 'image/jpeg,image/png,image/webp,image/gif' })
+  let settingsLoading = $state(false)
+  let settingsSaving = $state(false)
+  let settingsSuccess = $state(false)
+  let settingsError = $state('')
+
   onMount(async () => {
     if (!$user) { goto('/login'); return }
     if ($user.role !== 'admin') { goto('/dashboard'); return }
-    await loadUsers()
+    await Promise.all([loadUsers(), loadSettings()])
   })
+
+  async function loadSettings() {
+    settingsLoading = true
+    try {
+      const res = await userApi.getSettings()
+      if (res.ok) settings = await res.json()
+    } catch {} finally {
+      settingsLoading = false
+    }
+  }
+
+  async function saveSettings() {
+    settingsError = ''
+    settingsSuccess = false
+    settingsSaving = true
+    try {
+      const res = await userApi.updateSettings(settings)
+      if (!res.ok) { const d = await res.json(); settingsError = d.error ?? 'Lỗi lưu settings'; return }
+      settingsSuccess = true
+    } catch {
+      settingsError = 'Không thể kết nối server'
+    } finally {
+      settingsSaving = false
+    }
+  }
 
   async function loadUsers() {
     loading = true
@@ -61,12 +96,16 @@
 </script>
 
 <style>
-  h1 { font-size: 1.5rem; margin-bottom: 1.5rem; }
+  h1 { font-size: 1.5rem; margin-bottom: 1rem; }
+  .tabs { display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 2px solid #e5e7eb; }
+  .tab-btn { padding: 0.6rem 1.2rem; border: none; background: none; cursor: pointer; font-size: 0.95rem; color: #6b7280; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+  .tab-btn.active { color: #1e40af; border-bottom-color: #1e40af; font-weight: 600; }
   .stats { display: flex; gap: 1rem; margin-bottom: 1.5rem; }
   .stat { background: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
   .stat-value { font-size: 2rem; font-weight: 700; color: #1e40af; }
   .stat-label { font-size: 0.85rem; color: #6b7280; }
   .card { background: white; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.08); overflow: hidden; }
+  .settings-card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,.08); max-width: 520px; }
   table { width: 100%; border-collapse: collapse; }
   th { text-align: left; padding: 0.75rem 1rem; font-size: 0.8rem; color: #6b7280; text-transform: uppercase; border-bottom: 1px solid #e5e7eb; background: #f9fafb; }
   td { padding: 0.75rem 1rem; border-bottom: 1px solid #f3f4f6; font-size: 0.9rem; }
@@ -75,10 +114,25 @@
   select { padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.85rem; cursor: pointer; }
   select:disabled { opacity: 0.5; cursor: not-allowed; }
   .note { font-size: 0.8rem; color: #9ca3af; margin-top: 1rem; }
-  .error { color: #dc2626; margin-bottom: 1rem; }
+  .error { color: #dc2626; margin-bottom: 1rem; font-size: 0.9rem; }
+  .success { color: #16a34a; margin-bottom: 1rem; font-size: 0.9rem; }
+  .form-group { margin-bottom: 1.25rem; }
+  .form-group label { display: block; margin-bottom: 0.3rem; font-size: 0.9rem; font-weight: 500; }
+  .form-group input[type=text], .form-group input[type=number] { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 1rem; box-sizing: border-box; }
+  .hint { font-size: 0.8rem; color: #6b7280; margin-top: 0.25rem; }
+  .btn { padding: 0.6rem 1.2rem; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; }
+  .btn-primary { background: #1e40af; color: white; }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>
 
-<h1>Quản trị người dùng</h1>
+<h1>Quản trị</h1>
+
+<div class="tabs">
+  <button class="tab-btn" class:active={tab === 'users'} onclick={() => tab = 'users'}>Người dùng</button>
+  <button class="tab-btn" class:active={tab === 'settings'} onclick={() => tab = 'settings'}>Cài đặt upload</button>
+</div>
+
+{#if tab === 'users'}
 
 {#if error}
   <p class="error">{error}</p>
@@ -140,4 +194,33 @@
   </div>
 
   <p class="note">* Role mới có hiệu lực khi người dùng đăng nhập lại.</p>
+{/if}
+
+{/if}
+
+{#if tab === 'settings'}
+<div class="settings-card">
+  {#if settingsError}<p class="error">{settingsError}</p>{/if}
+  {#if settingsSuccess}<p class="success">Đã lưu cài đặt!</p>{/if}
+
+  {#if settingsLoading}
+    <p style="color:#6b7280">Đang tải...</p>
+  {:else}
+    <div class="form-group">
+      <label for="max_size">Dung lượng tối đa (MB)</label>
+      <input id="max_size" type="number" bind:value={settings.upload_max_size_mb} min="1" max="50" step="1" style="width:120px" />
+      <p class="hint">Áp dụng cho tất cả loại ảnh upload</p>
+    </div>
+
+    <div class="form-group">
+      <label for="allowed_types">Loại file cho phép (MIME types, cách nhau bằng dấu phẩy)</label>
+      <input id="allowed_types" type="text" bind:value={settings.upload_allowed_types} placeholder="image/jpeg,image/png,image/webp,image/gif" />
+      <p class="hint">Ví dụ: image/jpeg,image/png,image/webp,image/gif</p>
+    </div>
+
+    <button class="btn btn-primary" onclick={saveSettings} disabled={settingsSaving}>
+      {settingsSaving ? 'Đang lưu...' : 'Lưu cài đặt'}
+    </button>
+  {/if}
+</div>
 {/if}

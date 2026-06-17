@@ -6,14 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Run everything locally
 ```bash
-cp .env.example .env   # fill in JWT_SECRET and POSTGRES_PASSWORD
+cp .env.example .env   # fill in required values (see Environment Variables below)
 docker compose up --build
 ```
 Access at http://localhost (via Nginx on port 80).
 
-With `docker-compose.override.yml` applied automatically, services are also exposed on the host:
+`docker-compose.override.yml` is applied automatically in dev — it volume-mounts each service's `src/` for hot reload (`node --watch`) and exposes ports directly:
 - nginx: 80, frontend: 4000, gotrue: 9999, user: 4002, exam: 4003, submission: 4004, postgres: 5432
-- Backend `src/` directories are volume-mounted for hot reload (`node --watch`).
 
 ### Individual service dev (outside Docker)
 ```bash
@@ -30,101 +29,154 @@ npm run build    # vite build → build/
 npm start        # node build (production)
 ```
 
+### Migrate an existing running database
+```bash
+docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_image_upload.sql
+```
+
 ### Workspace (pnpm)
-The repo uses a pnpm workspace (`pnpm-workspace.yaml`). Top-level `package.json` declares `"workspaces": ["apps/*"]`.
+The repo uses a pnpm workspace (`pnpm-workspace.yaml`). Top-level `package.json` declares `"workspaces": ["apps/*"]`. Use npm inside each service for Dockerfiles.
+
+## Environment Variables
+
+Required in `.env` (see `.env.example`):
+```
+POSTGRES_PASSWORD=
+JWT_SECRET=                   # min 32 chars; shared by GoTrue and all backend services
+INTERNAL_API_KEY=             # min 32 chars; submission-service → exam-service
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_OAUTH_ENABLED=true
+
+# AWS / Lightsail Object Storage (for image uploads)
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_BUCKET=
+AWS_REGION=ap-southeast-1
+AWS_ENDPOINT=                 # optional; set for non-standard S3-compatible endpoints
+AWS_PUBLIC_URL=               # public base URL of the bucket, e.g. https://bucket.s3.region.amazonaws.com
+```
 
 ## Architecture
 
 ### Overview
-Microservices monorepo. All services share a single PostgreSQL 16 instance but use **separate schemas** (`quiz_auth`, `quiz_users`, `quiz_exams`, `quiz_submissions`). Nginx is the single ingress.
+Microservices monorepo. All services share a single PostgreSQL 16 instance with **separate schemas per service**. Nginx is the single ingress.
 
 ```
 Browser → Nginx :80
-  /auth/            → gotrue:9999          (GoTrue SSO engine)
+  /auth/            → gotrue:9999           (GoTrue SSO engine)
   /api/users/       → user-service:3002
-  /api/exams/       → exam-service:3003    (Nginx blocks /api/exams/exams/internal/)
+  /api/exams/       → exam-service:3003     (Nginx blocks /api/exams/exams/internal/)
   /api/submissions/ → submission-service:3004
   /                 → frontend:3000
 ```
 
-Internal service-to-service calls use Docker network names directly (e.g., `http://exam-service:3003`), never going through Nginx.
+Internal service-to-service calls use Docker network hostnames directly (e.g., `http://exam-service:3003`), never going through Nginx.
 
 ### Auth flow — GoTrue + local JWT verification
-**GoTrue** (`supabase/gotrue:v2.151.0`) handles all auth: signup, login, Google OAuth, JWT issuance.
+**GoTrue** (`supabase/gotrue:v2.151.0`) handles signup, login, Google OAuth, and JWT issuance.
 
-JWT claims issued by GoTrue:
-- `sub` — user UUID (this is `req.user.id` in backend)
-- `email` — user email
-- `user_metadata.role` — app role: `student` | `teacher` | `admin` (set at signup via `data.role`)
-- `role` — always `"authenticated"` (GoTrue internal, NOT our app role)
+JWT claims:
+- `sub` → `req.user.id` (user UUID)
+- `email` → `req.user.email`
+- `user_metadata.role` → `req.user.role` (`student` | `teacher` | `admin`)
+- `role` → always `"authenticated"` — **this is GoTrue-internal, NOT our app role**
 
-Each backend service **verifies JWT locally** using `JWT_SECRET` (no GoTrue call needed). `src/middleware/auth.js` decodes the token and sets:
-```javascript
-req.user = { id: payload.sub, email: payload.email, role: payload.user_metadata?.role ?? 'student' }
-req.ability = defineAbilityFor(req.user)   // CASL ability instance
-```
+Each backend verifies JWT locally via `JWT_SECRET` in `src/middleware/auth.js`, which sets `req.user` and `req.ability`.
 
 ### Authorization — CASL
-Each service has `src/lib/ability.js` with `defineAbilityFor(user)`. Uses `@casl/ability` with `createMongoAbility`. Role rules:
+Each service has `src/lib/ability.js` with `defineAbilityFor(user)` using `@casl/ability` / `createMongoAbility`.
+
+Role rules:
 - `admin` — full access
 - `teacher` — CRUD own exams (`created_by === user.id`), read all submissions
 - `student` — read published exams, create/read own submissions
 
-In routes, use `req.ability.cannot('action', subject('Type', object))` to gate access.
+In routes: `req.ability.cannot('action', subject('Type', plainObject))`. Always import `subject` from `@casl/ability` for condition-based checks.
 
 ### Backend services (Fastify + Node.js 24)
-All three backend services (`user-service`, `exam-service`, `submission-service`) follow the same structure:
+All three services share the same layout:
 ```
 src/
-  index.js          # Fastify app setup, /health, plugin registration
-  db.js             # pg Pool; sets search_path on every new connection
-  lib/
-    ability.js      # CASL defineAbilityFor(user)
-  middleware/
-    auth.js         # verifyAuth() — local JWT verify + sets req.user and req.ability
-  routes/
-    *.js            # Fastify route plugins
+  index.js           # Fastify setup, /health, plugin registration
+  db.js              # pg Pool; auto-sets search_path from DATABASE_URL query param
+  lib/ability.js     # CASL rules
+  middleware/auth.js # verifyAuth() hook
+  routes/*.js        # Fastify plugins
 ```
-`db.js` reads `search_path` from the `DATABASE_URL` query param and applies it via a `pool.on('connect')` hook.
 
-Error format: `{ error: string, statusCode: number }`.
-Health check: `GET /health` → `{ status: "ok", service: "...", timestamp: "..." }`.
+- Error format: `{ error: string, statusCode: number }`
+- Health: `GET /health` → `{ status: "ok", service: "...", timestamp: "..." }`
+- `db.js` applies `search_path` via `pool.on('connect')`, read from `?search_path=` in `DATABASE_URL`
+
+### Image upload — user-service only
+All image uploads (avatar, exam cover, question image) go through a **single endpoint in user-service**:
+
+```
+POST /api/users/upload   (multipart/form-data)
+  fields: file, type (avatar|exam-cover|question), old_url (optional)
+```
+
+- `src/lib/s3.js` — `uploadToS3()` and `deleteFromS3()`. Lightsail Object Storage is S3-compatible; set `AWS_ENDPOINT` + `forcePathStyle: true` for non-standard endpoints.
+- When `old_url` is provided, the old S3 object is deleted before uploading the new one. The S3 key is extracted by finding `uploads/` in the URL.
+- Validation settings (max size MB, allowed MIME types) are stored in `quiz_users.admin_settings` and read at upload time — not hardcoded.
+- Nginx `client_max_body_size` is set to `10m`.
 
 ### Frontend (SvelteKit 5 + Node adapter, SSR disabled)
-`+layout.js` exports `export const ssr = false` — fully client-rendered SPA. Auth state comes from `@supabase/auth-js` GoTrueClient (auto-persists in localStorage).
+Fully client-rendered SPA (`export const ssr = false` in `+layout.js`). Auth persists in localStorage via GoTrueClient.
 
 Key files:
-- `src/lib/auth.js` — GoTrueClient instance; URL defaults to `window.location.origin + '/auth'`
-- `src/lib/stores/auth.js` — `session`, `user` (derived), `token` (derived) Svelte stores; syncs via `auth.onAuthStateChange`
-- `src/lib/api.js` — `examApi` and `submissionApi` fetch helpers; reads `token` store for Bearer header
+- `src/lib/auth.js` — GoTrueClient, URL = `window.location.origin + '/auth'`
+- `src/lib/stores/auth.js` — `session`, `user`, `token` Svelte stores via `onAuthStateChange`
+- `src/lib/api.js` — `examApi`, `submissionApi`, `userApi`, `uploadApi`; all read `token` store for Bearer header
 
-Key routes:
+`uploadApi.upload(file, type, oldUrl?)` sends `multipart/form-data` with no `Content-Type` header (let browser set the boundary).
+
+Components in `src/lib/components/`:
+- `ImageUpload.svelte` — drag-and-drop upload with preview; `bind:value` for the URL; accepts `type` prop (`avatar|exam-cover|question`); automatically passes the current URL as `old_url` to delete the old file on replace.
+- `MarkdownEditor.svelte` — markdown editor for question explanations
+
+Routes:
 ```
 /                        → redirect to /dashboard or /login
-/login                   → signInWithPassword + Google OAuth button
-/register                → signUp with role in user_metadata
-/auth/callback           → OAuth redirect handler (exchangeCodeForSession)
+/login                   → Google OAuth + email/password
+/register                → signup with role in user_metadata
+/auth/callback           → OAuth redirect handler
 /dashboard               → role-based home
-/exams                   → list (student view / teacher management)
-/exams/create            → create exam (teacher/admin)
+/profile                 → edit avatar + full_name
+/exams                   → Udemy-style grid; cover image or gradient placeholder
+/exams/create            → create exam with cover image + per-question images
 /exams/[id]              → exam detail / start
-/exams/[id]/take         → take exam
+/exams/[id]/take         → take exam; shows question image if present
 /exams/[id]/edit         → edit exam
-/exams/[id]/result       → results after submission
+/exams/[id]/result       → submission results
+/admin                   → tabs: Users (role management) · Upload settings (max size, MIME types)
 ```
 
 ### Database schemas
-`infra/postgres/init.sql` creates all schemas and tables at container startup (idempotent). `quiz_auth` schema is created for GoTrue — GoTrue manages its own table migrations there. Never manually create tables in `quiz_auth`.
+`infra/postgres/init.sql` is idempotent (`IF NOT EXISTS` + `ALTER TABLE … ADD COLUMN IF NOT EXISTS`). It runs once at container creation. For running databases use `infra/postgres/migrate_image_upload.sql`.
+
+Never manually create tables in `quiz_auth` — GoTrue manages that schema.
+
+Schema summary:
+- `quiz_users.profiles` — `id, full_name, avatar_url, role, updated_at`
+- `quiz_users.admin_settings` — `key, value` (upload validation config)
+- `quiz_exams.exams` — includes `cover_image_url`, `tags TEXT[]`, `show_explanation`, `allow_retake`
+- `quiz_exams.questions` — includes `image_url`, `question_type` (`single`|`multiple`), `correct_answer` (comma-separated keys for multiple)
+- `quiz_submissions.submissions` — `answers JSONB`, `results_detail JSONB`, `percentage FLOAT`
+
+Seed files in `infra/postgres/`: `seed.sql` (sample data), `seed_aws_saa.sql` (AWS SAA exam with 45 questions).
 
 ### CI/CD
-GitHub Actions (`.github/workflows/build-push.yml`) builds multi-platform (amd64 + arm64) Docker images to GHCR on push to `main`. Matrix strategy over 4 services: `user-service`, `exam-service`, `submission-service`, `frontend`.
+GitHub Actions (`.github/workflows/build-push.yml`) builds multi-platform (amd64 + arm64) Docker images to GHCR on push to `main`. Matrix over 4 services: `user-service`, `exam-service`, `submission-service`, `frontend`.
 
 ## Conventions
 
-- **Package manager:** npm inside each service (not pnpm — Dockerfiles use `npm install`). pnpm is only for the workspace tooling.
-- **JWT verification:** Always verify locally with `JWT_SECRET`. Extract role from `payload.user_metadata.role`, NOT from `payload.role` (that's GoTrue internal).
-- **DB search_path:** Always set via `?search_path=<schema>` in `DATABASE_URL`; `db.js` handles the rest.
-- **Roles:** `admin`, `teacher`, `student` — set at GoTrue signup in `user_metadata.role`, embedded in JWT.
-- **Exam visibility:** Strip `correct_answer` from question objects when responding to students.
-- **Internal endpoints:** `exam-service` exposes `GET /exams/internal/:id` (requires `x-internal-key` header) for `submission-service` to fetch answers. Nginx blocks `/api/exams/exams/internal/*` from external access.
-- **CASL subject matching:** Use `import { subject } from '@casl/ability'` and `subject('Type', plainObject)` for condition-based checks.
+- **Package manager:** npm per service (Dockerfiles use `npm install`). pnpm only for workspace tooling.
+- **JWT role:** Always read from `payload.user_metadata.role`. `payload.role` is GoTrue-internal (`"authenticated"`).
+- **DB search_path:** Set via `?search_path=<schema>` in `DATABASE_URL`; never hardcode it.
+- **Exam answers visibility:** Strip `correct_answer` and `explanation` from questions returned to students. For `multiple` type, return `correct_count` instead.
+- **Internal exam endpoint:** `GET /exams/internal/:id` requires `x-internal-key` header; used only by submission-service for grading. Nginx blocks this path from external clients.
+- **Multiple-choice answers:** Stored as sorted comma-separated option keys, e.g. `"A,C"`. Always sort before storing.
+- **Image URL construction:** Built as `${AWS_PUBLIC_URL}/${key}` where key is `uploads/{type}/{timestamp}-{uuid}.{ext}`. Extract key for deletion by slicing from `uploads/` in the URL.
+- **Admin settings:** Read from DB at runtime, not from env. Add new configurable thresholds to `quiz_users.admin_settings` rather than hardcoding.

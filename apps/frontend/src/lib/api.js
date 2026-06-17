@@ -64,11 +64,40 @@ export const submissionApi = {
 }
 
 export const userApi = {
+  getProfile: (id) => fetch(`${USER_URL}/${id}`, { headers: authHeaders(false) }),
+  updateProfile: (id, data) =>
+    fetch(`${USER_URL}/${id}`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify(data)
+    }),
   adminListUsers: () => fetch(`${USER_URL}/admin/users`, { headers: authHeaders(false) }),
   adminUpdateRole: (id, role) =>
     fetch(`${USER_URL}/admin/users/${id}/role`, {
       method: 'PATCH',
       headers: authHeaders(),
       body: JSON.stringify({ role })
+    }),
+  getSettings: () => fetch(`${USER_URL}/admin/settings`, { headers: authHeaders(false) }),
+  updateSettings: (data) =>
+    fetch(`${USER_URL}/admin/settings`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify(data)
     })
+}
+
+export const uploadApi = {
+  upload: (file, type, oldUrl = null) => {
+    const t = get(token)
+    const form = new FormData()
+    form.append('file', file)
+    form.append('type', type)
+    if (oldUrl) form.append('old_url', oldUrl)
+    return fetch(`${USER_URL}/upload`, {
+      method: 'POST',
+      headers: t ? { Authorization: `Bearer ${t}` } : {},
+      body: form
+    })
+  }
 }

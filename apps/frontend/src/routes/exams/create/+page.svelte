@@ -4,9 +4,11 @@
   import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
   import MarkdownEditor from '$lib/components/MarkdownEditor.svelte'
+  import ImageUpload from '$lib/components/ImageUpload.svelte'
 
   let title = $state('')
   let description = $state('')
+  let cover_image_url = $state('')
   let time_limit = $state(30)
   let passing_score = $state('')
   let tags = $state([])
@@ -42,7 +44,7 @@
 
   function newQuestion() {
     return {
-      content: '', question_type: 'single', explanation: '',
+      content: '', image_url: '', question_type: 'single', explanation: '',
       options: [
         { key: 'A', text: '' }, { key: 'B', text: '' },
         { key: 'C', text: '' }, { key: 'D', text: '' }
@@ -90,6 +92,7 @@
     const correct_answer = q.question_type === 'multiple' ? q.correctKeys : q.correct_answer
     return {
       content: q.content,
+      image_url: q.image_url || null,
       options: q.options,
       correct_answer,
       points: q.points,
@@ -111,7 +114,7 @@
     saving = true
     try {
       const res = await examApi.create({
-        title, description,
+        title, description, cover_image_url: cover_image_url || null,
         time_limit: Number(time_limit),
         passing_score: passing_score !== '' ? Number(passing_score) : null,
         tags, show_explanation, allow_retake
@@ -180,6 +183,10 @@
   <div class="form-group">
     <label for="desc">Mô tả</label>
     <textarea id="desc" bind:value={description} placeholder="Mô tả về đề thi..."></textarea>
+  </div>
+  <div class="form-group">
+    <label>Ảnh bìa đề thi</label>
+    <ImageUpload bind:value={cover_image_url} type="exam-cover" label="ảnh bìa" />
   </div>
   <div class="row2">
     <div class="form-group">
@@ -259,6 +266,10 @@
   <div class="form-group">
     <label for="qc_{i}">Nội dung câu hỏi</label>
     <textarea id="qc_{i}" bind:value={q.content} placeholder="Nhập nội dung câu hỏi..."></textarea>
+  </div>
+  <div class="form-group">
+    <label>Ảnh minh hoạ câu hỏi (tuỳ chọn)</label>
+    <ImageUpload bind:value={q.image_url} type="question" label="ảnh câu hỏi" />
   </div>
 
   <span class="section-label">Các đáp án</span>

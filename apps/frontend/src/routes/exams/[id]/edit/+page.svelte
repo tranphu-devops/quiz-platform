@@ -5,10 +5,12 @@
   import { onMount } from 'svelte'
   import { page } from '$app/stores'
   import MarkdownEditor from '$lib/components/MarkdownEditor.svelte'
+  import ImageUpload from '$lib/components/ImageUpload.svelte'
 
   let exam = $state(null)
   let title = $state('')
   let description = $state('')
+  let cover_image_url = $state('')
   let time_limit = $state(30)
   let passing_score = $state('')
   let tags = $state([])
@@ -39,6 +41,7 @@
 
       title = exam.title
       description = exam.description ?? ''
+      cover_image_url = exam.cover_image_url ?? ''
       time_limit = exam.time_limit
       passing_score = exam.passing_score != null ? exam.passing_score : ''
       tags = exam.tags ?? []
@@ -58,6 +61,7 @@
           correctKeys,
           correct_answer: qtype === 'single' ? (q.correct_answer ?? 'A') : 'A',
           explanation: q.explanation ?? '',
+          image_url: q.image_url ?? '',
           _existing: true
         }
       })
@@ -87,7 +91,7 @@
 
   function newQuestion() {
     return {
-      content: '', question_type: 'single', explanation: '',
+      content: '', image_url: '', question_type: 'single', explanation: '',
       options: [
         { key: 'A', text: '' }, { key: 'B', text: '' },
         { key: 'C', text: '' }, { key: 'D', text: '' }
@@ -137,6 +141,7 @@
     const correct_answer = q.question_type === 'multiple' ? q.correctKeys : q.correct_answer
     return {
       content: q.content,
+      image_url: q.image_url || null,
       options: q.options,
       correct_answer,
       points: q.points,
@@ -158,7 +163,7 @@
     saving = true
     try {
       const updateRes = await examApi.update(exam.id, {
-        title, description,
+        title, description, cover_image_url: cover_image_url || null,
         time_limit: Number(time_limit),
         passing_score: passing_score !== '' ? Number(passing_score) : null,
         tags, show_explanation, allow_retake
@@ -240,6 +245,10 @@
     <label for="desc">Mô tả</label>
     <textarea id="desc" bind:value={description}></textarea>
   </div>
+  <div class="form-group">
+    <label>Ảnh bìa đề thi</label>
+    <ImageUpload bind:value={cover_image_url} type="exam-cover" label="ảnh bìa" />
+  </div>
   <div class="row2">
     <div class="form-group">
       <label for="time">Thời gian (phút)</label>
@@ -320,6 +329,10 @@
   <div class="form-group">
     <label for="qc_{i}">Nội dung câu hỏi</label>
     <textarea id="qc_{i}" bind:value={q.content}></textarea>
+  </div>
+  <div class="form-group">
+    <label>Ảnh minh hoạ câu hỏi (tuỳ chọn)</label>
+    <ImageUpload bind:value={q.image_url} type="question" label="ảnh câu hỏi" />
   </div>
 
   <span class="section-label">Các đáp án</span>
