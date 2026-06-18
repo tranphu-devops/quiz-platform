@@ -61,7 +61,26 @@ export default async function examRoutes(fastify) {
   // GET /exams
   fastify.get('/exams', async (req, reply) => {
     try {
-      const base = `
+      const isStudent = req.user.role === 'student'
+
+      // Student list: only published exams, public fields only
+      const studentSelect = `
+        SELECT e.id, e.title, e.description, e.cover_image_url, e.time_limit,
+          e.passing_score, e.tags, e.credit_cost, e.created_at,
+          COALESCE(p.full_name, au.email, 'Unknown') AS creator_name,
+          COUNT(DISTINCT s.id)::int AS submission_count,
+          COUNT(DISTINCT s.id) FILTER (
+            WHERE e.passing_score IS NULL OR s.percentage >= e.passing_score
+          )::int AS pass_count
+        FROM exams e
+        LEFT JOIN quiz_users.profiles p ON p.id = e.created_by
+        LEFT JOIN auth.users au ON au.id = e.created_by
+        LEFT JOIN quiz_submissions.submissions s ON s.exam_id = e.id
+        WHERE e.is_published = true
+        GROUP BY e.id, p.full_name, au.email ORDER BY e.created_at DESC`
+
+      // Teacher/admin: full fields + stats
+      const fullSelect = `
         SELECT e.*,
           COALESCE(p.full_name, au.email, 'Unknown') AS creator_name,
           COUNT(DISTINCT s.id)::int AS submission_count,
@@ -74,16 +93,18 @@ export default async function examRoutes(fastify) {
         LEFT JOIN quiz_submissions.submissions s ON s.exam_id = e.id
       `
       const group = 'GROUP BY e.id, p.full_name, au.email ORDER BY e.created_at DESC'
-      let where = '', params = []
 
-      if (req.user.role === 'student') {
-        where = 'WHERE e.is_published = true'
+      let query, params = []
+      if (isStudent) {
+        query = studentSelect
       } else if (req.user.role === 'teacher') {
-        where = 'WHERE e.created_by = $1'
+        query = `${fullSelect} WHERE e.created_by = $1 ${group}`
         params = [req.user.id]
+      } else {
+        query = `${fullSelect} ${group}`
       }
 
-      const result = await pool.query(`${base} ${where} ${group}`, params)
+      const result = await pool.query(query, params)
       return result.rows
     } catch (err) {
       fastify.log.error(err)
@@ -92,9 +113,11 @@ export default async function examRoutes(fastify) {
   })
 
   // GET /exams/:id
+  // ?preview=true → returns only first 3 questions (for detail page student view)
   fastify.get('/exams/:id', async (req, reply) => {
     const { id } = req.params
     const isStudent = req.user.role === 'student'
+    const isPreview = req.query.preview === 'true'
 
     try {
       const examResult = await pool.query('SELECT * FROM exams WHERE id = $1', [id])
@@ -107,8 +130,14 @@ export default async function examRoutes(fastify) {
         return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
       }
 
+      const countResult = await pool.query(
+        'SELECT COUNT(*)::int AS n FROM questions WHERE exam_id = $1',
+        [id]
+      )
+      const question_count = countResult.rows[0].n
+
       const questionsResult = await pool.query(
-        'SELECT * FROM questions WHERE exam_id = $1 ORDER BY order_index',
+        `SELECT * FROM questions WHERE exam_id = $1 ORDER BY order_index${isPreview ? ' LIMIT 3' : ''}`,
         [id]
       )
 
@@ -123,7 +152,13 @@ export default async function examRoutes(fastify) {
         })
       }
 
-      return { ...exam, questions }
+      // Strip internal fields not needed by students
+      if (isStudent) {
+        const { created_by, show_explanation, allow_retake, ...examPublic } = exam
+        return { ...examPublic, question_count, questions }
+      }
+
+      return { ...exam, question_count, questions }
     } catch (err) {
       fastify.log.error(err)
       return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })

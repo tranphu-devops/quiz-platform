@@ -23,13 +23,17 @@
   const creditCost = $derived(exam?.credit_cost ?? 10)
   const hasEnoughCredits = $derived(myCredits === null || myCredits >= creditCost)
   const previewQuestions = $derived((exam?.questions ?? []).slice(0, 3))
-  const hiddenCount = $derived((exam?.questions?.length ?? 0) - 3)
+  const totalQuestions = $derived(exam?.question_count ?? exam?.questions?.length ?? 0)
+  const hiddenCount = $derived(totalQuestions - previewQuestions.length)
 
   onMount(async () => {
     if (!$user) { goto('/login'); return }
     const id = $page.params.id
     try {
-      const res = await examApi.get(id)
+      // Students get preview (first 3 questions only); teachers/admins get full
+      const res = $user.role === 'student'
+        ? await examApi.getPreview(id)
+        : await examApi.get(id)
       if (!res.ok) { error = 'Không tìm thấy đề thi'; return }
       exam = await res.json()
 
@@ -377,7 +381,7 @@
         <div class="teacher-meta-item">Giải thích: <strong>{exam.show_explanation ? 'Hiển thị' : 'Ẩn'}</strong></div>
       </div>
       <div class="section">
-        <div class="section-title">Câu hỏi ({exam.questions?.length ?? 0})</div>
+        <div class="section-title">Câu hỏi ({totalQuestions})</div>
         {#each exam.questions ?? [] as q, i}
           {@const corrects = correctAnswers(q)}
           <div class="teacher-q-card">
@@ -471,7 +475,7 @@
         <div class="stats-grid">
           <div class="stat-item">
             <div class="stat-label">Câu hỏi</div>
-            <div class="stat-value">{exam.questions?.length ?? 0}</div>
+            <div class="stat-value">{totalQuestions}</div>
           </div>
           <div class="stat-item">
             <div class="stat-label">Thời gian</div>

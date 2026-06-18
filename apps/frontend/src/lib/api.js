@@ -16,6 +16,7 @@ function authHeaders(json = true) {
 export const examApi = {
   list: () => fetch(`${EXAM_URL}/exams`, { headers: authHeaders(false) }),
   get: (id) => fetch(`${EXAM_URL}/exams/${id}`, { headers: authHeaders(false) }),
+  getPreview: (id) => fetch(`${EXAM_URL}/exams/${id}?preview=true`, { headers: authHeaders(false) }),
   create: (data) =>
     fetch(`${EXAM_URL}/exams`, {
       method: 'POST',

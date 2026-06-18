@@ -168,7 +168,8 @@ export default async function submissionRoutes(fastify) {
 
       const result = await pool.query(
         `INSERT INTO submissions (exam_id, user_id, answers, score, total_points, percentage, results_detail)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING id, exam_id, user_id, score, total_points, percentage, submitted_at`,
         [exam_id, req.user.id, JSON.stringify(answers), score, total_points, percentage, JSON.stringify(results_detail)]
       )
       const submission = result.rows[0]
@@ -233,7 +234,8 @@ export default async function submissionRoutes(fastify) {
       }
 
       const result = await pool.query(
-        `SELECT * FROM submissions WHERE ${conditions.join(' AND ')} ORDER BY submitted_at DESC`,
+        `SELECT id, exam_id, user_id, score, total_points, percentage, submitted_at
+         FROM submissions WHERE ${conditions.join(' AND ')} ORDER BY submitted_at DESC`,
         params
       )
       return result.rows
