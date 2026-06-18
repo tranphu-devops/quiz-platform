@@ -1,0 +1,97 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+---
+
+## [Unreleased] — 2026-06-18
+
+### Added
+- **Credit system**: Người dùng mới nhận 20 credit (admin configurable)
+- `profiles.credits` column — theo dõi số dư credit của từng user
+- `exams.credit_cost` column — số credit cần để làm bài (default 10, teacher tự set)
+- `POST /api/submissions/start` — deduct credit khi bắt đầu bài thi (atomic, 402 nếu không đủ)
+- `POST /api/users/internal/credits/deduct` — internal endpoint cho submission-service gọi
+- `PATCH /api/users/admin/users/:id/credits` — admin sửa credit của user bất kỳ
+- `POST /api/users/upgrade-to-teacher` — student dùng credit mua gói Teacher
+- `GET /api/users/public/settings` — lấy credit settings không cần auth (teacher_upgrade_cost, default_credits, default_exam_cost)
+- Admin tab **Credits**: cấu hình `default_credits`, `teacher_upgrade_cost`, `default_exam_cost`
+- Admin tab **Người dùng**: cột Credits với inline edit
+- Exam create/edit: field `credit_cost`
+- Profile page: hiện số dư credit + section nâng cấp lên Teacher
+- Take page: tự động deduct credit khi load, hiện badge credit còn lại, màn hình lỗi nếu không đủ
+- Exam detail: hiện credit cost, balance, disable nút Start nếu không đủ credit
+- `infra/postgres/migrate_credits.sql` — migration script
+
+### Changed
+- `GET /api/users/:id` và `GET /api/users/admin/users` — thêm trường `credits` vào response
+- Profile upsert: user mới nhận `default_credits` từ admin_settings; update không ghi đè credits
+- `docker-compose.yml` + `docker-compose.override.yml`: thêm `USER_SERVICE_URL` cho submission-service
+
+---
+
+## [0.5.0] — 2026-06-17
+
+### Added
+- Thay thế exec-based health check bằng docker inspect (Phase 9 fix)
+- Sidebar user section hiển thị avatar và full name đúng
+- Redesign UI: indigo/violet theme, mobile sidebar responsive
+- Production deploy script (`deploy.sh`) cho Ubuntu 24.04
+
+---
+
+## [0.4.0] — 2026-06-17
+
+### Added
+- Image upload: S3/Lightsail Object Storage cho avatar, exam cover, question image
+- `POST /api/users/upload` — single upload endpoint với validation từ admin_settings
+- `ImageUpload.svelte` component drag-and-drop với preview
+- Admin tab Upload Settings: cấu hình max size và allowed MIME types
+- Udemy-style exam list với cover image / gradient placeholder
+- Landing page riêng cho domain `phutx.top`
+
+---
+
+## [0.3.0] — 2026-06-17
+
+### Added
+- AWS SAA exam seed data (3 exams, 45 questions) — `infra/postgres/seed_aws_saa.sql`
+- Admin user management: xem danh sách user, đổi role
+- Tags, explanation (markdown), multiple-choice question support
+- Exam modes: thi chính thức (pass 1 lần) vs thi thực hành (làm lại nhiều lần)
+- Pass-gated content review sau khi nộp bài
+- Attempt history table trên exam detail page
+- Submit confirmation modal khi còn câu chưa trả lời
+- LocalStorage session persistence trong take page (kèm timer bù thời gian)
+- Role dashboards: student / teacher / admin redirect về trang phù hợp
+
+### Fixed
+- Google OAuth callback loop: dùng `/auth-callback` thay `/auth/callback` làm `redirectTo`
+- Input styles, student exam preview, take-page state persistence
+- Schema-qualified table names trong seed files
+
+---
+
+## [0.2.0] — 2026-06-16
+
+### Added
+- Thay thế auth-service bằng GoTrue SSO (`supabase/gotrue:v2.151.0`)
+- CASL authorization (`@casl/ability`) trên cả 3 backend services
+- Google OAuth (configurable qua `GOOGLE_OAUTH_ENABLED`)
+- Multi-platform Docker images (amd64 + arm64) qua GitHub Actions
+- Nginx proxy paths làm default API URLs trong frontend
+
+### Changed
+- Chuyển toàn bộ Dockerfile từ pnpm sang npm
+
+---
+
+## [0.1.0] — 2026-06-16
+
+### Added
+- Initial MVP: microservices monorepo (user-service, exam-service, submission-service, frontend)
+- SvelteKit 5 frontend (SSR disabled, client-only SPA)
+- Fastify backend services với PostgreSQL 16 (multi-schema)
+- Nginx ingress với routing đến từng service
+- Exam CRUD, question management, auto-grading khi submit
+- pnpm workspace, Docker Compose dev environment với hot reload

@@ -1,5 +1,5 @@
 <script>
-  import { examApi, submissionApi } from '$lib/api'
+  import { examApi, submissionApi, userApi } from '$lib/api'
   import { user } from '$lib/stores/auth'
   import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
@@ -8,6 +8,7 @@
 
   let exam = $state(null)
   let mySubmissions = $state([])   // all attempts, newest first
+  let myCredits = $state(null)     // student's current credit balance
   let loading = $state(true)
   let error = $state('')
   let publishing = $state(false)
@@ -24,9 +25,14 @@
       exam = await res.json()
 
       if ($user.role === 'student') {
-        const subRes = await submissionApi.list({ examId: id })
-        if (subRes.ok) {
-          mySubmissions = await subRes.json()
+        const [subRes, profileRes] = await Promise.all([
+          submissionApi.list({ examId: id }),
+          userApi.getProfile($user.id)
+        ])
+        if (subRes.ok) mySubmissions = await subRes.json()
+        if (profileRes.ok) {
+          const profile = await profileRes.json()
+          myCredits = profile.credits ?? null
         }
       }
     } catch {
@@ -65,6 +71,8 @@
   )
   // can start/retake: no submission yet, OR allow_retake, OR failed (can always retry)
   const canStart = $derived(!mySubmission || !!exam?.allow_retake || !hasPassed)
+  const creditCost = $derived(exam?.credit_cost ?? 10)
+  const hasEnoughCredits = $derived(myCredits === null || myCredits >= creditCost)
 </script>
 
 <style>
@@ -100,6 +108,11 @@
   .hint-multi { font-size: 0.82rem; color: #6b7280; margin-top: 0.3rem; }
   .expl-meta { font-size: 0.8rem; color: #6b7280; margin-top: 0.25rem; }
   .mode-badge { font-size: 0.78rem; background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; border-radius: 99px; padding: 0.1rem 0.6rem; display: inline-block; }
+  .credit-info { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.4rem; font-size: 0.85rem; flex-wrap: wrap; }
+  .credit-cost { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; border-radius: 99px; padding: 0.15rem 0.65rem; font-weight: 600; }
+  .credit-balance { color: #6b7280; }
+  .credit-warn { background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; border-radius: 99px; padding: 0.15rem 0.65rem; font-weight: 600; }
+  .btn-primary:disabled { opacity: 0.5; cursor: default; }
   .status-box { border-radius: 10px; padding: 1.25rem 1.5rem; margin-top: 1.5rem; text-align: center; }
   .status-box.passed { background: #f0fdf4; border: 1.5px solid #86efac; }
   .status-box.failed { background: #fef2f2; border: 1.5px solid #fca5a5; }
@@ -137,6 +150,18 @@
       {exam.description ?? ''}{exam.description ? ' · ' : ''}{exam.time_limit} phút · {exam.questions?.length ?? 0} câu
       {#if exam.passing_score != null} · Điểm đạt: <strong>{exam.passing_score}</strong>{/if}
     </p>
+    {#if $user?.role === 'student'}
+      <div class="credit-info">
+        <span class="credit-cost">💳 {creditCost} credit</span>
+        {#if myCredits !== null}
+          {#if hasEnoughCredits}
+            <span class="credit-balance">Số dư của bạn: <strong>{myCredits}</strong></span>
+          {:else}
+            <span class="credit-warn">Không đủ credit (bạn có {myCredits}, cần {creditCost})</span>
+          {/if}
+        {/if}
+      </div>
+    {/if}
     {#if exam.tags?.length}
       <div class="tags">
         {#each exam.tags as t}<span class="tag">{t}</span>{/each}
@@ -153,11 +178,19 @@
   <div class="actions">
     {#if $user?.role === 'student'}
       {#if !mySubmission}
-        <a href="/exams/{exam.id}/take" class="btn btn-primary">Bắt đầu làm bài</a>
+        {#if hasEnoughCredits}
+          <a href="/exams/{exam.id}/take" class="btn btn-primary">Bắt đầu làm bài</a>
+        {:else}
+          <button class="btn btn-primary" disabled title="Không đủ credit">Bắt đầu làm bài</button>
+        {/if}
       {:else}
         <a href="/exams/{exam.id}/result?submissionId={mySubmission.id}" class="btn btn-success">Xem kết quả</a>
         {#if canStart}
-          <a href="/exams/{exam.id}/take" class="btn btn-outline">Làm lại</a>
+          {#if hasEnoughCredits}
+            <a href="/exams/{exam.id}/take" class="btn btn-outline">Làm lại</a>
+          {:else}
+            <button class="btn btn-outline" disabled title="Không đủ credit">Làm lại</button>
+          {/if}
         {/if}
       {/if}
     {:else}

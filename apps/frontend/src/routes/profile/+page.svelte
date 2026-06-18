@@ -7,18 +7,34 @@
 
   let full_name = $state('')
   let avatar_url = $state('')
+  let credits = $state(null)
   let saving = $state(false)
   let success = $state(false)
   let error = $state('')
 
+  // Teacher upgrade
+  let upgradeLoading = $state(false)
+  let upgradeError = $state('')
+  let upgradeSuccess = $state(false)
+  let teacherUpgradeCost = $state(100)
+  let showUpgradeConfirm = $state(false)
+
   onMount(async () => {
     if (!$user) { goto('/login'); return }
     try {
-      const res = await userApi.getProfile($user.id)
-      if (res.ok) {
-        const profile = await res.json()
+      const [profileRes, settingsRes] = await Promise.all([
+        userApi.getProfile($user.id),
+        userApi.getPublicSettings()
+      ])
+      if (profileRes.ok) {
+        const profile = await profileRes.json()
         full_name = profile.full_name ?? ''
         avatar_url = profile.avatar_url ?? ''
+        credits = profile.credits ?? 0
+      }
+      if (settingsRes.ok) {
+        const s = await settingsRes.json()
+        teacherUpgradeCost = parseInt(s.teacher_upgrade_cost ?? '100', 10)
       }
     } catch {}
   })
@@ -41,6 +57,26 @@
       saving = false
     }
   }
+
+  async function upgradeToTeacher() {
+    upgradeError = ''
+    upgradeLoading = true
+    showUpgradeConfirm = false
+    try {
+      const res = await userApi.upgradeToTeacher()
+      const d = await res.json()
+      if (!res.ok) {
+        upgradeError = d.error ?? 'Lỗi nâng cấp'
+        return
+      }
+      credits = d.new_balance
+      upgradeSuccess = true
+    } catch {
+      upgradeError = 'Không thể kết nối server'
+    } finally {
+      upgradeLoading = false
+    }
+  }
 </script>
 
 <style>
@@ -50,12 +86,42 @@
   label { display: block; margin-bottom: 0.3rem; font-size: 0.9rem; font-weight: 500; }
   input[type=text] { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 1rem; box-sizing: border-box; }
   .actions { display: flex; gap: 1rem; margin-top: 1.5rem; }
-  .btn { padding: 0.6rem 1.2rem; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; }
+  .btn { padding: 0.6rem 1.2rem; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 600; }
   .btn-primary { background: #1e40af; color: white; }
   .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn-success { background: #16a34a; color: white; }
+  .btn-success:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn-outline { background: white; border: 1px solid #d1d5db; color: #374151; }
   .error { color: #dc2626; margin-bottom: 1rem; font-size: 0.9rem; }
   .success { color: #16a34a; margin-bottom: 1rem; font-size: 0.9rem; }
   .role-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 99px; font-size: 0.8rem; font-weight: 600; color: white; background: #1e40af; }
+  /* Credits section */
+  .credits-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb; }
+  .credits-display { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+  .credits-number { font-size: 2rem; font-weight: 800; color: #1e40af; }
+  .credits-label { font-size: 0.9rem; color: #6b7280; }
+  .upgrade-box {
+    background: linear-gradient(135deg, #eff6ff, #f0fdf4);
+    border: 1px solid #bfdbfe; border-radius: 10px;
+    padding: 1.25rem; margin-top: 1rem;
+  }
+  .upgrade-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.3rem; color: #1e40af; }
+  .upgrade-desc { font-size: 0.875rem; color: #6b7280; margin-bottom: 1rem; line-height: 1.5; }
+  .upgrade-cost { font-weight: 700; color: #16a34a; }
+  /* Modal overlay */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center; z-index: 100;
+  }
+  .modal {
+    background: white; border-radius: 16px; padding: 2rem;
+    max-width: 380px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  }
+  .modal h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+  .modal p { color: #6b7280; font-size: 0.9rem; margin-bottom: 1.5rem; line-height: 1.5; }
+  .modal-actions { display: flex; gap: 0.75rem; }
+  .modal-actions .btn { flex: 1; }
 </style>
 
 <h1>Hồ sơ cá nhân</h1>
@@ -89,4 +155,57 @@
       {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
     </button>
   </div>
+
+  <!-- Credits section -->
+  <div class="credits-section">
+    <div class="credits-display">
+      <span class="credits-number">💳 {credits ?? '—'}</span>
+      <span class="credits-label">credit hiện tại</span>
+    </div>
+
+    {#if $user?.role === 'student'}
+      {#if upgradeSuccess}
+        <div class="success">
+          Nâng cấp thành công! Vui lòng đăng xuất và đăng nhập lại để kích hoạt role Teacher.
+        </div>
+      {:else}
+        <div class="upgrade-box">
+          <div class="upgrade-title">Nâng cấp lên Teacher</div>
+          <div class="upgrade-desc">
+            Trở thành giáo viên để tạo và quản lý bài thi của riêng bạn.
+            Chi phí: <span class="upgrade-cost">{teacherUpgradeCost} credit</span>
+          </div>
+          {#if upgradeError}<p class="error" style="margin-bottom:0.75rem">{upgradeError}</p>{/if}
+          <button
+            class="btn btn-success"
+            onclick={() => showUpgradeConfirm = true}
+            disabled={upgradeLoading || (credits !== null && credits < teacherUpgradeCost)}
+          >
+            {upgradeLoading ? 'Đang xử lý...' : `Mua gói Teacher (${teacherUpgradeCost} credit)`}
+          </button>
+          {#if credits !== null && credits < teacherUpgradeCost}
+            <p style="font-size:0.82rem; color:#dc2626; margin-top:0.5rem">
+              Bạn cần thêm {teacherUpgradeCost - credits} credit để nâng cấp.
+            </p>
+          {/if}
+        </div>
+      {/if}
+    {/if}
+  </div>
 </div>
+
+{#if showUpgradeConfirm}
+<div class="overlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <h3>Xác nhận nâng cấp</h3>
+    <p>
+      Bạn sẽ dùng <strong>{teacherUpgradeCost} credit</strong> để nâng cấp tài khoản lên Teacher.
+      Sau khi nâng cấp, vui lòng đăng xuất và đăng nhập lại để kích hoạt.
+    </p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick={() => showUpgradeConfirm = false}>Hủy</button>
+      <button class="btn btn-success" onclick={upgradeToTeacher}>Xác nhận</button>
+    </div>
+  </div>
+</div>
+{/if}

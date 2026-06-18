@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Changelog
+
+**Mỗi lần chuẩn bị push/commit**, cập nhật `CHANGELOG.md`:
+- Thêm mục `## [Unreleased] — YYYY-MM-DD` (hoặc cập nhật mục đang có) với các thay đổi theo nhóm `Added / Changed / Fixed / Removed`
+- Viết ngắn gọn, tập trung vào **what & why** từ góc nhìn người dùng/developer, không liệt kê từng file đã sửa
+- Khi release, đổi `[Unreleased]` thành số phiên bản theo SemVer
+
 ## Commands
 
 ### Run everything locally
@@ -32,6 +39,14 @@ npm start        # node build (production)
 ### Migrate an existing running database
 ```bash
 docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_image_upload.sql
+docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_credits.sql
+```
+
+### Production deploy (Ubuntu server, run as root)
+```bash
+sudo bash deploy.sh           # fresh install: clone, configure, build, start
+sudo bash deploy.sh --update  # pull latest, rebuild, rolling restart
+sudo bash deploy.sh --set-admin  # promote ADMIN_EMAIL to admin role without full redeploy
 ```
 
 ### Workspace (pnpm)
@@ -44,9 +59,11 @@ Required in `.env` (see `.env.example`):
 POSTGRES_PASSWORD=
 JWT_SECRET=                   # min 32 chars; shared by GoTrue and all backend services
 INTERNAL_API_KEY=             # min 32 chars; submission-service → exam-service
+SITE_URL=http://localhost      # public URL of the app; used by GoTrue for OAuth redirects
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_OAUTH_ENABLED=true
+TAG=latest                    # Docker image tag; used by docker-compose
 
 # AWS / Lightsail Object Storage (for image uploads)
 AWS_ACCESS_KEY_ID=
@@ -71,7 +88,11 @@ Browser → Nginx :80
   /                 → frontend:3000
 ```
 
+Nginx has two `server` blocks: one for `phutx.top` / `www.phutx.top` (production domain, serves a landing page at `/`) and one `default_server` for all other hosts (used locally). The routing above applies to both.
+
 Internal service-to-service calls use Docker network hostnames directly (e.g., `http://exam-service:3003`), never going through Nginx.
+
+> **Note:** `apps/auth-service/` is a legacy prototype (email/password auth before GoTrue was adopted). It is **not** wired into `docker-compose.yml` or Nginx and should be ignored.
 
 ### Auth flow — GoTrue + local JWT verification
 **GoTrue** (`supabase/gotrue:v2.151.0`) handles signup, login, Google OAuth, and JWT issuance.
@@ -141,7 +162,8 @@ Routes:
 /                        → redirect to /dashboard or /login
 /login                   → Google OAuth + email/password
 /register                → signup with role in user_metadata
-/auth/callback           → OAuth redirect handler
+/auth/callback           → PKCE OAuth handler (GoTrue redirects here after Google login)
+/auth-callback           → implicit-flow fallback handler
 /dashboard               → role-based home
 /profile                 → edit avatar + full_name
 /exams                   → Udemy-style grid; cover image or gradient placeholder
@@ -180,3 +202,21 @@ GitHub Actions (`.github/workflows/build-push.yml`) builds multi-platform (amd64
 - **Multiple-choice answers:** Stored as sorted comma-separated option keys, e.g. `"A,C"`. Always sort before storing.
 - **Image URL construction:** Built as `${AWS_PUBLIC_URL}/${key}` where key is `uploads/{type}/{timestamp}-{uuid}.{ext}`. Extract key for deletion by slicing from `uploads/` in the URL.
 - **Admin settings:** Read from DB at runtime, not from env. Add new configurable thresholds to `quiz_users.admin_settings` rather than hardcoding.
+- **Credit system:** `profiles.credits` tracks balance. Deducted by `POST /api/submissions/start` (calls user-service internal API). Credit cost per exam stored in `exams.credit_cost` (default from `admin_settings.default_exam_cost`). Admin configures `default_credits`, `teacher_upgrade_cost`, `default_exam_cost` in the Credits tab.
+- **Internal credit endpoint:** `POST /internal/credits/deduct` on user-service — atomic UPDATE with `credits >= amount` check; returns 402 if insufficient. Called only by submission-service with `x-internal-key`.
+- **Public settings:** `GET /api/users/public/settings` — exposes `teacher_upgrade_cost`, `default_credits`, `default_exam_cost` without auth.
+- **Teacher upgrade:** `POST /api/users/upgrade-to-teacher` — deducts credits, updates `auth.users.raw_user_meta_data` directly. User must log out and back in for new role to take effect.
+- **Session credit flag:** Take page stores `credit_deducted: true` in localStorage session to avoid double-charging on page refresh.
+
+## Design System
+
+Khi sinh HTML/CSS, luôn follow:
+
+- **Color palette**: #0F172A (bg), #1E293B (surface), #38BDF8 (accent), #F8FAFC (text)
+- **Typography**: Inter cho body, JetBrains Mono cho code
+- **Border radius**: 8px card, 4px button
+- **Font import**: Google Fonts (Inter + JetBrains Mono)
+- **Style**: Dark theme, glassmorphism card, subtle shadows
+- Dùng CSS custom properties (--var)
+- Responsive mobile-first
+- Không dùng Bootstrap/jQuery, ưu tiên vanilla CSS

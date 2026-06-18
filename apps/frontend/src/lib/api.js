@@ -50,6 +50,12 @@ export const examApi = {
 }
 
 export const submissionApi = {
+  start: (exam_id) =>
+    fetch(`${SUB_URL}/submissions/start`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ exam_id })
+    }),
   submit: (data) =>
     fetch(`${SUB_URL}/submissions`, {
       method: 'POST',
@@ -78,6 +84,18 @@ export const userApi = {
       headers: authHeaders(),
       body: JSON.stringify({ role })
     }),
+  adminUpdateCredits: (id, credits) =>
+    fetch(`${USER_URL}/admin/users/${id}/credits`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: JSON.stringify({ credits })
+    }),
+  upgradeToTeacher: () =>
+    fetch(`${USER_URL}/upgrade-to-teacher`, {
+      method: 'POST',
+      headers: authHeaders(false)
+    }),
+  getPublicSettings: () => fetch(`${USER_URL}/public/settings`),
   getSettings: () => fetch(`${USER_URL}/admin/settings`, { headers: authHeaders(false) }),
   updateSettings: (data) =>
     fetch(`${USER_URL}/admin/settings`, {

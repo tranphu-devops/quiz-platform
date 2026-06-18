@@ -8,6 +8,56 @@ export default async function submissionRoutes(fastify) {
     await verifyAuth(req, reply)
   })
 
+  // POST /submissions/start — deduct credits when student starts an exam
+  fastify.post('/submissions/start', async (req, reply) => {
+    if (req.ability.cannot('create', 'Submission')) {
+      return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+    }
+
+    const { exam_id } = req.body ?? {}
+    if (!exam_id) {
+      return reply.status(400).send({ error: 'exam_id required', statusCode: 400 })
+    }
+
+    try {
+      const examRes = await fetch(
+        `${process.env.EXAM_SERVICE_URL}/exams/internal/${exam_id}`,
+        { headers: { 'x-internal-key': process.env.INTERNAL_API_KEY } }
+      )
+      if (!examRes.ok) {
+        return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
+      }
+      const exam = await examRes.json()
+      const creditCost = exam.credit_cost ?? 10
+
+      const deductRes = await fetch(
+        `${process.env.USER_SERVICE_URL}/internal/credits/deduct`,
+        {
+          method: 'POST',
+          headers: {
+            'x-internal-key': process.env.INTERNAL_API_KEY,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ user_id: req.user.id, amount: creditCost })
+        }
+      )
+
+      if (deductRes.status === 402) {
+        const err = await deductRes.json()
+        return reply.status(402).send({ error: err.error, credit_cost: creditCost, statusCode: 402 })
+      }
+      if (!deductRes.ok) {
+        return reply.status(500).send({ error: 'Credit service error', statusCode: 500 })
+      }
+
+      const { new_balance } = await deductRes.json()
+      return { success: true, credit_cost: creditCost, new_balance }
+    } catch (err) {
+      fastify.log.error(err)
+      return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
+    }
+  })
+
   // POST /submissions — submit exam and auto-grade
   fastify.post('/submissions', async (req, reply) => {
     if (req.ability.cannot('create', 'Submission')) {

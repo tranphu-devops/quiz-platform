@@ -11,6 +11,7 @@
   let cover_image_url = $state('')
   let time_limit = $state(30)
   let passing_score = $state('')
+  let credit_cost = $state(10)
   let tags = $state([])
   let show_explanation = $state(false)
   let allow_retake = $state(false)
@@ -117,6 +118,7 @@
         title, description, cover_image_url: cover_image_url || null,
         time_limit: Number(time_limit),
         passing_score: passing_score !== '' ? Number(passing_score) : null,
+        credit_cost: Number(credit_cost),
         tags, show_explanation, allow_retake
       })
       const data = await res.json()
@@ -219,6 +221,10 @@
       {/if}
     </div>
     <p class="hint">Ví dụ: Toán, Lớp 10, Đại số</p>
+  </div>
+  <div class="form-group">
+    <label for="credit_cost">Credit cần để làm bài</label>
+    <input id="credit_cost" type="number" bind:value={credit_cost} min="0" step="1" style="width:120px" />
   </div>
   <div class="form-group">
     <label for="exam_mode">Chế độ thi</label>

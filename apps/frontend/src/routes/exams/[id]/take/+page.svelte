@@ -10,6 +10,8 @@
   let loading = $state(true)
   let submitting = $state(false)
   let error = $state('')
+  let creditError = $state('')   // 402 not enough credits
+  let myCredits = $state(null)   // remaining credits after deduction
   let timeLeft = $state(0)
   let timer = null
   let currentIdx = $state(0)
@@ -17,7 +19,7 @@
 
   function sessionKey(id) { return `quiz-session-${id}` }
   function saveSession(id) {
-    try { localStorage.setItem(sessionKey(id), JSON.stringify({ answers, timeLeft, savedAt: Date.now() })) } catch {}
+    try { localStorage.setItem(sessionKey(id), JSON.stringify({ answers, timeLeft, savedAt: Date.now(), credit_deducted: true })) } catch {}
   }
   function loadSession(id) {
     try {
@@ -76,8 +78,30 @@
       }
 
       const saved = loadSession(id)
+
+      // Deduct credits only if no active session (first visit or after submit)
+      if (!saved?.credit_deducted && $user.role === 'student') {
+        const startRes = await submissionApi.start(id)
+        if (startRes.status === 402) {
+          const d = await startRes.json()
+          creditError = d.error ?? 'Không đủ credit để làm bài này'
+          return
+        }
+        if (!startRes.ok) {
+          error = 'Lỗi khi kiểm tra credit. Vui lòng thử lại.'
+          return
+        }
+        const startData = await startRes.json()
+        myCredits = startData.new_balance
+      } else if (saved?.credit_deducted) {
+        // Resume session — credits already deducted
+      }
+
       if (saved && saved.timeLeft > 0) { answers = saved.answers; timeLeft = saved.timeLeft }
       else timeLeft = (exam.time_limit ?? 30) * 60
+
+      // Mark session as credit deducted immediately
+      saveSession(exam.id)
 
       timer = setInterval(() => {
         timeLeft--
@@ -110,7 +134,7 @@
       const data = await res.json()
       if (!res.ok) { error = data.error; submitting = false; return }
       clearSession(exam.id)
-      goto(`/exams/${exam.id}/result?submissionId=${data.id}`)
+      goto(`/exams/${exam.id}/result?submissionId=${data.id}`, { replaceState: true })
     } catch {
       error = 'Lỗi khi nộp bài'; submitting = false
     }
@@ -132,12 +156,19 @@
   .exam-title {
     font-weight: 700; font-size: 0.95rem; color: var(--text);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    max-width: 60%;
+    max-width: 55%;
+  }
+  .top-right { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
+  .credit-badge {
+    font-size: 0.78rem; font-weight: 700;
+    background: #f0fdf4; color: #16a34a;
+    border: 1px solid #bbf7d0; border-radius: 99px;
+    padding: 0.2rem 0.65rem;
+    white-space: nowrap;
   }
   .timer {
     font-size: 1.35rem; font-weight: 800; color: var(--primary);
     font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
-    flex-shrink: 0;
   }
   .timer.urgent {
     color: var(--danger);
@@ -266,6 +297,22 @@
   .btn-submit:hover:not(:disabled) { box-shadow: 0 6px 18px rgba(34,197,94,0.4); }
   .btn-submit:disabled { opacity: 0.6; cursor: default; }
 
+  /* ── Credit error ─────────────────────────────────────────────────────────────*/
+  .credit-error-wrap {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 50vh; text-align: center; gap: 1rem;
+  }
+  .credit-error-icon { font-size: 3rem; }
+  .credit-error-title { font-size: 1.3rem; font-weight: 700; color: var(--text); }
+  .credit-error-msg { color: var(--muted); font-size: 0.95rem; }
+  .btn-back {
+    padding: 0.65rem 1.5rem; border-radius: var(--radius-btn);
+    background: var(--primary); color: white; border: none;
+    font-weight: 600; cursor: pointer; font-size: 0.95rem;
+    transition: opacity 0.15s;
+  }
+  .btn-back:hover { opacity: 0.85; }
+
   /* ── Modal ────────────────────────────────────────────────────────────────────*/
   .overlay {
     position: fixed; inset: 0;
@@ -310,13 +357,25 @@
 
 {#if loading}
   <div style="text-align:center;padding:4rem 0;color:var(--muted)">Đang tải đề thi...</div>
+{:else if creditError}
+  <div class="credit-error-wrap">
+    <div class="credit-error-icon">💳</div>
+    <div class="credit-error-title">Không đủ credit</div>
+    <div class="credit-error-msg">{creditError}</div>
+    <button class="btn-back" onclick={() => history.back()}>Quay lại</button>
+  </div>
 {:else if error}
   <p class="error">{error}</p>
 {:else if exam}
 
 <div class="top-bar">
   <span class="exam-title">{exam.title}</span>
-  <span class="timer {isUrgent ? 'urgent' : ''}">{formatTime(timeLeft)}</span>
+  <div class="top-right">
+    {#if myCredits !== null}
+      <span class="credit-badge">💳 {myCredits} credit còn lại</span>
+    {/if}
+    <span class="timer {isUrgent ? 'urgent' : ''}">{formatTime(timeLeft)}</span>
+  </div>
 </div>
 
 <div class="progress-wrap">

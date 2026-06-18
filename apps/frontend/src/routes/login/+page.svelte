@@ -1,6 +1,13 @@
 <script>
   import { auth } from '$lib/auth'
   import { browser } from '$app/environment'
+  import { user } from '$lib/stores/auth'
+  import { goto } from '$app/navigation'
+  import { onMount } from 'svelte'
+
+  onMount(() => {
+    if ($user) goto('/dashboard')
+  })
 
   async function loginWithGoogle() {
     if (!browser) return

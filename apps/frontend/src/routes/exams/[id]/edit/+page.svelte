@@ -13,6 +13,7 @@
   let cover_image_url = $state('')
   let time_limit = $state(30)
   let passing_score = $state('')
+  let credit_cost = $state(10)
   let tags = $state([])
   let show_explanation = $state(false)
   let allow_retake = $state(false)
@@ -47,6 +48,7 @@
       tags = exam.tags ?? []
       show_explanation = exam.show_explanation ?? false
       allow_retake = exam.allow_retake ?? false
+      credit_cost = exam.credit_cost ?? 10
 
       questions = (exam.questions ?? []).map(q => {
         const opts = Array.isArray(q.options)
@@ -166,6 +168,7 @@
         title, description, cover_image_url: cover_image_url || null,
         time_limit: Number(time_limit),
         passing_score: passing_score !== '' ? Number(passing_score) : null,
+        credit_cost: Number(credit_cost),
         tags, show_explanation, allow_retake
       })
       if (!updateRes.ok) { const d = await updateRes.json(); error = d.error; return }
@@ -280,6 +283,10 @@
       {/if}
     </div>
     <p class="hint">Ví dụ: Toán, Lớp 10, Đại số</p>
+  </div>
+  <div class="form-group">
+    <label for="credit_cost_edit">Credit cần để làm bài</label>
+    <input id="credit_cost_edit" type="number" bind:value={credit_cost} min="0" step="1" style="width:120px" />
   </div>
   <div class="form-group">
     <label for="exam_mode">Chế độ thi</label>

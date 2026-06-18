@@ -2,8 +2,43 @@ import { pool } from '../db.js'
 import { verifyAuth } from '../middleware/auth.js'
 
 export default async function userRoutes(fastify) {
+  // Internal endpoint — no JWT auth, uses x-internal-key
+  fastify.post('/internal/credits/deduct', async (req, reply) => {
+    const key = req.headers['x-internal-key']
+    if (!key || key !== process.env.INTERNAL_API_KEY) {
+      return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+    }
+    const { user_id, amount } = req.body ?? {}
+    if (!user_id || typeof amount !== 'number' || amount < 0) {
+      return reply.status(400).send({ error: 'Invalid params', statusCode: 400 })
+    }
+    const result = await pool.query(
+      'UPDATE profiles SET credits = credits - $1 WHERE id = $2 AND credits >= $1 RETURNING credits',
+      [amount, user_id]
+    )
+    if (result.rows.length === 0) {
+      return reply.status(402).send({ error: 'Không đủ credit', statusCode: 402 })
+    }
+    return { success: true, new_balance: result.rows[0].credits }
+  })
+
+  // Public endpoint — returns non-sensitive settings for client display
+  fastify.get('/public/settings', async (req, reply) => {
+    try {
+      const { rows } = await pool.query(
+        "SELECT key, value FROM admin_settings WHERE key IN ('teacher_upgrade_cost', 'default_credits', 'default_exam_cost')"
+      )
+      return Object.fromEntries(rows.map(r => [r.key, r.value]))
+    } catch (err) {
+      fastify.log.error(err)
+      return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
+    }
+  })
+
   fastify.addHook('preHandler', async (req, reply) => {
     if (req.routeOptions?.url === '/health') return
+    if (req.routeOptions?.url?.startsWith('/internal/')) return
+    if (req.routeOptions?.url?.startsWith('/public/')) return
     await verifyAuth(req, reply)
   })
 
@@ -11,7 +46,7 @@ export default async function userRoutes(fastify) {
     const { id } = req.params
     try {
       const result = await pool.query(
-        'SELECT id, full_name, avatar_url, role, updated_at FROM profiles WHERE id = $1',
+        'SELECT id, full_name, avatar_url, role, credits, updated_at FROM profiles WHERE id = $1',
         [id]
       )
       if (result.rows.length === 0) {
@@ -32,13 +67,14 @@ export default async function userRoutes(fastify) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
 
-    // Only admin can change role
     const newRole = req.user.role === 'admin' ? (role ?? req.user.role) : undefined
 
     try {
       const result = await pool.query(
-        `INSERT INTO profiles (id, full_name, avatar_url, role, updated_at)
-         VALUES ($1, $2, $3, $4, NOW())
+        `INSERT INTO profiles (id, full_name, avatar_url, role, credits, updated_at)
+         VALUES ($1, $2, $3, $4,
+           (SELECT COALESCE(value::int, 20) FROM admin_settings WHERE key = 'default_credits'),
+           NOW())
          ON CONFLICT (id) DO UPDATE
          SET full_name = COALESCE(EXCLUDED.full_name, profiles.full_name),
              avatar_url = COALESCE(EXCLUDED.avatar_url, profiles.avatar_url),
@@ -54,15 +90,53 @@ export default async function userRoutes(fastify) {
     }
   })
 
+  // Student upgrade to teacher by spending credits
+  fastify.post('/upgrade-to-teacher', async (req, reply) => {
+    if (req.user.role !== 'student') {
+      return reply.status(400).send({ error: 'Chỉ student mới có thể nâng cấp', statusCode: 400 })
+    }
+    try {
+      const settingRes = await pool.query(
+        "SELECT value FROM admin_settings WHERE key = 'teacher_upgrade_cost'"
+      )
+      const cost = settingRes.rows.length > 0 ? parseInt(settingRes.rows[0].value, 10) : 100
+
+      const deductResult = await pool.query(
+        'UPDATE profiles SET credits = credits - $1 WHERE id = $2 AND credits >= $1 RETURNING credits',
+        [cost, req.user.id]
+      )
+      if (deductResult.rows.length === 0) {
+        return reply.status(402).send({ error: `Không đủ credit. Cần ${cost} credit để nâng cấp.`, statusCode: 402 })
+      }
+
+      await pool.query(
+        `UPDATE auth.users SET raw_user_meta_data = raw_user_meta_data || '{"role":"teacher"}'::jsonb WHERE id = $1`,
+        [req.user.id]
+      )
+      await pool.query('UPDATE profiles SET role = $1 WHERE id = $2', ['teacher', req.user.id])
+
+      return {
+        success: true,
+        new_balance: deductResult.rows[0].credits,
+        message: 'Nâng cấp thành công! Vui lòng đăng xuất và đăng nhập lại để kích hoạt role Teacher.'
+      }
+    } catch (err) {
+      fastify.log.error(err)
+      return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
+    }
+  })
+
   fastify.get('/admin/users', async (req, reply) => {
     if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     const { rows } = await pool.query(`
-      SELECT id, email,
-             raw_user_meta_data->>'role' AS role,
-             raw_user_meta_data->>'full_name' AS full_name,
-             created_at, last_sign_in_at, confirmed_at IS NOT NULL AS confirmed
-      FROM auth.users
-      ORDER BY created_at DESC
+      SELECT u.id, u.email,
+             u.raw_user_meta_data->>'role' AS role,
+             u.raw_user_meta_data->>'full_name' AS full_name,
+             p.credits,
+             u.created_at, u.last_sign_in_at, u.confirmed_at IS NOT NULL AS confirmed
+      FROM auth.users u
+      LEFT JOIN profiles p ON p.id = u.id
+      ORDER BY u.created_at DESC
     `)
     return rows
   })
@@ -76,6 +150,21 @@ export default async function userRoutes(fastify) {
     await pool.query(
       `UPDATE auth.users SET raw_user_meta_data = raw_user_meta_data || $1::jsonb WHERE id = $2`,
       [JSON.stringify({ role }), id]
+    )
+    return { success: true }
+  })
+
+  fastify.patch('/admin/users/:id/credits', async (req, reply) => {
+    if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+    const { id } = req.params
+    const { credits } = req.body ?? {}
+    if (typeof credits !== 'number' || credits < 0) {
+      return reply.status(400).send({ error: 'Invalid credits value', statusCode: 400 })
+    }
+    await pool.query(
+      `INSERT INTO profiles (id, credits, updated_at) VALUES ($1, $2, NOW())
+       ON CONFLICT (id) DO UPDATE SET credits = EXCLUDED.credits, updated_at = NOW()`,
+      [id, credits]
     )
     return { success: true }
   })
