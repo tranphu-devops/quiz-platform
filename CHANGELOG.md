@@ -6,6 +6,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] — 2026-06-18 (latest)
 
+### Changed
+- **Trang tạo đề thi redesign**: Wizard 4 bước — (1) Thông tin cơ bản → (2) Import JSON → (3) Sửa câu hỏi → (4) Review & Lưu. Step indicator có thể click để quay lại bước trước.
+
+### Added
+- Tính năng import câu hỏi từ JSON: drag & drop hoặc click chọn file, parse + validate, preview số câu import được, chọn thay thế hoặc ghép thêm vào câu hỏi hiện có
+- File mẫu `/question-template.json` có sẵn để download — bao gồm ví dụ câu single/multiple + hướng dẫn inline
+
+
 ### Added
 - **Collections & Badges**: Teacher tạo bộ đề (nhóm nhiều đề thi), chọn huy hiệu từ thư viện 50 preset hoặc tải lên ảnh tùy chỉnh. Student hoàn thành toàn bộ đề thi trong collection → tự động nhận huy hiệu
 - 50 badge SVG preset (64×64) trong `static/badges/`, sinh bằng `scripts/generate-badges.js`

@@ -1,0 +1,43 @@
+{
+  "_comment": "Mẫu JSON để import câu hỏi vào QuizPlatform. Xoá trường _comment trước khi dùng.",
+  "_format_version": "1",
+  "questions": [
+    {
+      "content": "AWS S3 là viết tắt của?",
+      "type": "single",
+      "options": [
+        { "key": "A", "text": "Simple Storage Service" },
+        { "key": "B", "text": "Secure Storage System" },
+        { "key": "C", "text": "Static Site Service" },
+        { "key": "D", "text": "Scalable Server Storage" }
+      ],
+      "correct_answer": "A",
+      "points": 1,
+      "explanation": "S3 là viết tắt của Simple Storage Service — dịch vụ lưu trữ đối tượng của AWS."
+    },
+    {
+      "content": "Những dịch vụ nào sau đây thuộc nhóm AWS Compute? (chọn tất cả đáp án đúng)",
+      "type": "multiple",
+      "options": [
+        { "key": "A", "text": "EC2 (Elastic Compute Cloud)" },
+        { "key": "B", "text": "S3 (Simple Storage Service)" },
+        { "key": "C", "text": "Lambda (Serverless Functions)" },
+        { "key": "D", "text": "RDS (Relational Database Service)" }
+      ],
+      "correct_answer": ["A", "C"],
+      "points": 2,
+      "explanation": "EC2 và Lambda đều là dịch vụ tính toán. S3 là lưu trữ, RDS là cơ sở dữ liệu quan hệ."
+    },
+    {
+      "content": "Giải thích trường `correct_answer`:\n- type = 'single' → chuỗi, ví dụ: \"A\"\n- type = 'multiple' → mảng các key, ví dụ: [\"A\", \"C\"]\n\nTrường `explanation` hỗ trợ Markdown.",
+      "type": "single",
+      "options": [
+        { "key": "A", "text": "Đây chỉ là ví dụ hướng dẫn, hãy xoá câu hỏi này" },
+        { "key": "B", "text": "Và thay bằng câu hỏi thực tế của bạn" }
+      ],
+      "correct_answer": "A",
+      "points": 1,
+      "explanation": "## Hướng dẫn nhanh\n\n- Số lượng đáp án: tối thiểu 2, không giới hạn tối đa\n- `key` của option nên là chữ cái viết hoa: A, B, C...\n- `points` mặc định là 1 nếu không khai báo\n- `explanation` là tuỳ chọn, hỗ trợ **Markdown**"
+    }
+  ]
+}
