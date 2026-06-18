@@ -174,6 +174,7 @@
   function roleColor(role) {
     if (role === 'admin') return '#dc2626'
     if (role === 'teacher') return '#d97706'
+    if (role === 'banned') return '#6b7280'
     return '#2563eb'
   }
 
@@ -267,6 +268,12 @@
       <div class="stat-value">{users.filter(u => u.role === 'student').length}</div>
       <div class="stat-label">Học sinh</div>
     </div>
+    {#if users.some(u => u.role === 'banned')}
+    <div class="stat" style="border-left: 3px solid #ef4444;">
+      <div class="stat-value" style="color:#ef4444">{users.filter(u => u.role === 'banned').length}</div>
+      <div class="stat-label">Bị khoá</div>
+    </div>
+    {/if}
   </div>
 
   <div class="card">
@@ -315,6 +322,7 @@
                 <option value="student">student</option>
                 <option value="teacher">teacher</option>
                 <option value="admin">admin</option>
+                <option value="banned">🚫 banned</option>
               </select>
             </td>
           </tr>

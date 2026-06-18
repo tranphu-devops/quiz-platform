@@ -3,7 +3,9 @@ import { AbilityBuilder, createMongoAbility } from '@casl/ability'
 export function defineAbilityFor(user) {
   const { can, build } = new AbilityBuilder(createMongoAbility)
 
-  if (user.role === 'admin') {
+  if (user.role === 'banned') {
+    // no permissions
+  } else if (user.role === 'admin') {
     can('manage', 'all')
   } else if (user.role === 'teacher') {
     can(['create', 'read', 'update', 'delete'], 'Exam', { created_by: user.id })

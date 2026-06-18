@@ -33,6 +33,14 @@
     }).catch(() => {})
   })
 
+  let isBanned = $derived($user?.role === 'banned')
+
+  $effect(() => {
+    if (isBanned) {
+      clearAuth()
+    }
+  })
+
   async function logout() {
     sidebarOpen = false
     await clearAuth()
@@ -202,6 +210,28 @@
   .role-pill.student { background: #ede9fe; color: var(--primary); }
   .role-pill.teacher { background: #fef9c3; color: #854d0e; }
   .role-pill.admin   { background: #fce7f3; color: #9d174d; }
+  .role-pill.banned  { background: #fee2e2; color: #991b1b; }
+
+  /* ── Banned screen ─────────────────────────────────────────────────────────── */
+  .banned-screen {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: var(--bg); padding: 2rem;
+  }
+  .banned-card {
+    background: white; border-radius: 16px; padding: 3rem 2.5rem;
+    max-width: 400px; width: 100%; text-align: center;
+    border: 1.5px solid #fca5a5; box-shadow: 0 8px 32px rgba(239,68,68,0.12);
+  }
+  .banned-icon { font-size: 3rem; margin-bottom: 1rem; }
+  .banned-title { font-size: 1.3rem; font-weight: 700; color: #991b1b; margin-bottom: 0.75rem; }
+  .banned-msg { color: #6b7280; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.75rem; }
+  .banned-back {
+    display: inline-block; padding: 0.65rem 1.5rem;
+    background: #ef4444; color: white; border-radius: 8px;
+    font-weight: 600; font-size: 0.9rem; text-decoration: none;
+    transition: background 0.15s;
+  }
+  .banned-back:hover { background: #dc2626; }
 
   .sidebar-nav {
     flex: 1; padding: 0.75rem; overflow-y: auto;
@@ -245,6 +275,17 @@
     main { padding: 1.25rem 1rem; }
   }
 </style>
+
+{#if isBanned}
+<div class="banned-screen">
+  <div class="banned-card">
+    <div class="banned-icon">🚫</div>
+    <h2 class="banned-title">Tài khoản bị khoá</h2>
+    <p class="banned-msg">Tài khoản của bạn đã bị quản trị viên tạm khoá. Vui lòng liên hệ hỗ trợ nếu bạn cho rằng đây là nhầm lẫn.</p>
+    <a href="/login" class="banned-back">Về trang đăng nhập</a>
+  </div>
+</div>
+{:else}
 
 <nav>
   <a href="/" class="brand">QuizPlatform</a>
@@ -308,7 +349,7 @@
         </div>
       </div>
       <span class="role-pill {$user.role}">
-        {$user.role === 'student' ? '🎓 Học sinh' : $user.role === 'teacher' ? '👨‍🏫 Giáo viên' : '⚙️ Admin'}
+        {$user.role === 'student' ? '🎓 Học sinh' : $user.role === 'teacher' ? '👨‍🏫 Giáo viên' : $user.role === 'admin' ? '⚙️ Admin' : '🚫 Bị khoá'}
       </span>
     </div>
     <nav class="sidebar-nav">
@@ -344,3 +385,4 @@
 <main>
   {@render children()}
 </main>
+{/if}

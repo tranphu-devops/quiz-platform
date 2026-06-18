@@ -68,14 +68,13 @@ export default async function examRoutes(fastify) {
         SELECT e.id, e.title, e.description, e.cover_image_url, e.time_limit,
           e.passing_score, e.tags, e.credit_cost, e.created_at,
           COALESCE(p.full_name, au.email, 'Unknown') AS creator_name,
-          COUNT(DISTINCT s.id)::int AS submission_count,
-          COUNT(DISTINCT s.id) FILTER (
-            WHERE e.passing_score IS NULL OR s.percentage >= e.passing_score
-          )::int AS pass_count
+          COUNT(DISTINCT CASE WHEN (sp.role IS NULL OR sp.role != 'banned') THEN s.id END)::int AS submission_count,
+          COUNT(DISTINCT CASE WHEN (sp.role IS NULL OR sp.role != 'banned') AND (e.passing_score IS NULL OR s.percentage >= e.passing_score) THEN s.id END)::int AS pass_count
         FROM exams e
         LEFT JOIN quiz_users.profiles p ON p.id = e.created_by
         LEFT JOIN auth.users au ON au.id = e.created_by
         LEFT JOIN quiz_submissions.submissions s ON s.exam_id = e.id
+        LEFT JOIN quiz_users.profiles sp ON sp.id = s.user_id
         WHERE e.is_published = true
         GROUP BY e.id, p.full_name, au.email ORDER BY e.created_at DESC`
 
@@ -83,14 +82,13 @@ export default async function examRoutes(fastify) {
       const fullSelect = `
         SELECT e.*,
           COALESCE(p.full_name, au.email, 'Unknown') AS creator_name,
-          COUNT(DISTINCT s.id)::int AS submission_count,
-          COUNT(DISTINCT s.id) FILTER (
-            WHERE e.passing_score IS NULL OR s.percentage >= e.passing_score
-          )::int AS pass_count
+          COUNT(DISTINCT CASE WHEN (sp.role IS NULL OR sp.role != 'banned') THEN s.id END)::int AS submission_count,
+          COUNT(DISTINCT CASE WHEN (sp.role IS NULL OR sp.role != 'banned') AND (e.passing_score IS NULL OR s.percentage >= e.passing_score) THEN s.id END)::int AS pass_count
         FROM exams e
         LEFT JOIN quiz_users.profiles p ON p.id = e.created_by
         LEFT JOIN auth.users au ON au.id = e.created_by
         LEFT JOIN quiz_submissions.submissions s ON s.exam_id = e.id
+        LEFT JOIN quiz_users.profiles sp ON sp.id = s.user_id
       `
       const group = 'GROUP BY e.id, p.full_name, au.email ORDER BY e.created_at DESC'
 
