@@ -68,6 +68,42 @@ export default async function submissionRoutes(fastify) {
         return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
       }
       const exam = await examRes.json()
+
+      // Check max_attempts
+      if (exam.max_attempts != null) {
+        const countRes = await pool.query(
+          'SELECT COUNT(*)::int AS n FROM submissions WHERE exam_id = $1 AND user_id = $2',
+          [exam_id, req.user.id]
+        )
+        if (countRes.rows[0].n >= exam.max_attempts) {
+          return reply.status(429).send({
+            error: `Đã đạt giới hạn ${exam.max_attempts} lần thi cho đề thi này`,
+            reason: 'max_attempts',
+            statusCode: 429
+          })
+        }
+      }
+
+      // Check cooldown between attempts
+      if (exam.cooldown_minutes > 0) {
+        const lastRes = await pool.query(
+          'SELECT submitted_at FROM submissions WHERE exam_id = $1 AND user_id = $2 ORDER BY submitted_at DESC LIMIT 1',
+          [exam_id, req.user.id]
+        )
+        if (lastRes.rows.length > 0) {
+          const elapsed = (Date.now() - new Date(lastRes.rows[0].submitted_at).getTime()) / 60000
+          if (elapsed < exam.cooldown_minutes) {
+            const remaining = Math.ceil(exam.cooldown_minutes - elapsed)
+            return reply.status(429).send({
+              error: `Cần chờ ${remaining} phút nữa trước khi thi lại`,
+              reason: 'cooldown',
+              cooldown_remaining: remaining,
+              statusCode: 429
+            })
+          }
+        }
+      }
+
       const creditCost = exam.credit_cost ?? 10
 
       const deductRes = await fetch(

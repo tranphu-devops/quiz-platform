@@ -41,15 +41,15 @@ export default async function examRoutes(fastify) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
 
-    const { title, description, cover_image_url = null, time_limit = 30, passing_score = null, tags = [], show_explanation = false, allow_retake = false, credit_cost = null } = req.body ?? {}
+    const { title, description, cover_image_url = null, time_limit = 30, passing_score = null, tags = [], show_explanation = false, allow_retake = false, credit_cost = null, cooldown_minutes = 0, max_attempts = null } = req.body ?? {}
     if (!title) {
       return reply.status(400).send({ error: 'Title required', statusCode: 400 })
     }
 
     try {
       const result = await pool.query(
-        'INSERT INTO exams (title, description, cover_image_url, time_limit, passing_score, created_by, tags, show_explanation, allow_retake, credit_cost) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
-        [title, description, cover_image_url, time_limit, passing_score, req.user.id, tags, show_explanation, allow_retake, credit_cost]
+        'INSERT INTO exams (title, description, cover_image_url, time_limit, passing_score, created_by, tags, show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *',
+        [title, description, cover_image_url, time_limit, passing_score, req.user.id, tags, show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts]
       )
       return reply.status(201).send(result.rows[0])
     } catch (err) {
@@ -168,7 +168,7 @@ export default async function examRoutes(fastify) {
   // PUT /exams/:id
   fastify.put('/exams/:id', async (req, reply) => {
     const { id } = req.params
-    const { title, description, cover_image_url, time_limit, passing_score, is_published, tags, show_explanation, allow_retake, credit_cost } = req.body ?? {}
+    const { title, description, cover_image_url, time_limit, passing_score, is_published, tags, show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts } = req.body ?? {}
 
     try {
       const examResult = await pool.query('SELECT * FROM exams WHERE id = $1', [id])
@@ -192,9 +192,11 @@ export default async function examRoutes(fastify) {
           tags = COALESCE($7, tags),
           show_explanation = COALESCE($8, show_explanation),
           allow_retake = COALESCE($10, allow_retake),
-          credit_cost = COALESCE($11, credit_cost)
+          credit_cost = COALESCE($11, credit_cost),
+          cooldown_minutes = COALESCE($12, cooldown_minutes),
+          max_attempts = CASE WHEN $13::int IS NOT NULL THEN $13::int ELSE max_attempts END
          WHERE id = $9 RETURNING *`,
-        [title, description, cover_image_url ?? null, time_limit, passing_score ?? null, is_published, tags ?? null, show_explanation ?? null, id, allow_retake ?? null, credit_cost ?? null]
+        [title, description, cover_image_url ?? null, time_limit, passing_score ?? null, is_published, tags ?? null, show_explanation ?? null, id, allow_retake ?? null, credit_cost ?? null, cooldown_minutes ?? null, max_attempts ?? null]
       )
       return result.rows[0]
     } catch (err) {

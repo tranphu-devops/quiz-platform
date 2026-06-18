@@ -25,6 +25,8 @@
   let tags = $state([])
   let show_explanation = $state(false)
   let allow_retake = $state(false)
+  let cooldown_minutes = $state(0)
+  let max_attempts = $state('')
   let is_published = $state(false)
   let tagInput = $state('')
   let step1Error = $state('')
@@ -74,6 +76,8 @@
       tags = exam.tags ?? []
       show_explanation = exam.show_explanation ?? false
       allow_retake = exam.allow_retake ?? false
+      cooldown_minutes = exam.cooldown_minutes ?? 0
+      max_attempts = exam.max_attempts != null ? exam.max_attempts : ''
       is_published = exam.is_published ?? false
 
       questions = (exam.questions ?? []).map(q => {
@@ -248,7 +252,9 @@
         time_limit: Number(time_limit),
         passing_score: passing_score !== '' ? Number(passing_score) : null,
         credit_cost: Number(credit_cost),
-        tags, show_explanation, allow_retake, is_published
+        tags, show_explanation, allow_retake, is_published,
+        cooldown_minutes: Number(cooldown_minutes) || 0,
+        max_attempts: max_attempts !== '' ? Number(max_attempts) : null
       })
       if (!res.ok) { const d = await res.json(); saveError = d.error; return }
 
@@ -510,6 +516,19 @@
         <option value={false}>Chính thức (1 lần)</option>
         <option value={true}>Thực hành (làm lại)</option>
       </select>
+    </div>
+  </div>
+
+  <div class="row2">
+    <div class="form-row">
+      <label for="cooldown_minutes">Thời gian chờ giữa 2 lần thi (phút)</label>
+      <input id="cooldown_minutes" type="number" bind:value={cooldown_minutes} min="0" step="1" style="width:100px" placeholder="0" />
+      <p class="hint">0 = không giới hạn. Ví dụ: 1440 = chờ 24 giờ</p>
+    </div>
+    <div class="form-row">
+      <label for="max_attempts">Số lần thi tối đa</label>
+      <input id="max_attempts" type="number" bind:value={max_attempts} min="1" step="1" style="width:100px" placeholder="Không giới hạn" />
+      <p class="hint">Để trống = không giới hạn số lần thi</p>
     </div>
   </div>
 

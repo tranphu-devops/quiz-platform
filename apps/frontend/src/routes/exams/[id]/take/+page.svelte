@@ -10,12 +10,32 @@
   let loading = $state(true)
   let submitting = $state(false)
   let error = $state('')
-  let creditError = $state('')   // 402 not enough credits
-  let myCredits = $state(null)   // remaining credits after deduction
+  let creditError = $state('')
+  let limitError = $state('')   // 429: cooldown or max_attempts
+  let myCredits = $state(null)
   let timeLeft = $state(0)
   let timer = null
   let currentIdx = $state(0)
   let showConfirm = $state(false)
+
+  function shuffle(arr) {
+    const a = [...arr]
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]]
+    }
+    return a
+  }
+
+  function randomizeExam(e) {
+    return {
+      ...e,
+      questions: shuffle(e.questions ?? []).map(q => ({
+        ...q,
+        options: shuffle(q.options ?? [])
+      }))
+    }
+  }
 
   function sessionKey(id) { return `quiz-session-${id}` }
   function saveSession(id) {
@@ -64,7 +84,7 @@
     try {
       const res = await examApi.get(id)
       if (!res.ok) { error = 'Không tìm thấy đề thi'; return }
-      exam = await res.json()
+      exam = randomizeExam(await res.json())
 
       if ($user.role === 'student' && !exam.allow_retake) {
         const subRes = await submissionApi.list({ examId: id })
@@ -85,6 +105,11 @@
         if (startRes.status === 402) {
           const d = await startRes.json()
           creditError = d.error ?? 'Không đủ credit để làm bài này'
+          return
+        }
+        if (startRes.status === 429) {
+          const d = await startRes.json()
+          limitError = d.error ?? 'Không thể bắt đầu bài thi lúc này'
           return
         }
         if (!startRes.ok) {
@@ -362,6 +387,13 @@
     <div class="credit-error-icon">💳</div>
     <div class="credit-error-title">Không đủ credit</div>
     <div class="credit-error-msg">{creditError}</div>
+    <button class="btn-back" onclick={() => history.back()}>Quay lại</button>
+  </div>
+{:else if limitError}
+  <div class="credit-error-wrap">
+    <div class="credit-error-icon">⏳</div>
+    <div class="credit-error-title">Không thể bắt đầu</div>
+    <div class="credit-error-msg">{limitError}</div>
     <button class="btn-back" onclick={() => history.back()}>Quay lại</button>
   </div>
 {:else if error}
