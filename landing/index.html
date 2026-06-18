@@ -4,7 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>QuizPlatform — Nền tảng thi trực tuyến thông minh</title>
-  <meta name="description" content="Tạo đề thi, quản lý học viên và theo dõi kết quả học tập — tất cả trên một nền tảng đơn giản, mạnh mẽ." />
+  <meta name="description" content="Tạo đề thi, quản lý bộ đề, trao huy hiệu và theo dõi kết quả học tập — tất cả trên một nền tảng đơn giản, mạnh mẽ." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -13,127 +16,189 @@
       --blue-mid: #2563eb;
       --blue-lt:  #3b82f6;
       --blue-pale:#eff6ff;
+      --indigo:   #4f46e5;
+      --violet:   #7c3aed;
       --text:     #111827;
       --muted:    #6b7280;
       --border:   #e5e7eb;
       --white:    #ffffff;
       --bg:       #f8fafc;
       --green:    #16a34a;
+      --amber:    #d97706;
       --radius:   12px;
     }
 
     html { scroll-behavior: smooth; }
-    body { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+    body { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
 
     /* ─── NAV ─── */
     nav {
       position: sticky; top: 0; z-index: 100;
-      background: rgba(255,255,255,.92); backdrop-filter: blur(12px);
+      background: rgba(255,255,255,.94); backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--border);
       padding: 0 1.5rem;
       height: 60px; display: flex; align-items: center; justify-content: space-between;
     }
     .nav-brand { font-size: 1.25rem; font-weight: 800; color: var(--blue); letter-spacing: -.02em; text-decoration: none; }
     .nav-brand span { color: var(--blue-lt); }
-    .nav-links { display: flex; align-items: center; gap: 0.75rem; }
+    .nav-links { display: flex; align-items: center; gap: 1rem; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: .88rem; font-weight: 500; transition: color .15s; }
+    .nav-links a:hover { color: var(--text); }
     .btn-ghost { padding: .45rem .9rem; border-radius: 6px; border: 1px solid var(--border); background: white; color: var(--text); font-size: .9rem; font-weight: 500; cursor: pointer; text-decoration: none; transition: border-color .15s; }
     .btn-ghost:hover { border-color: var(--blue-lt); color: var(--blue); }
     .btn-primary { padding: .45rem 1rem; border-radius: 6px; border: none; background: var(--blue); color: white; font-size: .9rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: background .15s; }
     .btn-primary:hover { background: var(--blue-mid); }
-    @media (max-width: 480px) { .nav-ghost-hide { display: none; } }
+    @media (max-width: 640px) { .nav-ghost-hide { display: none; } .nav-links a.link-hide { display: none; } }
 
     /* ─── HERO ─── */
     .hero {
-      padding: 5rem 1.5rem 4rem;
+      padding: 5.5rem 1.5rem 4.5rem;
       text-align: center;
-      background: linear-gradient(160deg, #f0f7ff 0%, #e8f0fe 40%, #f8fafc 100%);
+      background: linear-gradient(160deg, #f0f7ff 0%, #e8f0fe 40%, #f5f3ff 80%, #f8fafc 100%);
       position: relative; overflow: hidden;
     }
     .hero::before {
       content: ''; position: absolute; inset: 0;
-      background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(59,130,246,.12) 0%, transparent 70%);
+      background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(99,102,241,.1) 0%, transparent 70%);
     }
-    .hero-badge { display: inline-block; background: var(--blue-pale); color: var(--blue); border: 1px solid #bfdbfe; border-radius: 99px; padding: .25rem .85rem; font-size: .78rem; font-weight: 600; margin-bottom: 1.5rem; }
-    .hero h1 { font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 800; line-height: 1.15; letter-spacing: -.03em; color: var(--text); margin-bottom: 1.25rem; }
-    .hero h1 em { font-style: normal; color: var(--blue); }
-    .hero p { font-size: 1.1rem; color: var(--muted); max-width: 560px; margin: 0 auto 2rem; }
+    .hero-badge { display: inline-flex; align-items: center; gap: .4rem; background: var(--blue-pale); color: var(--blue); border: 1px solid #bfdbfe; border-radius: 99px; padding: .25rem .85rem; font-size: .78rem; font-weight: 600; margin-bottom: 1.5rem; }
+    .hero h1 { font-size: clamp(2rem, 5.5vw, 3.4rem); font-weight: 900; line-height: 1.1; letter-spacing: -.04em; color: var(--text); margin-bottom: 1.25rem; }
+    .hero h1 em { font-style: normal; background: linear-gradient(135deg, var(--blue), var(--indigo)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero p { font-size: 1.1rem; color: var(--muted); max-width: 580px; margin: 0 auto 2.25rem; line-height: 1.7; }
     .hero-actions { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
     .btn-hero { padding: .75rem 1.75rem; border-radius: 8px; font-size: 1rem; font-weight: 700; text-decoration: none; transition: transform .15s, box-shadow .15s; }
-    .btn-hero-primary { background: var(--blue); color: white; border: none; box-shadow: 0 4px 16px rgba(30,64,175,.3); }
-    .btn-hero-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(30,64,175,.35); }
+    .btn-hero-primary { background: linear-gradient(135deg, var(--blue) 0%, var(--indigo) 100%); color: white; border: none; box-shadow: 0 4px 18px rgba(79,70,229,.35); }
+    .btn-hero-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(79,70,229,.45); }
     .btn-hero-secondary { background: white; color: var(--blue); border: 2px solid var(--blue); }
     .btn-hero-secondary:hover { background: var(--blue-pale); }
 
     /* ─── HERO MOCKUP ─── */
-    .hero-mockup {
-      margin: 3.5rem auto 0; max-width: 760px; position: relative;
-    }
+    .hero-mockup { margin: 3.5rem auto 0; max-width: 760px; position: relative; }
     .mockup-card {
-      background: white; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,.12), 0 4px 12px rgba(0,0,0,.06);
+      background: white; border-radius: 16px;
+      box-shadow: 0 24px 70px rgba(0,0,0,.12), 0 4px 14px rgba(0,0,0,.06);
       overflow: hidden; border: 1px solid var(--border);
     }
     .mockup-bar { background: #f9fafb; border-bottom: 1px solid var(--border); padding: .6rem 1rem; display: flex; align-items: center; gap: .5rem; }
     .dot { width: 10px; height: 10px; border-radius: 50%; }
     .dot.r { background: #fca5a5; } .dot.y { background: #fcd34d; } .dot.g { background: #86efac; }
-    .mockup-url { flex: 1; background: white; border: 1px solid var(--border); border-radius: 4px; padding: .2rem .6rem; font-size: .75rem; color: var(--muted); margin: 0 .75rem; text-align: center; }
+    .mockup-url { flex: 1; background: white; border: 1px solid var(--border); border-radius: 4px; padding: .2rem .6rem; font-size: .75rem; color: var(--muted); margin: 0 .75rem; text-align: center; font-family: monospace; }
     .mockup-body { padding: 1.5rem; }
     .mockup-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
     .m-title { font-weight: 700; font-size: .95rem; }
     .m-timer { background: #fef2f2; color: #dc2626; padding: .2rem .6rem; border-radius: 6px; font-weight: 700; font-size: .85rem; }
+    .m-credit { background: #eff6ff; color: var(--blue); padding: .2rem .6rem; border-radius: 6px; font-weight: 700; font-size: .8rem; margin-left: .4rem; }
     .m-progress { height: 6px; background: #e5e7eb; border-radius: 99px; margin-bottom: 1.25rem; }
-    .m-progress-fill { height: 100%; width: 60%; background: var(--blue); border-radius: 99px; }
+    .m-progress-fill { height: 100%; width: 60%; background: linear-gradient(90deg, var(--blue), var(--indigo)); border-radius: 99px; }
     .m-question { background: var(--blue-pale); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
     .m-question p { font-weight: 600; font-size: .9rem; margin-bottom: .75rem; }
     .m-opt { display: flex; align-items: center; gap: .6rem; padding: .45rem .75rem; border-radius: 6px; font-size: .85rem; margin-bottom: .4rem; border: 1.5px solid var(--border); background: white; cursor: default; }
-    .m-opt.selected { border-color: var(--blue); background: #eff6ff; font-weight: 600; color: var(--blue); }
+    .m-opt.selected { border-color: var(--indigo); background: #eef2ff; font-weight: 600; color: var(--indigo); }
     .m-opt-key { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 700; flex-shrink: 0; }
     .m-nav { display: flex; justify-content: space-between; }
     .m-btn { padding: .4rem .9rem; border-radius: 6px; font-size: .82rem; font-weight: 600; cursor: default; border: none; }
     .m-btn-prev { background: #f3f4f6; color: #374151; }
-    .m-btn-next { background: var(--blue); color: white; }
+    .m-btn-next { background: linear-gradient(135deg, var(--blue), var(--indigo)); color: white; }
 
     /* ─── STATS ─── */
     .stats { display: flex; justify-content: center; gap: 3rem; flex-wrap: wrap; padding: 2.5rem 1.5rem; background: white; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
     .stat { text-align: center; }
-    .stat-num { font-size: 2rem; font-weight: 800; color: var(--blue); letter-spacing: -.03em; }
+    .stat-num { font-size: 2.1rem; font-weight: 900; background: linear-gradient(135deg, var(--blue), var(--indigo)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: -.04em; }
     .stat-label { font-size: .85rem; color: var(--muted); margin-top: .2rem; }
 
     /* ─── SECTIONS ─── */
-    section { padding: 5rem 1.5rem; max-width: 1000px; margin: 0 auto; }
-    .section-tag { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--blue); margin-bottom: .75rem; }
-    .section-title { font-size: clamp(1.5rem, 3.5vw, 2.2rem); font-weight: 800; letter-spacing: -.03em; margin-bottom: 1rem; }
-    .section-sub { font-size: 1rem; color: var(--muted); max-width: 560px; }
+    section { padding: 5rem 1.5rem; max-width: 1060px; margin: 0 auto; }
+    .section-tag { font-size: .73rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--indigo); margin-bottom: .75rem; }
+    .section-title { font-size: clamp(1.5rem, 3.5vw, 2.3rem); font-weight: 900; letter-spacing: -.04em; margin-bottom: 1rem; line-height: 1.15; }
+    .section-sub { font-size: 1rem; color: var(--muted); max-width: 560px; line-height: 1.7; }
 
     /* ─── FEATURES ─── */
     .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-top: 3rem; }
     @media (max-width: 700px) { .features-grid { grid-template-columns: 1fr; } }
     @media (max-width: 900px) and (min-width: 701px) { .features-grid { grid-template-columns: repeat(2, 1fr); } }
-    .feature-card { background: white; border-radius: var(--radius); padding: 1.5rem; border: 1px solid var(--border); transition: box-shadow .2s, transform .2s; }
-    .feature-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,.08); transform: translateY(-2px); }
-    .feature-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; margin-bottom: 1rem; }
+    .feature-card { background: white; border-radius: var(--radius); padding: 1.5rem; border: 1px solid var(--border); transition: box-shadow .2s, transform .2s, border-color .2s; }
+    .feature-card:hover { box-shadow: 0 8px 28px rgba(79,70,229,.1); transform: translateY(-2px); border-color: #c7d2fe; }
+    .feature-icon { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; margin-bottom: 1rem; }
     .feature-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: .5rem; }
-    .feature-card p { font-size: .88rem; color: var(--muted); line-height: 1.6; }
+    .feature-card p { font-size: .87rem; color: var(--muted); line-height: 1.65; }
+
+    /* ─── SHOWCASE (two-col) ─── */
+    .showcase { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; }
+    .showcase.reverse { direction: rtl; }
+    .showcase.reverse > * { direction: ltr; }
+    @media (max-width: 720px) { .showcase { grid-template-columns: 1fr; gap: 2rem; } .showcase.reverse { direction: ltr; } }
+    .showcase-text .section-tag { margin-bottom: .5rem; }
+    .showcase-text .section-title { font-size: clamp(1.35rem, 3vw, 2rem); }
+    .showcase-text p { font-size: .95rem; color: var(--muted); line-height: 1.75; margin-bottom: 1.25rem; }
+    .check-list { list-style: none; display: flex; flex-direction: column; gap: .55rem; }
+    .check-list li { display: flex; align-items: flex-start; gap: .6rem; font-size: .9rem; color: var(--text); }
+    .check-list .ck { color: #16a34a; font-size: 1rem; flex-shrink: 0; line-height: 1.5; }
+
+    /* Badge preview card */
+    .badge-preview-card { background: white; border-radius: 16px; border: 1px solid var(--border); padding: 1.5rem; box-shadow: 0 8px 32px rgba(0,0,0,.07); }
+    .badge-preview-card h4 { font-size: .88rem; font-weight: 700; margin-bottom: 1rem; color: var(--muted); }
+    .badge-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: .5rem; margin-bottom: 1.25rem; }
+    .badge-item { width: 52px; height: 52px; border-radius: 12px; background: linear-gradient(135deg, #f0f7ff, #e8f0fe); display: flex; align-items: center; justify-content: center; font-size: 1.6rem; border: 2px solid transparent; transition: border-color .15s; cursor: default; }
+    .badge-item.earned { border-color: #fbbf24; background: linear-gradient(135deg, #fefce8, #fef3c7); }
+    .badge-item.locked { filter: grayscale(1); opacity: .4; }
+    .collection-progress { background: var(--blue-pale); border-radius: 10px; padding: .85rem 1rem; display: flex; align-items: center; gap: .75rem; }
+    .coll-icon { font-size: 1.4rem; }
+    .coll-info { flex: 1; }
+    .coll-name { font-size: .85rem; font-weight: 700; margin-bottom: .25rem; }
+    .coll-bar-wrap { background: #dbeafe; border-radius: 99px; height: 6px; }
+    .coll-bar { height: 100%; width: 66%; background: var(--indigo); border-radius: 99px; }
+    .coll-label { font-size: .75rem; color: var(--muted); margin-top: .2rem; }
+
+    /* Credit preview card */
+    .credit-card { background: white; border-radius: 16px; border: 1px solid var(--border); padding: 1.5rem; box-shadow: 0 8px 32px rgba(0,0,0,.07); }
+    .credit-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .credit-header h4 { font-size: .88rem; font-weight: 700; color: var(--muted); }
+    .credit-balance { font-size: 2rem; font-weight: 900; background: linear-gradient(135deg, var(--blue), var(--indigo)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .credit-balance small { font-size: 1rem; font-weight: 600; }
+    .credit-exam-list { display: flex; flex-direction: column; gap: .5rem; }
+    .credit-exam-row { display: flex; align-items: center; justify-content: space-between; padding: .6rem .85rem; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); }
+    .credit-exam-title { font-size: .85rem; font-weight: 600; flex: 1; }
+    .credit-cost-tag { font-size: .78rem; font-weight: 700; background: #eff6ff; color: var(--blue); border: 1px solid #bfdbfe; border-radius: 99px; padding: .1rem .6rem; }
+    .credit-cta { margin-top: 1rem; background: linear-gradient(135deg, var(--blue), var(--indigo)); color: white; border: none; width: 100%; padding: .65rem; border-radius: 8px; font-weight: 700; font-size: .9rem; cursor: default; }
+
+    /* JSON import preview */
+    .import-card { background: white; border-radius: 16px; border: 1px solid var(--border); padding: 1.5rem; box-shadow: 0 8px 32px rgba(0,0,0,.07); }
+    .import-card h4 { font-size: .88rem; font-weight: 700; color: var(--muted); margin-bottom: .85rem; }
+    .code-block { background: #0f172a; border-radius: 10px; padding: 1rem 1.1rem; font-size: .78rem; line-height: 1.7; color: #e2e8f0; overflow-x: auto; font-family: 'Courier New', monospace; }
+    .code-key { color: #93c5fd; }
+    .code-str { color: #86efac; }
+    .code-num { color: #fcd34d; }
+    .code-kw { color: #c084fc; }
+    .import-result { margin-top: .85rem; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 10px; padding: .75rem 1rem; display: flex; align-items: center; gap: .6rem; }
+    .import-result-icon { font-size: 1.1rem; }
+    .import-result-text { font-size: .85rem; font-weight: 600; color: #15803d; }
 
     /* ─── HOW IT WORKS ─── */
     .steps-wrap { background: white; border-radius: 16px; border: 1px solid var(--border); overflow: hidden; }
-    .steps { display: grid; grid-template-columns: repeat(3, 1fr); }
-    @media (max-width: 650px) { .steps { grid-template-columns: 1fr; } }
-    .step { padding: 2rem; position: relative; }
-    .step:not(:last-child) { border-right: 1px solid var(--border); }
-    @media (max-width: 650px) { .step:not(:last-child) { border-right: none; border-bottom: 1px solid var(--border); } }
-    .step-num { font-size: 3rem; font-weight: 900; color: var(--blue-pale); line-height: 1; margin-bottom: .75rem; }
-    .step h3 { font-size: 1rem; font-weight: 700; margin-bottom: .5rem; }
-    .step p { font-size: .88rem; color: var(--muted); }
+    .steps { display: grid; grid-template-columns: repeat(4, 1fr); }
+    @media (max-width: 750px) { .steps { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 480px) { .steps { grid-template-columns: 1fr; } }
+    .step { padding: 2rem; position: relative; border-right: 1px solid var(--border); }
+    .step:last-child { border-right: none; }
+    @media (max-width: 750px) {
+      .step { border-bottom: 1px solid var(--border); }
+      .step:nth-child(even) { border-right: none; }
+      .step:nth-last-child(-n+2) { border-bottom: none; }
+    }
+    @media (max-width: 480px) { .step { border-right: none !important; } .step:last-child { border-bottom: none; } }
+    .step-num { font-size: 2.5rem; font-weight: 900; background: linear-gradient(135deg, #dbeafe, #e0e7ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; margin-bottom: .75rem; }
+    .step h3 { font-size: .97rem; font-weight: 700; margin-bottom: .5rem; }
+    .step p { font-size: .86rem; color: var(--muted); line-height: 1.65; }
 
     /* ─── ROLES ─── */
     .roles-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 3rem; }
     @media (max-width: 600px) { .roles-grid { grid-template-columns: 1fr; } }
-    .role-card { border-radius: var(--radius); padding: 2rem; }
-    .role-card.teacher { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: white; }
+    .role-card { border-radius: 16px; padding: 2rem; }
+    .role-card.teacher { background: linear-gradient(135deg, #1e1b4b, #1e3a8a, #2563eb); color: white; }
     .role-card.student { background: white; border: 2px solid var(--border); }
-    .role-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; opacity: .7; margin-bottom: .75rem; }
+    .role-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; opacity: .65; margin-bottom: .75rem; }
     .role-card.student .role-label { color: var(--muted); }
-    .role-card h3 { font-size: 1.25rem; font-weight: 800; margin-bottom: 1.25rem; }
+    .role-card h3 { font-size: 1.25rem; font-weight: 800; margin-bottom: 1.25rem; letter-spacing: -.02em; }
     .role-card.student h3 { color: var(--text); }
     .role-ul { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
     .role-ul li { display: flex; align-items: flex-start; gap: .6rem; font-size: .9rem; }
@@ -142,25 +207,34 @@
     .check { font-size: 1rem; flex-shrink: 0; line-height: 1.5; }
     .role-card.teacher .check { color: #86efac; }
     .role-card.student .check { color: var(--green); }
-    .role-cta { display: inline-block; margin-top: 1.75rem; padding: .6rem 1.25rem; border-radius: 8px; font-weight: 700; font-size: .9rem; text-decoration: none; transition: transform .15s; }
+    .role-cta { display: inline-block; margin-top: 1.75rem; padding: .6rem 1.25rem; border-radius: 8px; font-weight: 700; font-size: .9rem; text-decoration: none; transition: transform .15s, box-shadow .15s; }
     .role-cta:hover { transform: translateY(-1px); }
-    .role-card.teacher .role-cta { background: white; color: var(--blue); }
-    .role-card.student .role-cta { background: var(--blue); color: white; }
+    .role-card.teacher .role-cta { background: white; color: var(--indigo); }
+    .role-card.student .role-cta { background: linear-gradient(135deg, var(--blue), var(--indigo)); color: white; box-shadow: 0 4px 14px rgba(79,70,229,.3); }
 
-    /* ─── TESTIMONIAL / HIGHLIGHT ─── */
-    .highlight { background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%); color: white; text-align: center; padding: 5rem 1.5rem; }
-    .highlight h2 { font-size: clamp(1.5rem, 4vw, 2.4rem); font-weight: 800; letter-spacing: -.03em; max-width: 640px; margin: 0 auto 1rem; }
-    .highlight p { font-size: 1.05rem; opacity: .8; max-width: 500px; margin: 0 auto 2.25rem; }
+    /* ─── FAQ ─── */
+    .faq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: 3rem; }
+    @media (max-width: 640px) { .faq-grid { grid-template-columns: 1fr; } }
+    .faq-item { background: white; border-radius: var(--radius); padding: 1.25rem 1.5rem; border: 1px solid var(--border); }
+    .faq-item h4 { font-size: .95rem; font-weight: 700; margin-bottom: .5rem; color: var(--text); }
+    .faq-item p { font-size: .87rem; color: var(--muted); line-height: 1.65; }
+
+    /* ─── CTA HIGHLIGHT ─── */
+    .highlight { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 40%, #1e3a8a 80%, #2563eb 100%); color: white; text-align: center; padding: 5.5rem 1.5rem; position: relative; overflow: hidden; }
+    .highlight::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 70% 80% at 50% 50%, rgba(99,102,241,.3), transparent 70%); }
+    .highlight > * { position: relative; }
+    .highlight h2 { font-size: clamp(1.6rem, 4.5vw, 2.6rem); font-weight: 900; letter-spacing: -.04em; max-width: 640px; margin: 0 auto 1rem; line-height: 1.15; }
+    .highlight p { font-size: 1.05rem; opacity: .75; max-width: 500px; margin: 0 auto 2.5rem; line-height: 1.7; }
     .highlight-actions { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
-    .btn-white { padding: .7rem 1.5rem; border-radius: 8px; font-size: 1rem; font-weight: 700; background: white; color: var(--blue); text-decoration: none; border: none; transition: transform .15s, box-shadow .15s; box-shadow: 0 4px 16px rgba(0,0,0,.2); }
-    .btn-white:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,.25); }
-    .btn-outline-white { padding: .7rem 1.5rem; border-radius: 8px; font-size: 1rem; font-weight: 700; background: transparent; color: white; border: 2px solid rgba(255,255,255,.5); text-decoration: none; transition: border-color .15s; }
-    .btn-outline-white:hover { border-color: white; }
+    .btn-white { padding: .75rem 1.75rem; border-radius: 8px; font-size: 1rem; font-weight: 700; background: white; color: var(--indigo); text-decoration: none; border: none; transition: transform .15s, box-shadow .15s; box-shadow: 0 4px 18px rgba(0,0,0,.2); }
+    .btn-white:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(0,0,0,.28); }
+    .btn-outline-white { padding: .75rem 1.75rem; border-radius: 8px; font-size: 1rem; font-weight: 700; background: transparent; color: white; border: 2px solid rgba(255,255,255,.45); text-decoration: none; transition: border-color .15s, background .15s; }
+    .btn-outline-white:hover { border-color: white; background: rgba(255,255,255,.08); }
 
     /* ─── FOOTER ─── */
-    footer { background: #0f172a; color: #94a3b8; text-align: center; padding: 2.5rem 1.5rem; font-size: .85rem; }
+    footer { background: #0f172a; color: #94a3b8; text-align: center; padding: 2.75rem 1.5rem; font-size: .85rem; }
     footer strong { color: white; }
-    .footer-links { display: flex; justify-content: center; align-items: center; gap: 1.25rem; margin-bottom: 1rem; }
+    .footer-links { display: flex; justify-content: center; align-items: center; gap: 1.25rem; margin-bottom: 1rem; flex-wrap: wrap; }
     .footer-links a { color: #94a3b8; text-decoration: none; display: flex; align-items: center; gap: .4rem; transition: color .15s; }
     .footer-links a:hover { color: white; }
     .footer-divider { color: #334155; }
@@ -168,6 +242,7 @@
     /* ─── UTIL ─── */
     .text-center { text-align: center; }
     .mt-3 { margin-top: 3rem; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 0; }
   </style>
 </head>
 <body>
@@ -176,6 +251,9 @@
 <nav>
   <a class="nav-brand" href="/">Quiz<span>Platform</span></a>
   <div class="nav-links">
+    <a href="#features" class="link-hide">Tính năng</a>
+    <a href="#how" class="link-hide">Cách dùng</a>
+    <a href="#faq" class="link-hide">FAQ</a>
     <a href="https://quiz.phutx.top/login" class="btn-ghost nav-ghost-hide">Đăng nhập</a>
     <a href="https://quiz.phutx.top/register" class="btn-primary">Bắt đầu miễn phí</a>
   </div>
@@ -183,9 +261,9 @@
 
 <!-- HERO -->
 <div class="hero">
-  <div class="hero-badge">Nền tảng học tập & kiểm tra trực tuyến</div>
+  <div class="hero-badge">✦ Nền tảng học tập &amp; kiểm tra trực tuyến</div>
   <h1>Thi trực tuyến <em>thông minh</em><br/>dành cho mọi lớp học</h1>
-  <p>Tạo đề thi với ảnh minh hoạ, quản lý học viên theo nhóm và theo dõi kết quả chi tiết — tất cả trên một nền tảng đơn giản, không cần cài đặt.</p>
+  <p>Soạn đề thi wizard 4 bước, trao huy hiệu hoàn thành bộ đề, quản lý credit và theo dõi kết quả chi tiết — tất cả trên một nền tảng, không cần cài đặt.</p>
   <div class="hero-actions">
     <a href="https://quiz.phutx.top/register" class="btn-hero btn-hero-primary">Bắt đầu miễn phí →</a>
     <a href="https://quiz.phutx.top/login" class="btn-hero btn-hero-secondary">Đăng nhập</a>
@@ -195,12 +273,15 @@
     <div class="mockup-card">
       <div class="mockup-bar">
         <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
-        <div class="mockup-url">phutx.top/exams/aws-saa/take</div>
+        <div class="mockup-url">quiz.phutx.top/exams/aws-saa/take</div>
       </div>
       <div class="mockup-body">
         <div class="mockup-top">
           <div class="m-title">AWS Solutions Architect — Practice Exam</div>
-          <div class="m-timer">⏱ 42:17</div>
+          <div style="display:flex;align-items:center">
+            <div class="m-credit">💳 85 credit</div>
+            <div class="m-timer" style="margin-left:.4rem">⏱ 42:17</div>
+          </div>
         </div>
         <div class="m-progress"><div class="m-progress-fill"></div></div>
         <div class="m-question">
@@ -235,13 +316,13 @@
     <div class="stat-label">Học viên đang học</div>
   </div>
   <div class="stat">
-    <div class="stat-num">98%</div>
-    <div class="stat-label">Hài lòng với nền tảng</div>
+    <div class="stat-num">50+</div>
+    <div class="stat-label">Huy hiệu hoàn thành</div>
   </div>
 </div>
 
 <!-- FEATURES -->
-<section>
+<section id="features">
   <div class="section-tag">Tính năng</div>
   <div class="section-title">Mọi thứ bạn cần để<br/>dạy và học hiệu quả</div>
   <p class="section-sub">Từ tạo đề thi đến phân tích kết quả — QuizPlatform lo hết để bạn tập trung vào điều quan trọng.</p>
@@ -249,58 +330,205 @@
   <div class="features-grid mt-3">
     <div class="feature-card">
       <div class="feature-icon" style="background:#eff6ff">📝</div>
-      <h3>Soạn đề thi linh hoạt</h3>
-      <p>Câu hỏi đơn và nhiều đáp án, thêm ảnh minh hoạ, giải thích markdown — tất cả trong giao diện kéo thả trực quan.</p>
+      <h3>Wizard soạn đề 4 bước</h3>
+      <p>Nhập thông tin → Import JSON hàng loạt → Review &amp; sửa câu hỏi → Xác nhận lưu. Tiết kiệm 80% thời gian soạn bài.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:#f5f3ff">🗂️</div>
+      <h3>Bộ đề &amp; Huy hiệu</h3>
+      <p>Teacher tạo bộ đề nhóm nhiều đề thi. Student hoàn thành toàn bộ → tự động nhận huy hiệu. Tạo động lực học liên tục.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:#fefce8">💳</div>
+      <h3>Hệ thống Credit</h3>
+      <p>Kiểm soát quyền truy cập bằng credit. Student mua credit để làm bài, hoặc nâng cấp lên Teacher. Admin cấu hình toàn bộ.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:#fdf4ff">📤</div>
+      <h3>Import câu hỏi từ JSON</h3>
+      <p>Soạn câu hỏi ngoài rồi import một lần với file JSON chuẩn. Hỗ trợ đơn và nhiều đáp án, điểm, giải thích markdown.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon" style="background:#f0fdf4">⏱</div>
-      <h3>Đồng hồ đếm ngược & lưu tiến độ</h3>
-      <p>Thi có giới hạn thời gian. Nếu lỡ đóng tab, bài thi tự động khôi phục từ lúc dừng — không mất dữ liệu.</p>
+      <h3>Đồng hồ &amp; Lưu tiến độ</h3>
+      <p>Thi có giới hạn thời gian. Lỡ đóng tab bài thi tự động khôi phục — không mất câu trả lời, không mất thời gian còn lại.</p>
     </div>
     <div class="feature-card">
-      <div class="feature-icon" style="background:#fefce8">📊</div>
+      <div class="feature-icon" style="background:#fff7ed">📊</div>
       <h3>Kết quả chi tiết tức thì</h3>
-      <p>Điểm số, tỷ lệ đúng, phân tích từng câu, và giải thích đáp án — ngay sau khi nộp bài.</p>
+      <p>Điểm số, tỷ lệ đúng, phân tích từng câu và giải thích đáp án markdown — hiển thị ngay sau khi nộp bài.</p>
     </div>
     <div class="feature-card">
-      <div class="feature-icon" style="background:#fff7ed">🔐</div>
+      <div class="feature-icon" style="background:#fef2f2">🖼</div>
+      <h3>Ảnh bìa &amp; ảnh minh hoạ</h3>
+      <p>Ảnh bìa đề thi, ảnh từng câu hỏi, avatar giáo viên — tất cả upload lên cloud, tải nhanh toàn cầu.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:#eff6ff">🔐</div>
       <h3>Phân quyền 3 cấp</h3>
-      <p>Admin, Giáo viên, Học sinh — mỗi vai trò có đúng quyền hạn cần thiết, không hơn không kém.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon" style="background:#fdf4ff">🖼</div>
-      <h3>Upload ảnh cho đề thi</h3>
-      <p>Ảnh bìa đề, ảnh minh hoạ từng câu hỏi, ảnh đại diện giáo viên — tất cả lưu trên cloud, tải nhanh toàn cầu.</p>
+      <p>Admin, Giáo viên, Học sinh — mỗi vai trò có đúng quyền hạn cần thiết. Bảo mật CASL trên toàn backend.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon" style="background:#f0fdf4">🔁</div>
-      <h3>Chế độ thi thực hành</h3>
-      <p>Giáo viên chọn "Thực hành" để học viên luyện tập không giới hạn lần thi, hoặc "Chính thức" chỉ được thi một lần.</p>
+      <h3>Chế độ thi linh hoạt</h3>
+      <p>Chính thức (1 lần thi) hoặc Thực hành (làm lại không giới hạn). Teacher chọn mode khi tạo đề.</p>
     </div>
   </div>
 </section>
 
+<hr class="divider" />
+
+<!-- SHOWCASE: Collections & Badges -->
+<section>
+  <div class="showcase">
+    <div class="showcase-text">
+      <div class="section-tag">Bộ đề &amp; Huy hiệu</div>
+      <div class="section-title">Tạo lộ trình học,<br/>trao phần thưởng xứng đáng</div>
+      <p>Teacher nhóm nhiều đề thi vào một <strong>bộ đề</strong> có chủ đề chung — ví dụ "AWS SAA Full Practice" gồm 3 đề. Khi student vượt qua tất cả, hệ thống <strong>tự động trao huy hiệu</strong> vào profile.</p>
+      <ul class="check-list">
+        <li><span class="ck">✓</span> Chọn từ 50 huy hiệu preset sẵn có hoặc tải lên ảnh tùy chỉnh</li>
+        <li><span class="ck">✓</span> Huy hiệu hiển thị nổi bật trên trang profile của student</li>
+        <li><span class="ck">✓</span> Tạo động lực hoàn thành toàn bộ lộ trình học</li>
+        <li><span class="ck">✓</span> Admin theo dõi số huy hiệu đã trao theo từng bộ đề</li>
+      </ul>
+    </div>
+    <div>
+      <div class="badge-preview-card">
+        <h4>🗂️ Bộ đề — AWS Complete Roadmap</h4>
+        <div class="badge-grid">
+          <div class="badge-item earned" title="Đã nhận">🏆</div>
+          <div class="badge-item earned" title="Đã nhận">⭐</div>
+          <div class="badge-item earned" title="Đã nhận">🎯</div>
+          <div class="badge-item locked" title="Chưa đạt">🔥</div>
+          <div class="badge-item locked" title="Chưa đạt">💎</div>
+        </div>
+        <div class="collection-progress">
+          <div class="coll-icon">📚</div>
+          <div class="coll-info">
+            <div class="coll-name">AWS Solutions Architect Series</div>
+            <div class="coll-bar-wrap"><div class="coll-bar"></div></div>
+            <div class="coll-label">Hoàn thành 2 / 3 đề thi · Còn 1 đề để nhận huy hiệu</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- SHOWCASE: Credit system -->
+<section>
+  <div class="showcase reverse">
+    <div class="showcase-text">
+      <div class="section-tag">Hệ thống Credit</div>
+      <div class="section-title">Kiểm soát truy cập<br/>linh hoạt bằng credit</div>
+      <p>Mỗi bài thi có mức credit riêng do giáo viên đặt. Student nhận credit khi đăng ký, có thể mua thêm hoặc <strong>nâng cấp lên Teacher</strong> bằng credit tích lũy.</p>
+      <ul class="check-list">
+        <li><span class="ck">✓</span> Tự động trừ credit khi bắt đầu làm bài (atomic — không bị double-charge)</li>
+        <li><span class="ck">✓</span> Admin cấu hình credit mặc định, chi phí nâng cấp Teacher</li>
+        <li><span class="ck">✓</span> Student thấy số dư và cảnh báo nếu không đủ trước khi thi</li>
+        <li><span class="ck">✓</span> Nâng cấp lên Teacher ngay trong trang profile</li>
+      </ul>
+    </div>
+    <div>
+      <div class="credit-card">
+        <div class="credit-header">
+          <h4>💳 Số dư Credit của bạn</h4>
+          <span style="font-size:.75rem;font-weight:700;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:99px;padding:.15rem .6rem">Đang học</span>
+        </div>
+        <div class="credit-balance">85 <small>credit</small></div>
+        <p style="font-size:.8rem;color:var(--muted);margin:.4rem 0 1rem">Cập nhật lần cuối: hôm nay</p>
+        <div class="credit-exam-list">
+          <div class="credit-exam-row">
+            <span class="credit-exam-title">AWS SAA Practice Set 1</span>
+            <span class="credit-cost-tag">💳 10</span>
+          </div>
+          <div class="credit-exam-row">
+            <span class="credit-exam-title">AWS Developer Associate</span>
+            <span class="credit-cost-tag">💳 15</span>
+          </div>
+          <div class="credit-exam-row">
+            <span class="credit-exam-title">Kubernetes CKA Full Mock</span>
+            <span class="credit-cost-tag">💳 20</span>
+          </div>
+        </div>
+        <button class="credit-cta">Bắt đầu làm bài →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- SHOWCASE: JSON Import -->
+<section>
+  <div class="showcase">
+    <div class="showcase-text">
+      <div class="section-tag">Import hàng loạt</div>
+      <div class="section-title">Soạn câu hỏi ở đâu,<br/>import vào trong 1 giây</div>
+      <p>Chuẩn bị sẵn ngân hàng câu hỏi trong Excel/Notion rồi export ra JSON. Kéo thả file vào Bước 2 của wizard — hệ thống tự parse, validate và điền sẵn toàn bộ câu hỏi.</p>
+      <ul class="check-list">
+        <li><span class="ck">✓</span> Hỗ trợ câu đơn và câu nhiều đáp án đúng</li>
+        <li><span class="ck">✓</span> Giải thích đáp án dạng Markdown</li>
+        <li><span class="ck">✓</span> Preview số câu import được, hiện chi tiết lỗi từng câu</li>
+        <li><span class="ck">✓</span> Tải file mẫu JSON ngay trong giao diện</li>
+      </ul>
+    </div>
+    <div>
+      <div class="import-card">
+        <h4>📄 question-template.json</h4>
+        <div class="code-block"><span class="code-kw">{</span>
+  <span class="code-key">"questions"</span>: [
+    <span class="code-kw">{</span>
+      <span class="code-key">"content"</span>: <span class="code-str">"AWS S3 là viết tắt của?"</span>,
+      <span class="code-key">"type"</span>: <span class="code-str">"single"</span>,
+      <span class="code-key">"options"</span>: [
+        <span class="code-kw">{</span> <span class="code-key">"key"</span>: <span class="code-str">"A"</span>, <span class="code-key">"text"</span>: <span class="code-str">"Simple Storage"</span> <span class="code-kw">}</span>,
+        <span class="code-kw">{</span> <span class="code-key">"key"</span>: <span class="code-str">"B"</span>, <span class="code-key">"text"</span>: <span class="code-str">"Secure Storage"</span> <span class="code-kw">}</span>
+      ],
+      <span class="code-key">"correct_answer"</span>: <span class="code-str">"A"</span>,
+      <span class="code-key">"points"</span>: <span class="code-num">1</span>
+    <span class="code-kw">}</span>
+  ]
+<span class="code-kw">}</span></div>
+        <div class="import-result">
+          <span class="import-result-icon">✅</span>
+          <span class="import-result-text">Đọc được 45 câu hỏi hợp lệ — Sẵn sàng import</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
 <!-- HOW IT WORKS -->
-<section style="padding-top:0">
+<section id="how" style="padding-top:5rem">
   <div class="section-tag">Cách hoạt động</div>
-  <div class="section-title">Lên bài thi trong 3 bước</div>
+  <div class="section-title">Lên bài thi hoàn chỉnh<br/>trong 4 bước</div>
 
   <div class="steps-wrap mt-3">
     <div class="steps">
       <div class="step">
         <div class="step-num">01</div>
-        <h3>Giáo viên tạo đề</h3>
-        <p>Soạn câu hỏi, thêm ảnh, đặt thời gian và điểm chuẩn. Lưu nháp hoặc xuất bản ngay.</p>
+        <h3>Nhập thông tin đề thi</h3>
+        <p>Tiêu đề, ảnh bìa, thời gian, điểm đạt, tags, credit cost — đầy đủ trong một form gọn gàng.</p>
       </div>
       <div class="step">
         <div class="step-num">02</div>
-        <h3>Học viên làm bài</h3>
-        <p>Truy cập đề thi, làm với đồng hồ đếm ngược, nộp bài khi hoàn thành hoặc hết giờ.</p>
+        <h3>Import câu hỏi từ JSON</h3>
+        <p>Kéo thả file JSON hoặc nhập tay. Import 45 câu hỏi trong vài giây thay vì vài tiếng.</p>
       </div>
       <div class="step">
         <div class="step-num">03</div>
-        <h3>Xem kết quả ngay</h3>
-        <p>Điểm số, đáp án đúng và giải thích chi tiết hiển thị tức thì sau khi nộp bài.</p>
+        <h3>Review &amp; chỉnh sửa</h3>
+        <p>Sửa nội dung, thêm ảnh minh hoạ, đặt điểm riêng từng câu, thêm giải thích Markdown.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <h3>Xem lại &amp; Xuất bản</h3>
+        <p>Preview toàn bộ đề thi, xác nhận và lưu. Học viên thi ngay sau khi teacher xuất bản.</p>
       </div>
     </div>
   </div>
@@ -316,11 +544,12 @@
       <div class="role-label">Dành cho Giáo viên</div>
       <h3>Quản lý lớp học dễ dàng hơn</h3>
       <ul class="role-ul">
-        <li><span class="check">✓</span> Tạo đề thi nhiều loại câu hỏi</li>
-        <li><span class="check">✓</span> Thêm ảnh bìa & ảnh minh hoạ từng câu</li>
+        <li><span class="check">✓</span> Soạn đề thi wizard 4 bước, import hàng loạt từ JSON</li>
+        <li><span class="check">✓</span> Tạo bộ đề theo lộ trình, trao huy hiệu cho student xuất sắc</li>
+        <li><span class="check">✓</span> Thêm ảnh bìa &amp; ảnh minh hoạ từng câu hỏi</li>
+        <li><span class="check">✓</span> Đặt credit cost riêng cho mỗi đề thi</li>
         <li><span class="check">✓</span> Xuất bản hoặc giữ nháp linh hoạt</li>
         <li><span class="check">✓</span> Xem toàn bộ lịch sử nộp bài của học viên</li>
-        <li><span class="check">✓</span> Phân tích kết quả theo từng đề thi</li>
       </ul>
       <a href="https://quiz.phutx.top/register" class="role-cta">Đăng ký tài khoản Giáo viên →</a>
     </div>
@@ -331,21 +560,55 @@
       <ul class="role-ul">
         <li><span class="check">✓</span> Thi mọi lúc mọi nơi, chỉ cần trình duyệt</li>
         <li><span class="check">✓</span> Tiến độ tự động lưu nếu lỡ đóng tab</li>
-        <li><span class="check">✓</span> Xem kết quả và giải thích ngay sau nộp</li>
-        <li><span class="check">✓</span> Theo dõi lịch sử điểm số theo thời gian</li>
-        <li><span class="check">✓</span> Luyện lại không giới hạn với chế độ thực hành</li>
+        <li><span class="check">✓</span> Xem kết quả và giải thích Markdown ngay sau nộp</li>
+        <li><span class="check">✓</span> Nhận huy hiệu khi hoàn thành cả bộ đề</li>
+        <li><span class="check">✓</span> Theo dõi số dư credit và lịch sử điểm số</li>
+        <li><span class="check">✓</span> Nâng cấp lên Teacher bằng credit tích lũy</li>
       </ul>
       <a href="https://quiz.phutx.top/register" class="role-cta">Đăng ký tài khoản Học sinh →</a>
     </div>
   </div>
 </section>
 
+<!-- FAQ -->
+<section id="faq" style="padding-top:0">
+  <div class="section-tag">FAQ</div>
+  <div class="section-title text-center">Câu hỏi thường gặp</div>
+
+  <div class="faq-grid">
+    <div class="faq-item">
+      <h4>Đăng ký mất phí không?</h4>
+      <p>Hoàn toàn miễn phí. Bạn nhận ngay 20 credit khi đăng ký, đủ để làm nhiều bài thi ngay lập tức.</p>
+    </div>
+    <div class="faq-item">
+      <h4>Credit là gì? Mua ở đâu?</h4>
+      <p>Credit là đơn vị truy cập bài thi. Bạn nhận credit khi đăng ký; admin có thể tặng thêm. Hệ thống do admin cấu hình linh hoạt.</p>
+    </div>
+    <div class="faq-item">
+      <h4>Tôi có thể làm giáo viên không?</h4>
+      <p>Có. Đăng ký tài khoản Teacher ngay lúc đầu, hoặc Student dùng credit tích lũy để nâng cấp lên Teacher trong trang profile.</p>
+    </div>
+    <div class="faq-item">
+      <h4>Dữ liệu lưu ở đâu?</h4>
+      <p>PostgreSQL trên server riêng. Ảnh upload lên AWS S3 / Lightsail Object Storage. Không dùng dịch vụ bên thứ ba cho dữ liệu học tập.</p>
+    </div>
+    <div class="faq-item">
+      <h4>Hỗ trợ đăng nhập bằng Google không?</h4>
+      <p>Có. Ngoài email/mật khẩu, hệ thống hỗ trợ đăng nhập Google OAuth một chạm, không cần nhớ thêm mật khẩu.</p>
+    </div>
+    <div class="faq-item">
+      <h4>Câu hỏi nhiều đáp án có hỗ trợ không?</h4>
+      <p>Có đầy đủ. Câu đơn và câu nhiều đáp án đúng, điểm riêng từng câu, giải thích Markdown, và ảnh minh hoạ.</p>
+    </div>
+  </div>
+</section>
+
 <!-- CTA HIGHLIGHT -->
 <div class="highlight">
-  <h2>Sẵn sàng nâng cấp cách dạy và học của bạn?</h2>
-  <p>Miễn phí để bắt đầu. Không cần thẻ tín dụng. Chạy ngay trong vài giây.</p>
+  <h2>Sẵn sàng nâng cấp cách<br/>dạy và học của bạn?</h2>
+  <p>Miễn phí để bắt đầu. Không cần thẻ tín dụng. Đăng ký và thi thử ngay trong vài giây.</p>
   <div class="highlight-actions">
-    <a href="https://quiz.phutx.top/register" class="btn-white">Tạo tài khoản miễn phí</a>
+    <a href="https://quiz.phutx.top/register" class="btn-white">Tạo tài khoản miễn phí →</a>
     <a href="https://quiz.phutx.top/login" class="btn-outline-white">Đăng nhập</a>
   </div>
 </div>
@@ -364,6 +627,8 @@
     </a>
     <span class="footer-divider">·</span>
     <a href="https://quiz.phutx.top" target="_blank" rel="noopener">quiz.phutx.top</a>
+    <span class="footer-divider">·</span>
+    <a href="https://quiz.phutx.top/register" target="_blank" rel="noopener">Đăng ký miễn phí</a>
   </div>
   <p>© 2026 <strong>QuizPlatform</strong> · Built by <strong>Trần Phú</strong></p>
 </footer>
