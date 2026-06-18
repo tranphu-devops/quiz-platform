@@ -87,7 +87,9 @@ export default async function submissionRoutes(fastify) {
         return reply.status(402).send({ error: err.error, credit_cost: creditCost, statusCode: 402 })
       }
       if (!deductRes.ok) {
-        return reply.status(500).send({ error: 'Credit service error', statusCode: 500 })
+        const rawBody = await deductRes.text().catch(() => '')
+        fastify.log.error({ status: deductRes.status, body: rawBody }, 'user-service credit deduct failed')
+        return reply.status(500).send({ error: 'Credit service error', detail: deductRes.status, statusCode: 500 })
       }
 
       const { new_balance } = await deductRes.json()
