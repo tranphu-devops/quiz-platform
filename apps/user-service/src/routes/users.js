@@ -166,7 +166,7 @@ export default async function userRoutes(fastify) {
     if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     const { id } = req.params
     const { role } = req.body ?? {}
-    if (!['admin', 'teacher', 'student'].includes(role))
+    if (!['admin', 'teacher', 'student', 'banned'].includes(role))
       return reply.status(400).send({ error: 'Invalid role', statusCode: 400 })
     await pool.query(
       `UPDATE auth.users SET raw_user_meta_data = raw_user_meta_data || $1::jsonb WHERE id = $2`,
