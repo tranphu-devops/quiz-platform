@@ -11,13 +11,26 @@
 
   $effect(() => {
     const u = $user
-    if (u?.id) {
-      userApi.getProfile(u.id).then(r => r.ok ? r.json() : null).then(p => {
+    const s = $session
+    if (!u?.id) { avatarUrl = null; return }
+
+    userApi.getProfile(u.id).then(async (r) => {
+      if (r.ok) {
+        const p = await r.json()
         avatarUrl = p?.avatar_url ?? null
-      }).catch(() => {})
-    } else {
-      avatarUrl = null
-    }
+      } else if (r.status === 404) {
+        // New user — auto-create profile with Google metadata if available
+        const meta = s?.user?.user_metadata ?? {}
+        const res = await userApi.updateProfile(u.id, {
+          full_name: meta.full_name ?? meta.name ?? null,
+          avatar_url: meta.avatar_url ?? meta.picture ?? null
+        })
+        if (res.ok) {
+          const p = await res.json()
+          avatarUrl = p?.avatar_url ?? null
+        }
+      }
+    }).catch(() => {})
   })
 
   async function logout() {

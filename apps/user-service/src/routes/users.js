@@ -80,27 +80,24 @@ export default async function userRoutes(fastify) {
 
   fastify.put('/:id', async (req, reply) => {
     const { id } = req.params
-    const { full_name, avatar_url, role } = req.body ?? {}
+    const { full_name, avatar_url } = req.body ?? {}
 
     if (req.user.id !== id && req.user.role !== 'admin') {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
 
-    const newRole = req.user.role === 'admin' ? (role ?? req.user.role) : undefined
-
     try {
       const result = await pool.query(
         `INSERT INTO profiles (id, full_name, avatar_url, role, credits, updated_at)
-         VALUES ($1, $2, $3, $4,
+         VALUES ($1, $2, $3, 'student',
            (SELECT COALESCE(value::int, 20) FROM admin_settings WHERE key = 'default_credits'),
            NOW())
          ON CONFLICT (id) DO UPDATE
          SET full_name = COALESCE(EXCLUDED.full_name, profiles.full_name),
              avatar_url = COALESCE(EXCLUDED.avatar_url, profiles.avatar_url),
-             role = COALESCE(EXCLUDED.role, profiles.role),
              updated_at = NOW()
          RETURNING *`,
-        [id, full_name, avatar_url, newRole ?? req.user.role]
+        [id, full_name ?? null, avatar_url ?? null]
       )
       return result.rows[0]
     } catch (err) {
@@ -169,6 +166,10 @@ export default async function userRoutes(fastify) {
     await pool.query(
       `UPDATE auth.users SET raw_user_meta_data = raw_user_meta_data || $1::jsonb WHERE id = $2`,
       [JSON.stringify({ role }), id]
+    )
+    await pool.query(
+      `UPDATE profiles SET role = $1, updated_at = NOW() WHERE id = $2`,
+      [role, id]
     )
     return { success: true }
   })

@@ -6,6 +6,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] — 2026-06-18 (latest)
 
+### Fixed
+- **Auto-create profile on first login**: Layout tự động gọi `PUT /api/users/:id` khi phát hiện profile chưa tồn tại (GET trả 404). Profile mới được tạo với `role = 'student'` và credits = `default_credits` (mặc định 20). Metadata từ Google OAuth (full_name, avatar_url) được điền tự động nếu có.
+- **Profile upsert hardcode `role = 'student'`** cho INSERT mới; ON CONFLICT chỉ cập nhật `full_name` và `avatar_url`, không bao giờ ghi đè role hiện tại trong bảng profiles
+- **Admin change role**: `PATCH /admin/users/:id/role` nay cập nhật cả bảng `profiles.role` (trước chỉ cập nhật `auth.users.raw_user_meta_data`)
+
 ### Changed
 - **Edit exam page**: Redesign thành wizard 4 bước giống trang create — Thông tin → Import JSON → Câu hỏi → Review & Lưu. Thêm toggle Xuất bản/Nháp nổi bật ở bước 1; step indicator cho phép click để nhảy đến bất kỳ bước nào; question card hiển thị badge "Đã lưu" cho câu hỏi đã có trong DB
 - **Publish logic**: Student chỉ thấy collection có `is_published = true` VÀ có ít nhất 1 exam published. Exam draft (`is_published = false`) bị ẩn hoàn toàn
