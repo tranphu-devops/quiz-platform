@@ -1,10 +1,11 @@
 <script>
-  import { examApi, submissionApi } from '$lib/api'
+  import { examApi, submissionApi, collectionApi } from '$lib/api'
   import { user } from '$lib/stores/auth'
   import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
 
   let exams = $state([])
+  let collections = $state([])
   let latestSub = $state({})
   let loading = $state(true)
   let error = $state('')
@@ -12,9 +13,13 @@
   onMount(async () => {
     if (!$user) { goto('/login'); return }
     try {
-      const res = await examApi.list()
-      if (!res.ok) { error = 'Không thể tải danh sách đề thi'; return }
-      exams = await res.json()
+      const [examRes, colRes] = await Promise.all([
+        examApi.list(),
+        collectionApi.list()
+      ])
+      if (!examRes.ok) { error = 'Không thể tải danh sách đề thi'; return }
+      exams = await examRes.json()
+      if (colRes.ok) collections = await colRes.json()
 
       if ($user.role === 'student') {
         const subRes = await submissionApi.list()
@@ -59,6 +64,12 @@
     return parts.join(' · ')
   }
 
+  function passRate(exam) {
+    const total = exam.submission_count ?? 0
+    if (total === 0) return null
+    return Math.round(((exam.pass_count ?? 0) / total) * 100)
+  }
+
   async function deleteExam(id) {
     if (!confirm('Xoá đề thi này?')) return
     await examApi.remove(id)
@@ -77,6 +88,14 @@
     const i = (title ?? '').charCodeAt(0) % GRADIENTS.length
     return GRADIENTS[i]
   }
+
+  // For student: filter exams that are part of a published collection
+  // (we still show individual exams regardless; collections shown separately)
+  let visibleCollections = $derived(
+    $user?.role === 'student'
+      ? collections.filter(c => c.is_published && Array.isArray(c.exams) && c.exams.length > 0)
+      : collections
+  )
 </script>
 
 <style>
@@ -102,7 +121,57 @@
   }
   .btn-create:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99,102,241,0.45); }
 
-  /* Grid */
+  /* Section heading */
+  .section-heading {
+    font-size: 1rem; font-weight: 800; margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 0.6rem; color: var(--text);
+  }
+  .section-heading .count-pill {
+    font-size: 0.72rem; font-weight: 700;
+    background: var(--primary-light); color: var(--primary);
+    padding: 0.1rem 0.5rem; border-radius: 99px;
+  }
+
+  /* ── Collections grid ──────────────────────────────────────────────────────── */
+  .col-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem;
+    margin-bottom: 2.5rem;
+  }
+  @media (max-width: 700px) { .col-grid { grid-template-columns: 1fr; } }
+
+  .col-card {
+    background: var(--surface); border-radius: var(--radius-card);
+    border: 1px solid var(--border); padding: 1.25rem;
+    box-shadow: var(--shadow); transition: all 0.2s;
+    display: flex; flex-direction: column; gap: 0.85rem;
+  }
+  .col-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); border-color: #c4b5fd; }
+
+  .col-head { display: flex; align-items: flex-start; gap: 0.85rem; }
+  .col-badge-img { width: 52px; height: 52px; border-radius: 12px; object-fit: cover; flex-shrink: 0; border: 2px solid rgba(99,102,241,0.15); }
+  .col-badge-placeholder { width: 52px; height: 52px; border-radius: 12px; flex-shrink: 0; background: linear-gradient(135deg, var(--primary), var(--accent)); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+  .col-meta { flex: 1; min-width: 0; }
+  .col-title { font-size: 1rem; font-weight: 800; margin-bottom: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .col-creator { font-size: 0.75rem; color: var(--muted); }
+  .col-desc { font-size: 0.83rem; color: var(--muted); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+  .col-exams { display: flex; flex-direction: column; gap: 0.35rem; }
+  .col-exam-row {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.4rem 0.7rem; background: var(--bg); border-radius: 8px;
+    border: 1px solid var(--border); text-decoration: none;
+    transition: border-color 0.15s;
+  }
+  .col-exam-row:hover { border-color: var(--primary); }
+  .col-exam-icon { font-size: 0.85rem; flex-shrink: 0; }
+  .col-exam-title { font-size: 0.82rem; font-weight: 600; color: var(--text); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .col-exam-arrow { font-size: 0.75rem; color: var(--muted); flex-shrink: 0; }
+  .col-more { font-size: 0.78rem; color: var(--muted); padding-left: 0.5rem; }
+
+  .col-footer { display: flex; align-items: center; justify-content: space-between; font-size: 0.78rem; color: var(--muted); }
+  .col-badge-label { display: flex; align-items: center; gap: 0.3rem; color: var(--primary); font-weight: 600; }
+
+  /* ── Exam grid ─────────────────────────────────────────────────────────────── */
   .grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -111,7 +180,6 @@
   @media (max-width: 860px) { .grid { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
 
-  /* Card */
   .card {
     background: var(--surface); border-radius: var(--radius-card);
     overflow: hidden; display: flex; flex-direction: column;
@@ -125,7 +193,6 @@
     border-color: #c4b5fd;
   }
 
-  /* Cover */
   .cover-wrap {
     position: relative; width: 100%; aspect-ratio: 16/9;
     overflow: hidden; flex-shrink: 0;
@@ -144,7 +211,6 @@
   }
   .card:hover .cover-overlay { opacity: 1; }
 
-  /* Badge */
   .badge {
     position: absolute; top: 0.65rem; left: 0.65rem;
     padding: 0.2rem 0.6rem; border-radius: 99px;
@@ -157,7 +223,6 @@
   .badge.draft    { background: rgba(255,255,255,0.85); color: #92400e; }
   .badge.new      { display: none; }
 
-  /* Body */
   .card-body { padding: 1rem 1.1rem; flex: 1; display: flex; flex-direction: column; gap: 0.4rem; }
   .card-title {
     font-size: 0.98rem; font-weight: 700; line-height: 1.4; color: var(--text);
@@ -168,15 +233,18 @@
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     min-height: 2.4em;
   }
-  .card-meta { font-size: 0.77rem; color: #a0aec0; margin-top: auto; padding-top: 0.35rem; }
-  .tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.4rem; }
+  .card-meta { font-size: 0.77rem; color: #a0aec0; }
+  .card-creator { font-size: 0.75rem; color: var(--muted); display: flex; align-items: center; gap: 0.25rem; margin-top: 0.1rem; }
+  .card-stats { font-size: 0.75rem; color: var(--muted); display: flex; align-items: center; gap: 0.5rem; margin-top: auto; padding-top: 0.4rem; }
+  .stat-pill { background: var(--bg); border: 1px solid var(--border); border-radius: 99px; padding: 0.1rem 0.5rem; font-size: 0.72rem; font-weight: 600; color: var(--text); }
+  .stat-pill.pass { color: #15803d; background: #f0fdf4; border-color: #bbf7d0; }
+  .tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.3rem; }
   .tag {
     background: var(--primary-light); color: var(--primary);
     border-radius: 99px; padding: 0.1rem 0.55rem;
     font-size: 0.7rem; font-weight: 600;
   }
 
-  /* Footer */
   .card-footer {
     padding: 0.75rem 1.1rem; border-top: 1px solid var(--border);
     display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
@@ -197,40 +265,24 @@
     font-size: 0.8rem; font-weight: 600; cursor: pointer;
     text-decoration: none; border: none; transition: all 0.15s;
   }
-  .btn-primary {
-    background: var(--primary); color: white;
-    box-shadow: 0 2px 8px rgba(99,102,241,0.3);
-  }
+  .btn-primary { background: var(--primary); color: white; box-shadow: 0 2px 8px rgba(99,102,241,0.3); }
   .btn-primary:hover { background: var(--primary-dark); }
   .btn-ghost { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
   .btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
   .btn-danger { background: #fee2e2; color: var(--danger); border: 1px solid #fecaca; }
   .btn-danger:hover { background: #fecaca; }
 
-  /* States */
-  .loading-grid {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;
-  }
+  /* Loading */
+  .loading-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
   @media (max-width: 860px) { .loading-grid { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 520px) { .loading-grid { grid-template-columns: 1fr; } }
-  .skeleton-card {
-    background: var(--surface); border-radius: var(--radius-card);
-    border: 1px solid var(--border); overflow: hidden;
-  }
+  .skeleton-card { background: var(--surface); border-radius: var(--radius-card); border: 1px solid var(--border); overflow: hidden; }
   .skeleton-cover { aspect-ratio: 16/9; background: linear-gradient(90deg,#f0eeff,#e9e4ff,#f0eeff); background-size: 200%; animation: shimmer 1.5s infinite; }
   .skeleton-body { padding: 1rem; display: flex; flex-direction: column; gap: 0.6rem; }
-  .skeleton-line {
-    height: 12px; border-radius: 6px;
-    background: linear-gradient(90deg,#f0eeff,#e9e4ff,#f0eeff);
-    background-size: 200%; animation: shimmer 1.5s infinite;
-  }
+  .skeleton-line { height: 12px; border-radius: 6px; background: linear-gradient(90deg,#f0eeff,#e9e4ff,#f0eeff); background-size: 200%; animation: shimmer 1.5s infinite; }
   @keyframes shimmer { 0%{background-position:200%} 100%{background-position:-200%} }
 
-  .empty {
-    text-align: center; padding: 4rem 2rem;
-    background: var(--surface); border-radius: var(--radius-card);
-    border: 1px solid var(--border);
-  }
+  .empty { text-align: center; padding: 4rem 2rem; background: var(--surface); border-radius: var(--radius-card); border: 1px solid var(--border); }
   .empty-icon { font-size: 3rem; margin-bottom: 1rem; }
   .empty h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.4rem; }
   .empty p { color: var(--muted); font-size: 0.9rem; }
@@ -261,72 +313,150 @@
   </div>
 {:else if error}
   <p class="error">{error}</p>
-{:else if exams.length === 0}
-  <div class="empty">
-    <div class="empty-icon">📋</div>
-    <h3>Chưa có đề thi nào</h3>
-    <p>
-      {#if $user?.role !== 'student'}
-        Nhấn <strong>Tạo đề thi</strong> để bắt đầu.
-      {:else}
-        Hiện chưa có đề thi nào được xuất bản.
-      {/if}
-    </p>
-  </div>
 {:else}
-  <div class="grid">
-    {#each exams as exam}
-      {@const st = statusOf(exam)}
-      {@const sub = latestSub[exam.id]}
-      {@const pct = sub?.percentage ?? 0}
-      <div class="card">
-        <div class="cover-wrap">
-          {#if exam.cover_image_url}
-            <img src={exam.cover_image_url} alt={exam.title} />
-          {:else}
-            <div class="cover-placeholder" style="background:{gradientFor(exam.title)}">{initial(exam.title)}</div>
-          {/if}
-          <div class="cover-overlay"></div>
-          {#if st !== 'new'}
-            <span class="badge {st}">
-              {st === 'passed' ? '✓ Đã pass' : st === 'failed' ? '✗ Chưa đạt' : st === 'published' ? '✓ Xuất bản' : 'Nháp'}
-            </span>
-          {/if}
-        </div>
 
-        <div class="card-body">
-          <div class="card-title">{exam.title}</div>
-          <div class="card-desc">{exam.description ?? 'Không có mô tả'}</div>
-          <div class="card-meta">{fmtMeta(exam)}</div>
-          {#if exam.tags?.length}
-            <div class="tags">
-              {#each exam.tags.slice(0, 3) as tag}
-                <span class="tag">{tag}</span>
+  <!-- ── Collections section ───────────────────────────────────────────────── -->
+  {#if visibleCollections.length > 0}
+    <div class="section-heading">
+      🗂️ Bộ đề
+      <span class="count-pill">{visibleCollections.length}</span>
+    </div>
+    <div class="col-grid">
+      {#each visibleCollections as col}
+        {@const colExams = Array.isArray(col.exams) ? col.exams : []}
+        <div class="col-card">
+          <div class="col-head">
+            {#if col.badge_image_url}
+              <img src={col.badge_image_url} alt="" class="col-badge-img" />
+            {:else}
+              <div class="col-badge-placeholder">🏆</div>
+            {/if}
+            <div class="col-meta">
+              <div class="col-title">{col.title}</div>
+              <div class="col-creator">by {col.creator_name ?? 'Unknown'}</div>
+            </div>
+          </div>
+
+          {#if col.description}
+            <div class="col-desc">{col.description}</div>
+          {/if}
+
+          {#if colExams.length > 0}
+            <div class="col-exams">
+              {#each colExams.slice(0, 3) as e}
+                <a href="/exams/{e.id}" class="col-exam-row">
+                  <span class="col-exam-icon">📝</span>
+                  <span class="col-exam-title">{e.title}</span>
+                  <span class="col-exam-arrow">→</span>
+                </a>
               {/each}
+              {#if colExams.length > 3}
+                <span class="col-more">+{colExams.length - 3} đề thi khác</span>
+              {/if}
             </div>
           {/if}
-        </div>
 
-        <div class="card-footer">
-          <div class="score-wrap">
-            {#if sub}
-              <span class="score-text {isPassed(exam) ? 'passed' : 'failed'}">
-                {isPassed(exam) ? '✓' : '✗'} {pct.toFixed(0)}%
+          <div class="col-footer">
+            <span>{colExams.length} đề thi</span>
+            {#if col.badge_image_url}
+              <span class="col-badge-label">🏅 Nhận huy hiệu khi hoàn thành</span>
+            {/if}
+          </div>
+        </div>
+      {/each}
+    </div>
+  {/if}
+
+  <!-- ── Exams section ─────────────────────────────────────────────────────── -->
+  {#if visibleCollections.length > 0}
+    <div class="section-heading" style="margin-top:0.5rem">
+      📋 Đề thi
+      <span class="count-pill">{exams.length}</span>
+    </div>
+  {/if}
+
+  {#if exams.length === 0}
+    <div class="empty">
+      <div class="empty-icon">📋</div>
+      <h3>Chưa có đề thi nào</h3>
+      <p>
+        {#if $user?.role !== 'student'}
+          Nhấn <strong>Tạo đề thi</strong> để bắt đầu.
+        {:else}
+          Hiện chưa có đề thi nào được xuất bản.
+        {/if}
+      </p>
+    </div>
+  {:else}
+    <div class="grid">
+      {#each exams as exam}
+        {@const st = statusOf(exam)}
+        {@const sub = latestSub[exam.id]}
+        {@const pct = sub?.percentage ?? 0}
+        {@const rate = passRate(exam)}
+        <div class="card">
+          <div class="cover-wrap">
+            {#if exam.cover_image_url}
+              <img src={exam.cover_image_url} alt={exam.title} />
+            {:else}
+              <div class="cover-placeholder" style="background:{gradientFor(exam.title)}">{initial(exam.title)}</div>
+            {/if}
+            <div class="cover-overlay"></div>
+            {#if st !== 'new'}
+              <span class="badge {st}">
+                {st === 'passed' ? '✓ Đã pass' : st === 'failed' ? '✗ Chưa đạt' : st === 'published' ? '✓ Xuất bản' : 'Nháp'}
               </span>
-              <div class="score-bar">
-                <div class="score-bar-fill {isPassed(exam) ? 'passed' : 'failed'}" style="width:{pct}%"></div>
+            {/if}
+          </div>
+
+          <div class="card-body">
+            <div class="card-title">{exam.title}</div>
+            <div class="card-desc">{exam.description ?? 'Không có mô tả'}</div>
+            <div class="card-meta">{fmtMeta(exam)}</div>
+            {#if exam.creator_name}
+              <div class="card-creator">👤 {exam.creator_name}</div>
+            {/if}
+            {#if exam.tags?.length}
+              <div class="tags">
+                {#each exam.tags.slice(0, 3) as tag}
+                  <span class="tag">{tag}</span>
+                {/each}
               </div>
             {/if}
+            <div class="card-stats">
+              {#if (exam.submission_count ?? 0) > 0}
+                <span class="stat-pill">👥 {exam.submission_count} lượt thi</span>
+                {#if rate !== null}
+                  <span class="stat-pill pass">✓ {rate}% pass</span>
+                {/if}
+              {:else}
+                <span class="stat-pill">Chưa có lượt thi</span>
+              {/if}
+            </div>
           </div>
-          <div class="actions">
-            <a href="/exams/{exam.id}" class="btn btn-primary">Xem</a>
-            {#if $user?.role !== 'student' && (exam.created_by === $user?.id || $user?.role === 'admin')}
-              <a href="/exams/{exam.id}/edit" class="btn btn-ghost">Sửa</a>
-              <button class="btn btn-danger" onclick={() => deleteExam(exam.id)}>Xoá</button>
-            {/if}
+
+          <div class="card-footer">
+            <div class="score-wrap">
+              {#if sub}
+                <span class="score-text {isPassed(exam) ? 'passed' : 'failed'}">
+                  {isPassed(exam) ? '✓' : '✗'} {pct.toFixed(0)}%
+                </span>
+                <div class="score-bar">
+                  <div class="score-bar-fill {isPassed(exam) ? 'passed' : 'failed'}" style="width:{pct}%"></div>
+                </div>
+              {/if}
+            </div>
+            <div class="actions">
+              <a href="/exams/{exam.id}" class="btn btn-primary">Xem</a>
+              {#if $user?.role !== 'student' && (exam.created_by === $user?.id || $user?.role === 'admin')}
+                <a href="/exams/{exam.id}/edit" class="btn btn-ghost">Sửa</a>
+                <button class="btn btn-danger" onclick={() => deleteExam(exam.id)}>Xoá</button>
+              {/if}
+            </div>
           </div>
         </div>
-      </div>
-    {/each}
-  </div>
+      {/each}
+    </div>
+  {/if}
+
 {/if}

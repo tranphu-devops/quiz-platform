@@ -16,36 +16,53 @@ export default async function collectionRoutes(fastify) {
       if (req.user.role === 'admin') {
         const r = await pool.query(`
           SELECT c.*,
+            COALESCE(p.full_name, au.email, 'Unknown') AS creator_name,
             COALESCE(json_agg(json_build_object('id', e.id, 'title', e.title) ORDER BY ce.position)
               FILTER (WHERE e.id IS NOT NULL), '[]') AS exams,
             COUNT(DISTINCT sb.user_id)::int AS badge_count
           FROM collections c
+          LEFT JOIN quiz_users.profiles p ON p.id = c.created_by
+          LEFT JOIN auth.users au ON au.id = c.created_by
           LEFT JOIN collection_exams ce ON ce.collection_id = c.id
           LEFT JOIN exams e ON e.id = ce.exam_id
           LEFT JOIN quiz_submissions.student_badges sb ON sb.collection_id = c.id
-          GROUP BY c.id ORDER BY c.created_at DESC`)
+          GROUP BY c.id, p.full_name, au.email ORDER BY c.created_at DESC`)
         rows = r.rows
       } else if (req.user.role === 'teacher') {
         const r = await pool.query(`
           SELECT c.*,
+            COALESCE(p.full_name, au.email, 'Unknown') AS creator_name,
             COALESCE(json_agg(json_build_object('id', e.id, 'title', e.title) ORDER BY ce.position)
               FILTER (WHERE e.id IS NOT NULL), '[]') AS exams
           FROM collections c
+          LEFT JOIN quiz_users.profiles p ON p.id = c.created_by
+          LEFT JOIN auth.users au ON au.id = c.created_by
           LEFT JOIN collection_exams ce ON ce.collection_id = c.id
           LEFT JOIN exams e ON e.id = ce.exam_id
           WHERE c.created_by = $1
-          GROUP BY c.id ORDER BY c.created_at DESC`, [req.user.id])
+          GROUP BY c.id, p.full_name, au.email ORDER BY c.created_at DESC`, [req.user.id])
         rows = r.rows
       } else {
+        // Student: only published collections that have ≥1 published exam; only show published exams within
         const r = await pool.query(`
           SELECT c.*,
-            COALESCE(json_agg(json_build_object('id', e.id, 'title', e.title) ORDER BY ce.position)
-              FILTER (WHERE e.id IS NOT NULL), '[]') AS exams
+            COALESCE(p.full_name, au.email, 'Unknown') AS creator_name,
+            COALESCE(json_agg(
+              json_build_object(
+                'id', e.id, 'title', e.title, 'time_limit', e.time_limit,
+                'cover_image_url', e.cover_image_url, 'description', e.description,
+                'passing_score', e.passing_score, 'credit_cost', e.credit_cost
+              ) ORDER BY ce.position
+            ) FILTER (WHERE e.id IS NOT NULL AND e.is_published = true), '[]') AS exams
           FROM collections c
+          LEFT JOIN quiz_users.profiles p ON p.id = c.created_by
+          LEFT JOIN auth.users au ON au.id = c.created_by
           LEFT JOIN collection_exams ce ON ce.collection_id = c.id
           LEFT JOIN exams e ON e.id = ce.exam_id
           WHERE c.is_published = true
-          GROUP BY c.id ORDER BY c.created_at DESC`)
+          GROUP BY c.id, p.full_name, au.email
+          HAVING COUNT(DISTINCT e.id) FILTER (WHERE e.is_published = true) > 0
+          ORDER BY c.created_at DESC`)
         rows = r.rows
       }
       return rows

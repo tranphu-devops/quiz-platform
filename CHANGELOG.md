@@ -7,6 +7,15 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] — 2026-06-18 (latest)
 
 ### Changed
+- **Edit exam page**: Redesign thành wizard 4 bước giống trang create — Thông tin → Import JSON → Câu hỏi → Review & Lưu. Thêm toggle Xuất bản/Nháp nổi bật ở bước 1; step indicator cho phép click để nhảy đến bất kỳ bước nào; question card hiển thị badge "Đã lưu" cho câu hỏi đã có trong DB
+- **Publish logic**: Student chỉ thấy collection có `is_published = true` VÀ có ít nhất 1 exam published. Exam draft (`is_published = false`) bị ẩn hoàn toàn
+- **Trang `/exams`**: Thêm section "Bộ đề" hiển thị published collections (danh sách exam bên trong, creator name, huy hiệu); thêm stats trên mỗi exam card: số lượt thi, tỷ lệ pass, tên/email người tạo
+
+### Changed (backend)
+- `GET /api/exams/exams`: Thêm `creator_name`, `submission_count`, `pass_count` vào response (JOIN với `quiz_users.profiles`, `auth.users`, `quiz_submissions.submissions`)
+- `GET /api/exams/collections` (student view): Filter `HAVING COUNT published exams > 0`; chỉ include published exams trong `exams` array; thêm `creator_name`; teacher/admin views cũng nhận `creator_name`
+
+### Changed
 - **Landing page** (`landing/index.html`): Cập nhật toàn diện — thêm 3 showcase section (Bộ đề & Huy hiệu, Credit system, JSON Import) với mockup UI minh hoạ; mở rộng features grid lên 9 tính năng; thêm section FAQ 6 câu; cập nhật "Cách hoạt động" 4 bước; nav bar thêm anchor links; Inter font; gradient indigo/violet nhất quán
 - **Trang tạo đề thi redesign**: Wizard 4 bước — (1) Thông tin cơ bản → (2) Import JSON → (3) Sửa câu hỏi → (4) Review & Lưu. Step indicator có thể click để quay lại bước trước.
 

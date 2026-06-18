@@ -61,18 +61,29 @@ export default async function examRoutes(fastify) {
   // GET /exams
   fastify.get('/exams', async (req, reply) => {
     try {
-      let query, params = []
+      const base = `
+        SELECT e.*,
+          COALESCE(p.full_name, au.email, 'Unknown') AS creator_name,
+          COUNT(DISTINCT s.id)::int AS submission_count,
+          COUNT(DISTINCT s.id) FILTER (
+            WHERE e.passing_score IS NULL OR s.percentage >= e.passing_score
+          )::int AS pass_count
+        FROM exams e
+        LEFT JOIN quiz_users.profiles p ON p.id = e.created_by
+        LEFT JOIN auth.users au ON au.id = e.created_by
+        LEFT JOIN quiz_submissions.submissions s ON s.exam_id = e.id
+      `
+      const group = 'GROUP BY e.id, p.full_name, au.email ORDER BY e.created_at DESC'
+      let where = '', params = []
 
       if (req.user.role === 'student') {
-        query = 'SELECT * FROM exams WHERE is_published = true ORDER BY created_at DESC'
+        where = 'WHERE e.is_published = true'
       } else if (req.user.role === 'teacher') {
-        query = 'SELECT * FROM exams WHERE created_by = $1 ORDER BY created_at DESC'
+        where = 'WHERE e.created_by = $1'
         params = [req.user.id]
-      } else {
-        query = 'SELECT * FROM exams ORDER BY created_at DESC'
       }
 
-      const result = await pool.query(query, params)
+      const result = await pool.query(`${base} ${where} ${group}`, params)
       return result.rows
     } catch (err) {
       fastify.log.error(err)
