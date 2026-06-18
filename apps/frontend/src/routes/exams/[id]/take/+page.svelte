@@ -1,8 +1,8 @@
 <script>
-  import { examApi, submissionApi } from '$lib/api'
+  import { examApi, submissionApi, userApi } from '$lib/api'
   import { user } from '$lib/stores/auth'
   import { goto } from '$app/navigation'
-  import { onMount } from 'svelte'
+  import { onMount, onDestroy } from 'svelte'
   import { page } from '$app/stores'
 
   let exam = $state(null)
@@ -13,10 +13,13 @@
   let creditError = $state('')
   let limitError = $state('')   // 429: cooldown or max_attempts
   let myCredits = $state(null)
+  let currentCredits = $state(null)
+  let showStartConfirm = $state(false)
   let timeLeft = $state(0)
   let timer = null
   let currentIdx = $state(0)
   let showConfirm = $state(false)
+  let _examId = null
 
   function shuffle(arr) {
     const a = [...arr]
@@ -78,12 +81,15 @@
     saveSession(exam.id)
   }
 
+  onDestroy(() => clearInterval(timer))
+
   onMount(async () => {
     if (!$user) { goto('/login'); return }
     const id = $page.params.id
+    _examId = id
     try {
       const res = await examApi.get(id)
-      if (!res.ok) { error = 'Không tìm thấy đề thi'; return }
+      if (!res.ok) { error = 'Không tìm thấy đề thi'; loading = false; return }
       exam = randomizeExam(await res.json())
 
       if ($user.role === 'student' && !exam.allow_retake) {
@@ -99,47 +105,67 @@
 
       const saved = loadSession(id)
 
-      // Deduct credits only if no active session (first visit or after submit)
       if (!saved?.credit_deducted && $user.role === 'student') {
-        const startRes = await submissionApi.start(id)
-        if (startRes.status === 402) {
-          const d = await startRes.json()
-          creditError = d.error ?? 'Không đủ credit để làm bài này'
-          return
+        // Fetch current balance to show in confirmation
+        const profileRes = await userApi.getProfile($user.id).catch(() => null)
+        if (profileRes?.ok) {
+          const p = await profileRes.json()
+          currentCredits = p.credits ?? null
         }
-        if (startRes.status === 429) {
-          const d = await startRes.json()
-          limitError = d.error ?? 'Không thể bắt đầu bài thi lúc này'
-          return
-        }
-        if (!startRes.ok) {
-          error = 'Lỗi khi kiểm tra credit. Vui lòng thử lại.'
-          return
-        }
-        const startData = await startRes.json()
-        myCredits = startData.new_balance
-      } else if (saved?.credit_deducted) {
-        // Resume session — credits already deducted
+        showStartConfirm = true
+        loading = false
+        return
       }
 
-      if (saved && saved.timeLeft > 0) { answers = saved.answers; timeLeft = saved.timeLeft }
-      else timeLeft = (exam.time_limit ?? 30) * 60
-
-      // Mark session as credit deducted immediately
-      saveSession(exam.id)
-
-      timer = setInterval(() => {
-        timeLeft--
-        saveSession(exam.id)
-        if (timeLeft <= 0) { clearInterval(timer); submitExam() }
-      }, 1000)
+      // Resume session — credits already deducted, start timer immediately
+      await _beginExam(id, saved)
     } catch {
       error = 'Không thể kết nối server'
     } finally {
       loading = false
     }
-    return () => clearInterval(timer)
   })
+
+  async function handleConfirmStart() {
+    showStartConfirm = false
+    loading = true
+    const id = _examId
+    try {
+      const startRes = await submissionApi.start(id)
+      if (startRes.status === 402) {
+        const d = await startRes.json()
+        creditError = d.error ?? 'Không đủ credit để làm bài này'
+        loading = false; return
+      }
+      if (startRes.status === 429) {
+        const d = await startRes.json()
+        limitError = d.error ?? 'Không thể bắt đầu bài thi lúc này'
+        loading = false; return
+      }
+      if (!startRes.ok) {
+        error = 'Lỗi khi kiểm tra credit. Vui lòng thử lại.'
+        loading = false; return
+      }
+      const startData = await startRes.json()
+      myCredits = startData.new_balance
+      await _beginExam(id, null)
+    } catch {
+      error = 'Không thể kết nối server'
+      loading = false
+    }
+  }
+
+  async function _beginExam(id, saved) {
+    if (saved && saved.timeLeft > 0) { answers = saved.answers; timeLeft = saved.timeLeft }
+    else timeLeft = (exam.time_limit ?? 30) * 60
+    saveSession(exam.id)
+    timer = setInterval(() => {
+      timeLeft--
+      saveSession(exam.id)
+      if (timeLeft <= 0) { clearInterval(timer); submitExam() }
+    }, 1000)
+    loading = false
+  }
 
   function formatTime(s) {
     const m = Math.floor(s / 60), sec = s % 60
@@ -370,6 +396,51 @@
 
   .error { color: var(--danger); margin-top: 0.75rem; font-size: 0.9rem; }
 
+  /* ── Start confirmation ───────────────────────────────────────────────────────*/
+  .start-confirm-wrap {
+    min-height: 60vh; display: flex; align-items: center; justify-content: center;
+    padding: 2rem 1rem;
+  }
+  .start-confirm-card {
+    background: var(--surface); border-radius: var(--radius-card);
+    border: 1px solid var(--border); box-shadow: var(--shadow);
+    padding: 2.5rem 2rem; max-width: 440px; width: 100%; text-align: center;
+  }
+  .start-confirm-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+  .start-confirm-title {
+    font-size: 1.2rem; font-weight: 700; color: var(--text);
+    margin-bottom: 0.5rem; line-height: 1.4;
+  }
+  .start-confirm-sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+  .start-confirm-info {
+    background: var(--bg); border-radius: 12px;
+    border: 1px solid var(--border); padding: 1rem;
+    margin-bottom: 1.25rem; text-align: left;
+  }
+  .info-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-row.highlight { background: rgba(99,102,241,0.04); margin: 0 -0.5rem; padding: 0.55rem 0.5rem; border-radius: 8px; border-bottom: none; }
+  .info-label { font-size: 0.87rem; color: var(--muted); font-weight: 500; }
+  .info-val { font-size: 0.9rem; font-weight: 700; color: var(--text); }
+  .info-val.credit-cost { color: var(--primary); font-size: 1rem; }
+  .info-val.text-danger { color: var(--danger); }
+  .start-confirm-note {
+    font-size: 0.82rem; color: var(--muted); margin-bottom: 1.75rem; line-height: 1.5;
+  }
+  .start-confirm-actions { display: flex; gap: 0.75rem; }
+  .btn-start {
+    flex: 2; padding: 0.8rem 1.25rem; border-radius: var(--radius-btn);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: white; border: none; font-size: 0.95rem; font-weight: 700;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn-start:disabled { opacity: 0.55; cursor: not-allowed; }
+  .btn-start:not(:disabled):hover { box-shadow: 0 4px 16px rgba(99,102,241,0.4); transform: translateY(-1px); }
+
   /* ── Mobile ───────────────────────────────────────────────────────────────────*/
   @media (max-width: 720px) {
     .top-bar { margin: -1.25rem -1rem 1.25rem; top: 60px; }
@@ -395,6 +466,48 @@
     <div class="credit-error-title">Không thể bắt đầu</div>
     <div class="credit-error-msg">{limitError}</div>
     <button class="btn-back" onclick={() => history.back()}>Quay lại</button>
+  </div>
+{:else if showStartConfirm && exam}
+  <div class="start-confirm-wrap">
+    <div class="start-confirm-card">
+      <div class="start-confirm-icon">📋</div>
+      <h2 class="start-confirm-title">{exam.title}</h2>
+      <p class="start-confirm-sub">Bạn sắp bắt đầu bài thi. Thông tin quan trọng:</p>
+      <div class="start-confirm-info">
+        <div class="info-row">
+          <span class="info-label">Thời gian</span>
+          <span class="info-val">{exam.time_limit ?? 30} phút</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Số câu hỏi</span>
+          <span class="info-val">{exam.question_count ?? exam.questions?.length ?? '?'} câu</span>
+        </div>
+        {#if exam.passing_score != null}
+        <div class="info-row">
+          <span class="info-label">Điểm đậu</span>
+          <span class="info-val">{exam.passing_score}%</span>
+        </div>
+        {/if}
+        <div class="info-row highlight">
+          <span class="info-label">💳 Chi phí</span>
+          <span class="info-val credit-cost">{exam.credit_cost ?? 10} credit</span>
+        </div>
+        {#if currentCredits !== null}
+        <div class="info-row">
+          <span class="info-label">Số dư hiện tại</span>
+          <span class="info-val {currentCredits < (exam.credit_cost ?? 10) ? 'text-danger' : ''}">{currentCredits} credit</span>
+        </div>
+        {/if}
+      </div>
+      <p class="start-confirm-note">Sau khi bắt đầu, credit sẽ bị trừ và đồng hồ đếm ngược sẽ chạy.</p>
+      <div class="start-confirm-actions">
+        <button class="btn-back" onclick={() => history.back()}>Huỷ</button>
+        <button class="btn-start" onclick={handleConfirmStart}
+          disabled={currentCredits !== null && currentCredits < (exam.credit_cost ?? 10)}>
+          {currentCredits !== null && currentCredits < (exam.credit_cost ?? 10) ? 'Không đủ credit' : 'Xác nhận bắt đầu →'}
+        </button>
+      </div>
+    </div>
   </div>
 {:else if error}
   <p class="error">{error}</p>
