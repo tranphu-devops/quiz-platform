@@ -12,14 +12,19 @@ export default async function userRoutes(fastify) {
     if (!user_id || typeof amount !== 'number' || amount < 0) {
       return reply.status(400).send({ error: 'Invalid params', statusCode: 400 })
     }
-    const result = await pool.query(
-      'UPDATE profiles SET credits = credits - $1 WHERE id = $2 AND credits >= $1 RETURNING credits',
-      [amount, user_id]
-    )
-    if (result.rows.length === 0) {
-      return reply.status(402).send({ error: 'Không đủ credit', statusCode: 402 })
+    try {
+      const result = await pool.query(
+        'UPDATE profiles SET credits = credits - $1 WHERE id = $2 AND credits >= $1 RETURNING credits',
+        [amount, user_id]
+      )
+      if (result.rows.length === 0) {
+        return reply.status(402).send({ error: 'Không đủ credit', statusCode: 402 })
+      }
+      return { success: true, new_balance: result.rows[0].credits }
+    } catch (err) {
+      fastify.log.error(err)
+      return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
     }
-    return { success: true, new_balance: result.rows[0].credits }
   })
 
   // Public endpoint — returns non-sensitive settings for client display
@@ -36,9 +41,9 @@ export default async function userRoutes(fastify) {
   })
 
   fastify.addHook('preHandler', async (req, reply) => {
-    if (req.routeOptions?.url === '/health') return
-    if (req.routeOptions?.url?.startsWith('/internal/')) return
-    if (req.routeOptions?.url?.startsWith('/public/')) return
+    if (req.url === '/health') return
+    if (req.url.startsWith('/internal/')) return
+    if (req.url.startsWith('/public/')) return
     await verifyAuth(req, reply)
   })
 
