@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import { goto } from '$app/navigation'
   import { user } from '$lib/stores/auth'
-  import { userApi } from '$lib/api'
+  import { userApi, collectionApi } from '$lib/api'
 
   let tab = $state('users')
 
@@ -27,11 +27,39 @@
   let creditSuccess = $state(false)
   let creditError = $state('')
 
+  // Collections tab
+  let collections = $state([])
+  let collectionsLoading = $state(false)
+
   onMount(async () => {
     if (!$user) { goto('/login'); return }
     if ($user.role !== 'admin') { goto('/dashboard'); return }
     await Promise.all([loadUsers(), loadSettings()])
   })
+
+  async function loadCollections() {
+    if (collections.length) return
+    collectionsLoading = true
+    try {
+      const res = await collectionApi.list()
+      if (res.ok) collections = await res.json()
+    } catch {} finally {
+      collectionsLoading = false
+    }
+  }
+
+  async function toggleCollectionPublish(col) {
+    const res = await collectionApi.update(col.id, { is_published: !col.is_published })
+    if (res.ok) {
+      collections = collections.map(c => c.id === col.id ? { ...c, is_published: !c.is_published } : c)
+    }
+  }
+
+  async function deleteCollection(id) {
+    if (!confirm('Xoá bộ đề này?')) return
+    const res = await collectionApi.remove(id)
+    if (res.ok) collections = collections.filter(c => c.id !== id)
+  }
 
   async function loadSettings() {
     settingsLoading = true
@@ -183,6 +211,23 @@
   .btn { padding: 0.6rem 1.2rem; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; }
   .btn-primary { background: #1e40af; color: white; }
   .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+  /* Collections tab */
+  .col-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+  .col-card { background: white; border-radius: 10px; border: 1px solid #e5e7eb; overflow: hidden; }
+  .col-card-header { padding: 1rem; display: flex; align-items: center; gap: 0.75rem; }
+  .col-badge-img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+  .col-badge-ph { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+  .col-title { font-weight: 700; font-size: 0.95rem; }
+  .col-by { font-size: 0.75rem; color: #6b7280; margin-top: 0.1rem; }
+  .col-meta { padding: 0 1rem 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .col-pill { font-size: 0.72rem; font-weight: 600; padding: 0.15rem 0.55rem; border-radius: 99px; background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; }
+  .col-pill.pub { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+  .col-pill.badge-count { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+  .col-actions { padding: 0.6rem 1rem; border-top: 1px solid #f3f4f6; display: flex; gap: 0.5rem; }
+  .btn-xs { padding: 0.25rem 0.6rem; font-size: 0.78rem; border-radius: 5px; cursor: pointer; border: 1px solid #e5e7eb; background: #f9fafb; color: #374151; text-decoration: none; }
+  .btn-xs:hover { border-color: #6366f1; color: #6366f1; }
+  .btn-xs.danger:hover { border-color: #dc2626; color: #dc2626; background: #fef2f2; }
+  .col-stats { display: flex; gap: 1rem; margin-bottom: 1.25rem; }
   /* credit inline edit */
   .credit-cell { display: flex; align-items: center; gap: 0.4rem; }
   .credit-val { font-weight: 600; color: #1e40af; min-width: 2rem; }
@@ -197,6 +242,7 @@
 
 <div class="tabs">
   <button class="tab-btn" class:active={tab === 'users'} onclick={() => tab = 'users'}>Người dùng</button>
+  <button class="tab-btn" class:active={tab === 'collections'} onclick={() => { tab = 'collections'; loadCollections() }}>Bộ đề</button>
   <button class="tab-btn" class:active={tab === 'settings'} onclick={() => tab = 'settings'}>Cài đặt upload</button>
   <button class="tab-btn" class:active={tab === 'credits'} onclick={() => tab = 'credits'}>Credits</button>
 </div>
@@ -280,6 +326,61 @@
   <p class="note">* Role mới có hiệu lực khi người dùng đăng nhập lại.</p>
 {/if}
 
+{/if}
+
+{#if tab === 'collections'}
+  {#if collectionsLoading}
+    <p style="color:#6b7280">Đang tải...</p>
+  {:else if collections.length === 0}
+    <p style="color:#6b7280">Chưa có bộ đề nào.</p>
+  {:else}
+    <div class="col-stats">
+      <div class="stat">
+        <div class="stat-value">{collections.length}</div>
+        <div class="stat-label">Tổng bộ đề</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">{collections.filter(c => c.is_published).length}</div>
+        <div class="stat-label">Đã xuất bản</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">{collections.reduce((s, c) => s + (c.badge_count ?? 0), 0)}</div>
+        <div class="stat-label">Huy hiệu đã trao</div>
+      </div>
+    </div>
+    <div class="col-grid">
+      {#each collections as col}
+        <div class="col-card">
+          <div class="col-card-header">
+            {#if col.badge_image_url}
+              <img src={col.badge_image_url} alt="" class="col-badge-img" />
+            {:else}
+              <div class="col-badge-ph">🎖️</div>
+            {/if}
+            <div>
+              <div class="col-title">{col.title}</div>
+              <div class="col-by">Teacher ID: {col.created_by.slice(0,8)}…</div>
+            </div>
+          </div>
+          <div class="col-meta">
+            <span class="col-pill">{col.exams?.length ?? 0} đề thi</span>
+            <span class="col-pill {col.is_published ? 'pub' : ''}">{col.is_published ? '● Xuất bản' : '○ Nháp'}</span>
+            <span class="col-pill badge-count">🏅 {col.badge_count ?? 0} huy hiệu</span>
+          </div>
+          {#if col.description}
+            <div style="padding: 0 1rem 0.6rem; font-size:0.8rem; color:#6b7280">{col.description}</div>
+          {/if}
+          <div class="col-actions">
+            <a href="/collections/{col.id}/edit" class="btn-xs">✏️ Sửa</a>
+            <button class="btn-xs" onclick={() => toggleCollectionPublish(col)}>
+              {col.is_published ? '⬇ Gỡ xuất bản' : '🚀 Xuất bản'}
+            </button>
+            <button class="btn-xs danger" onclick={() => deleteCollection(col.id)}>🗑</button>
+          </div>
+        </div>
+      {/each}
+    </div>
+  {/if}
 {/if}
 
 {#if tab === 'settings'}

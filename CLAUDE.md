@@ -40,6 +40,12 @@ npm start        # node build (production)
 ```bash
 docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_image_upload.sql
 docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_credits.sql
+docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_collections.sql
+```
+
+### Regenerate badge SVGs
+```bash
+node scripts/generate-badges.js   # outputs to apps/frontend/static/badges/ + src/lib/badge-presets.json
 ```
 
 ### Production deploy (Ubuntu server, run as root)
@@ -149,13 +155,16 @@ Fully client-rendered SPA (`export const ssr = false` in `+layout.js`). Auth per
 Key files:
 - `src/lib/auth.js` — GoTrueClient, URL = `window.location.origin + '/auth'`
 - `src/lib/stores/auth.js` — `session`, `user`, `token` Svelte stores via `onAuthStateChange`
-- `src/lib/api.js` — `examApi`, `submissionApi`, `userApi`, `uploadApi`; all read `token` store for Bearer header
+- `src/lib/api.js` — `examApi`, `submissionApi`, `userApi`, `collectionApi`, `badgeApi`, `uploadApi`; all read `token` store for Bearer header
 
 `uploadApi.upload(file, type, oldUrl?)` sends `multipart/form-data` with no `Content-Type` header (let browser set the boundary).
 
 Components in `src/lib/components/`:
 - `ImageUpload.svelte` — drag-and-drop upload with preview; `bind:value` for the URL; accepts `type` prop (`avatar|exam-cover|question`); automatically passes the current URL as `old_url` to delete the old file on replace.
 - `MarkdownEditor.svelte` — markdown editor for question explanations
+- `BadgePicker.svelte` — grid of 50 preset badge SVGs + custom upload tab; `bind:value` for badge URL. Preset metadata from `src/lib/badge-presets.json`.
+
+Preset badges: 50 SVG files in `apps/frontend/static/badges/badge-01.svg…badge-50.svg`. Regenerate with `node scripts/generate-badges.js`.
 
 Routes:
 ```
@@ -165,15 +174,30 @@ Routes:
 /auth/callback           → PKCE OAuth handler (GoTrue redirects here after Google login)
 /auth-callback           → implicit-flow fallback handler
 /dashboard               → role-based home
-/profile                 → edit avatar + full_name
+/profile                 → edit avatar + full_name; student shows earned badges
 /exams                   → Udemy-style grid; cover image or gradient placeholder
 /exams/create            → create exam with cover image + per-question images
 /exams/[id]              → exam detail / start
 /exams/[id]/take         → take exam; shows question image if present
 /exams/[id]/edit         → edit exam
 /exams/[id]/result       → submission results
+/collections             → teacher: list own collections; admin: all
+/collections/create      → create collection (teacher)
+/collections/[id]/edit   → edit collection (teacher)
 /admin                   → tabs: Users (role management) · Upload settings (max size, MIME types)
 ```
+
+### Collections & Badges
+
+**Collections** group multiple exams under a shared goal. When a student passes **all** exams in a published collection, they earn a badge (stored in `quiz_submissions.student_badges`, awarded automatically at submission time).
+
+- `GET /api/exams/collections` — list (role-filtered); teacher sees own, student sees published
+- `POST /api/exams/collections` — create (teacher/admin)
+- `PUT /api/exams/collections/:id` — update incl. `exam_ids` array (replaces membership atomically)
+- `GET /api/exams/collections/internal/check-badge?exam_id=` — internal; used by submission-service. Nginx blocks from external.
+- `GET /api/users/badges/:userId` — list student's earned badges (with collection title + badge_image_url)
+
+Badge check is **fire-and-forget** (non-blocking): submission returns immediately, badge award happens async in the background.
 
 ### Database schemas
 `infra/postgres/init.sql` is idempotent (`IF NOT EXISTS` + `ALTER TABLE … ADD COLUMN IF NOT EXISTS`). It runs once at container creation. For running databases use `infra/postgres/migrate_image_upload.sql`.
@@ -181,11 +205,14 @@ Routes:
 Never manually create tables in `quiz_auth` — GoTrue manages that schema.
 
 Schema summary:
-- `quiz_users.profiles` — `id, full_name, avatar_url, role, updated_at`
-- `quiz_users.admin_settings` — `key, value` (upload validation config)
-- `quiz_exams.exams` — includes `cover_image_url`, `tags TEXT[]`, `show_explanation`, `allow_retake`
+- `quiz_users.profiles` — `id, full_name, avatar_url, role, credits, updated_at`
+- `quiz_users.admin_settings` — `key, value` (upload validation + credit config)
+- `quiz_exams.exams` — includes `cover_image_url`, `tags TEXT[]`, `show_explanation`, `allow_retake`, `credit_cost`
 - `quiz_exams.questions` — includes `image_url`, `question_type` (`single`|`multiple`), `correct_answer` (comma-separated keys for multiple)
+- `quiz_exams.collections` — `id, title, description, created_by, badge_image_url, is_published`
+- `quiz_exams.collection_exams` — `(collection_id, exam_id, position)` many-to-many
 - `quiz_submissions.submissions` — `answers JSONB`, `results_detail JSONB`, `percentage FLOAT`
+- `quiz_submissions.student_badges` — `(user_id, collection_id)` unique; `earned_at`
 
 Seed files in `infra/postgres/`: `seed.sql` (sample data), `seed_aws_saa.sql` (AWS SAA exam with 45 questions).
 

@@ -2,6 +2,46 @@ import { subject } from '@casl/ability'
 import { pool } from '../db.js'
 import { verifyAuth } from '../middleware/auth.js'
 
+async function awardBadgesIfEarned(userId, examId, log) {
+  try {
+    // Find collections that contain this exam
+    const collectionsRes = await fetch(
+      `${process.env.EXAM_SERVICE_URL}/collections/internal/check-badge?exam_id=${examId}`,
+      { headers: { 'x-internal-key': process.env.INTERNAL_API_KEY } }
+    )
+    if (!collectionsRes.ok) return
+    const collections = await collectionsRes.json()
+    if (!collections.length) return
+
+    for (const col of collections) {
+      const examIds = col.exam_ids ?? []
+      if (!examIds.length) continue
+
+      // Check if student has passed all exams in this collection
+      const placeholders = examIds.map((_, i) => `$${i + 2}`).join(', ')
+      const r = await pool.query(
+        `SELECT COUNT(DISTINCT s.exam_id) AS passed_count
+         FROM quiz_submissions.submissions s
+         JOIN quiz_exams.exams e ON e.id = s.exam_id
+         WHERE s.user_id = $1
+           AND s.exam_id IN (${placeholders})
+           AND (e.passing_score IS NULL OR s.percentage >= e.passing_score)`,
+        [userId, ...examIds]
+      )
+      const passedCount = parseInt(r.rows[0]?.passed_count ?? 0, 10)
+      if (passedCount >= examIds.length) {
+        await pool.query(
+          `INSERT INTO quiz_submissions.student_badges (user_id, collection_id)
+           VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [userId, col.id]
+        )
+      }
+    }
+  } catch (err) {
+    log.warn({ err }, 'badge award failed (non-critical)')
+  }
+}
+
 export default async function submissionRoutes(fastify) {
   fastify.addHook('preHandler', async (req, reply) => {
     if (req.url === '/health') return
@@ -129,8 +169,15 @@ export default async function submissionRoutes(fastify) {
          VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
         [exam_id, req.user.id, JSON.stringify(answers), score, total_points, percentage, JSON.stringify(results_detail)]
       )
+      const submission = result.rows[0]
 
-      return reply.status(201).send(result.rows[0])
+      // Badge check: only if student passed this exam
+      const passed = exam.passing_score == null || percentage >= exam.passing_score
+      if (passed) {
+        awardBadgesIfEarned(req.user.id, exam_id, fastify.log).catch(() => {})
+      }
+
+      return reply.status(201).send(submission)
     } catch (err) {
       fastify.log.error(err)
       return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })

@@ -4,7 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [Unreleased] — 2026-06-18
+## [Unreleased] — 2026-06-18 (latest)
+
+### Added
+- **Collections & Badges**: Teacher tạo bộ đề (nhóm nhiều đề thi), chọn huy hiệu từ thư viện 50 preset hoặc tải lên ảnh tùy chỉnh. Student hoàn thành toàn bộ đề thi trong collection → tự động nhận huy hiệu
+- 50 badge SVG preset (64×64) trong `static/badges/`, sinh bằng `scripts/generate-badges.js`
+- `BadgePicker.svelte` — component chọn badge với 2 tab: thư viện preset và upload ảnh
+- `/collections`, `/collections/create`, `/collections/[id]/edit` — quản lý bộ đề (teacher/admin)
+- Sidebar & navbar: link "Bộ đề" cho teacher/admin
+- Profile page: section huy hiệu đã đạt (student)
+- `GET /api/users/badges/:userId` — danh sách huy hiệu của user
+- `GET /api/exams/collections/internal/check-badge` — internal endpoint cho submission-service kiểm tra badge
+- `infra/postgres/migrate_collections.sql` — migration script
+- Admin tab **Bộ đề**: xem toàn bộ collections, số huy hiệu đã trao, toggle xuất bản, xoá
+
+### Changed
+- **Exam detail page redesign**: Hero banner với cover image, layout 2 cột (main + sticky sidebar), preview 3 câu hỏi đầu không có đáp án, CTA buttons mobile-first, extensible section structure cho reviews/teacher intro
 
 ### Added
 - **Credit system**: Người dùng mới nhận 20 credit (admin configurable)

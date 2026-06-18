@@ -105,6 +105,29 @@ export const userApi = {
     })
 }
 
+export const collectionApi = {
+  list: () => fetch(`${EXAM_URL}/collections`, { headers: authHeaders(false) }),
+  get: (id) => fetch(`${EXAM_URL}/collections/${id}`, { headers: authHeaders(false) }),
+  create: (data) =>
+    fetch(`${EXAM_URL}/collections`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data)
+    }),
+  update: (id, data) =>
+    fetch(`${EXAM_URL}/collections/${id}`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify(data)
+    }),
+  remove: (id) =>
+    fetch(`${EXAM_URL}/collections/${id}`, { method: 'DELETE', headers: authHeaders(false) })
+}
+
+export const badgeApi = {
+  list: (userId) => fetch(`${USER_URL}/badges/${userId}`, { headers: authHeaders(false) })
+}
+
 export const uploadApi = {
   upload: (file, type, oldUrl = null) => {
     const t = get(token)

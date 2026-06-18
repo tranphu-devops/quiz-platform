@@ -2,12 +2,13 @@
   import { onMount } from 'svelte'
   import { goto } from '$app/navigation'
   import { user } from '$lib/stores/auth'
-  import { userApi } from '$lib/api'
+  import { userApi, badgeApi } from '$lib/api'
   import ImageUpload from '$lib/components/ImageUpload.svelte'
 
   let full_name = $state('')
   let avatar_url = $state('')
   let credits = $state(null)
+  let badges = $state([])
   let saving = $state(false)
   let success = $state(false)
   let error = $state('')
@@ -22,9 +23,10 @@
   onMount(async () => {
     if (!$user) { goto('/login'); return }
     try {
-      const [profileRes, settingsRes] = await Promise.all([
+      const [profileRes, settingsRes, badgeRes] = await Promise.all([
         userApi.getProfile($user.id),
-        userApi.getPublicSettings()
+        userApi.getPublicSettings(),
+        badgeApi.list($user.id)
       ])
       if (profileRes.ok) {
         const profile = await profileRes.json()
@@ -36,6 +38,7 @@
         const s = await settingsRes.json()
         teacherUpgradeCost = parseInt(s.teacher_upgrade_cost ?? '100', 10)
       }
+      if (badgeRes.ok) badges = await badgeRes.json()
     } catch {}
   })
 
@@ -122,6 +125,26 @@
   .modal p { color: #6b7280; font-size: 0.9rem; margin-bottom: 1.5rem; line-height: 1.5; }
   .modal-actions { display: flex; gap: 0.75rem; }
   .modal-actions .btn { flex: 1; }
+  /* Badges section */
+  .badges-section { margin-top: 2rem; }
+  .badges-section h2 { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.4rem; }
+  .badges-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 0.75rem; max-width: 480px; }
+  .badge-item {
+    background: var(--surface); border-radius: 12px;
+    border: 1px solid var(--border); padding: 0.75rem 0.5rem;
+    display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+    box-shadow: var(--shadow); transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .badge-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+  .badge-item img { width: 52px; height: 52px; border-radius: 50%; }
+  .badge-item-placeholder {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+  }
+  .badge-name { font-size: 0.72rem; font-weight: 600; text-align: center; color: var(--text); line-height: 1.3; }
+  .badge-date { font-size: 0.65rem; color: var(--muted); text-align: center; }
+  .badges-empty { font-size: 0.875rem; color: var(--muted); max-width: 480px; }
 </style>
 
 <h1>Hồ sơ cá nhân</h1>
@@ -193,6 +216,32 @@
     {/if}
   </div>
 </div>
+
+<!-- Badges section (student only) -->
+{#if $user?.role === 'student'}
+<div class="badges-section">
+  <h2>🏅 Huy hiệu đã đạt được ({badges.length})</h2>
+  {#if badges.length === 0}
+    <p class="badges-empty">
+      Bạn chưa có huy hiệu nào. Hoàn thành tất cả đề thi trong một bộ đề để nhận huy hiệu!
+    </p>
+  {:else}
+    <div class="badges-grid">
+      {#each badges as b}
+        <div class="badge-item" title={b.collection_title}>
+          {#if b.badge_image_url}
+            <img src={b.badge_image_url} alt={b.collection_title} />
+          {:else}
+            <div class="badge-item-placeholder">🎖️</div>
+          {/if}
+          <div class="badge-name">{b.collection_title}</div>
+          <div class="badge-date">{new Date(b.earned_at).toLocaleDateString('vi-VN')}</div>
+        </div>
+      {/each}
+    </div>
+  {/if}
+</div>
+{/if}
 
 {#if showUpgradeConfirm}
 <div class="overlay" role="dialog" aria-modal="true">

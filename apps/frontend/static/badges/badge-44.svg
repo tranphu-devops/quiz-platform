@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <radialGradient id="bg44" cx="38%" cy="32%" r="68%">
+      <stop offset="0%" stop-color="#166534"/>
+      <stop offset="100%" stop-color="#052E16"/>
+    </radialGradient>
+    <filter id="sh44" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#052E16" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+  <circle cx="32" cy="32" r="31" fill="#BBF7D0" opacity="0.25"/>
+  <circle cx="32" cy="32" r="28" fill="url(#bg44)" filter="url(#sh44)"/>
+  <circle cx="26" cy="23" r="9" fill="white" opacity="0.10"/>
+  <circle cx="32" cy="32" r="28" fill="none" stroke="#BBF7D0" stroke-width="2"/>
+  <text x="32" y="42" text-anchor="middle" font-size="26" font-family="Apple Color Emoji,Noto Color Emoji,Segoe UI Emoji,sans-serif">🔬</text>
+</svg>

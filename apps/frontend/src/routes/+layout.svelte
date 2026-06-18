@@ -239,7 +239,10 @@
   {#if $user}
     <div class="nav-links">
       <a href="/dashboard" class:active={$page.url.pathname === '/dashboard'}>Dashboard</a>
-      <a href="/exams"     class:active={$page.url.pathname.startsWith('/exams')}>Đề thi</a>
+      <a href="/exams"     class:active={$page.url.pathname.startsWith('/exams') && !$page.url.pathname.startsWith('/exams/create')}>Đề thi</a>
+      {#if $user.role !== 'student'}
+        <a href="/collections" class:active={$page.url.pathname.startsWith('/collections')}>Bộ đề</a>
+      {/if}
       {#if $user.role === 'admin'}
         <a href="/admin"   class:active={$page.url.pathname === '/admin'}>Admin</a>
       {/if}
@@ -305,6 +308,9 @@
       {#if $user.role !== 'student'}
         <a href="/exams/create" class:active={$page.url.pathname === '/exams/create'} onclick={closeSidebar}>
           <span class="icon">✚</span> Tạo đề thi
+        </a>
+        <a href="/collections" class:active={$page.url.pathname.startsWith('/collections')} onclick={closeSidebar}>
+          <span class="icon">🗂️</span> Bộ đề
         </a>
       {/if}
       {#if $user.role === 'admin'}

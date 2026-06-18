@@ -1,0 +1,252 @@
+[
+  {
+    "id": 1,
+    "name": "Ngôi sao đồng",
+    "url": "/badges/badge-01.svg"
+  },
+  {
+    "id": 2,
+    "name": "Ngôi sao bạc",
+    "url": "/badges/badge-02.svg"
+  },
+  {
+    "id": 3,
+    "name": "Ngôi sao vàng",
+    "url": "/badges/badge-03.svg"
+  },
+  {
+    "id": 4,
+    "name": "Ngôi sao bạch kim",
+    "url": "/badges/badge-04.svg"
+  },
+  {
+    "id": 5,
+    "name": "Ngôi sao kim cương",
+    "url": "/badges/badge-05.svg"
+  },
+  {
+    "id": 6,
+    "name": "Huy chương đồng",
+    "url": "/badges/badge-06.svg"
+  },
+  {
+    "id": 7,
+    "name": "Huy chương bạc",
+    "url": "/badges/badge-07.svg"
+  },
+  {
+    "id": 8,
+    "name": "Huy chương vàng",
+    "url": "/badges/badge-08.svg"
+  },
+  {
+    "id": 9,
+    "name": "Cúp vô địch",
+    "url": "/badges/badge-09.svg"
+  },
+  {
+    "id": 10,
+    "name": "Vương miện",
+    "url": "/badges/badge-10.svg"
+  },
+  {
+    "id": 11,
+    "name": "Điện toán đám mây",
+    "url": "/badges/badge-11.svg"
+  },
+  {
+    "id": 12,
+    "name": "Lập trình viên",
+    "url": "/badges/badge-12.svg"
+  },
+  {
+    "id": 13,
+    "name": "Cơ sở dữ liệu",
+    "url": "/badges/badge-13.svg"
+  },
+  {
+    "id": 14,
+    "name": "Bảo mật",
+    "url": "/badges/badge-14.svg"
+  },
+  {
+    "id": 15,
+    "name": "Mạng máy tính",
+    "url": "/badges/badge-15.svg"
+  },
+  {
+    "id": 16,
+    "name": "Ứng dụng di động",
+    "url": "/badges/badge-16.svg"
+  },
+  {
+    "id": 17,
+    "name": "Trí tuệ nhân tạo",
+    "url": "/badges/badge-17.svg"
+  },
+  {
+    "id": 18,
+    "name": "Khoa học dữ liệu",
+    "url": "/badges/badge-18.svg"
+  },
+  {
+    "id": 19,
+    "name": "DevOps",
+    "url": "/badges/badge-19.svg"
+  },
+  {
+    "id": 20,
+    "name": "Phát triển web",
+    "url": "/badges/badge-20.svg"
+  },
+  {
+    "id": 21,
+    "name": "Người mới bắt đầu",
+    "url": "/badges/badge-21.svg"
+  },
+  {
+    "id": 22,
+    "name": "Người học ham học",
+    "url": "/badges/badge-22.svg"
+  },
+  {
+    "id": 23,
+    "name": "Nhà khám phá",
+    "url": "/badges/badge-23.svg"
+  },
+  {
+    "id": 24,
+    "name": "Chuyên gia",
+    "url": "/badges/badge-24.svg"
+  },
+  {
+    "id": 25,
+    "name": "Bậc thầy",
+    "url": "/badges/badge-25.svg"
+  },
+  {
+    "id": 26,
+    "name": "Chuỗi liên tiếp",
+    "url": "/badges/badge-26.svg"
+  },
+  {
+    "id": 27,
+    "name": "Siêu nhanh",
+    "url": "/badges/badge-27.svg"
+  },
+  {
+    "id": 28,
+    "name": "Điểm tuyệt đối",
+    "url": "/badges/badge-28.svg"
+  },
+  {
+    "id": 29,
+    "name": "Kiên trì",
+    "url": "/badges/badge-29.svg"
+  },
+  {
+    "id": 30,
+    "name": "Nhận thử thách",
+    "url": "/badges/badge-30.svg"
+  },
+  {
+    "id": 31,
+    "name": "Cú trí tuệ",
+    "url": "/badges/badge-31.svg"
+  },
+  {
+    "id": 32,
+    "name": "Tên lửa",
+    "url": "/badges/badge-32.svg"
+  },
+  {
+    "id": 33,
+    "name": "Sư tử dũng mãnh",
+    "url": "/badges/badge-33.svg"
+  },
+  {
+    "id": 34,
+    "name": "Đại bàng bay cao",
+    "url": "/badges/badge-34.svg"
+  },
+  {
+    "id": 35,
+    "name": "Rồng huyền thoại",
+    "url": "/badges/badge-35.svg"
+  },
+  {
+    "id": 36,
+    "name": "Lá chắn thép",
+    "url": "/badges/badge-36.svg"
+  },
+  {
+    "id": 37,
+    "name": "Viên ngọc quý",
+    "url": "/badges/badge-37.svg"
+  },
+  {
+    "id": 38,
+    "name": "Thám tử",
+    "url": "/badges/badge-38.svg"
+  },
+  {
+    "id": 39,
+    "name": "Phù thủy",
+    "url": "/badges/badge-39.svg"
+  },
+  {
+    "id": 40,
+    "name": "Cầu vồng kỳ diệu",
+    "url": "/badges/badge-40.svg"
+  },
+  {
+    "id": 41,
+    "name": "Mọt sách",
+    "url": "/badges/badge-41.svg"
+  },
+  {
+    "id": 42,
+    "name": "Tốt nghiệp xuất sắc",
+    "url": "/badges/badge-42.svg"
+  },
+  {
+    "id": 43,
+    "name": "Học sinh giỏi",
+    "url": "/badges/badge-43.svg"
+  },
+  {
+    "id": 44,
+    "name": "Nhà khoa học",
+    "url": "/badges/badge-44.svg"
+  },
+  {
+    "id": 45,
+    "name": "Nhà thiên văn",
+    "url": "/badges/badge-45.svg"
+  },
+  {
+    "id": 46,
+    "name": "Cú đêm",
+    "url": "/badges/badge-46.svg"
+  },
+  {
+    "id": 47,
+    "name": "Chim sớm",
+    "url": "/badges/badge-47.svg"
+  },
+  {
+    "id": 48,
+    "name": "Bền bỉ marathon",
+    "url": "/badges/badge-48.svg"
+  },
+  {
+    "id": 49,
+    "name": "Nước rút sprint",
+    "url": "/badges/badge-49.svg"
+  },
+  {
+    "id": 50,
+    "name": "Cộng đồng",
+    "url": "/badges/badge-50.svg"
+  }
+]

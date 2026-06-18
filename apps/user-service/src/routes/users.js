@@ -42,6 +42,25 @@ export default async function userRoutes(fastify) {
     await verifyAuth(req, reply)
   })
 
+  // GET /badges/:userId — student badges earned from completing collections
+  fastify.get('/badges/:userId', async (req, reply) => {
+    const { userId } = req.params
+    try {
+      // Badges are in quiz_submissions schema; use fully-qualified names
+      const r = await pool.query(`
+        SELECT sb.id, sb.earned_at, sb.collection_id,
+               qe.title AS collection_title, qe.badge_image_url, qe.description
+        FROM quiz_submissions.student_badges sb
+        JOIN quiz_exams.collections qe ON qe.id = sb.collection_id
+        WHERE sb.user_id = $1
+        ORDER BY sb.earned_at DESC`, [userId])
+      return r.rows
+    } catch (err) {
+      fastify.log.error(err)
+      return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
+    }
+  })
+
   fastify.get('/:id', async (req, reply) => {
     const { id } = req.params
     try {
