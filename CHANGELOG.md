@@ -4,15 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [Unreleased] — 2026-06-19 (latest)
+## [1.0.0] — 2026-06-19
 
 ### Added
 - **Xuất bản theo lịch (Scheduled Publish)**: Người tạo đề có thể chọn 1 trong 3 chế độ khi tạo/chỉnh sửa đề thi — *Lưu nháp*, *Xuất bản ngay*, hoặc *Theo lịch*. Khi chọn "Theo lịch", nhập datetime trong tương lai; đề thi hiển thị cho học sinh nhưng bị khoá với bộ đếm ngược trực tiếp (cập nhật mỗi giây). Khi đến giờ, nút bắt đầu tự động kích hoạt. Server chặn `POST /submissions/start` với HTTP 423 nếu exam chưa đến giờ mở.
 - Migration `infra/postgres/migrate_scheduled_exam.sql` — thêm cột `scheduled_at TIMESTAMPTZ` vào `quiz_exams.exams`.
-
----
-
-## [Unreleased] — 2026-06-18
 
 ### Fixed
 - **Auto-create profile on first login**: Layout tự động gọi `PUT /api/users/:id` khi phát hiện profile chưa tồn tại (GET trả 404). Profile mới được tạo với `role = 'student'` và credits = `default_credits` (mặc định 20). Metadata từ Google OAuth (full_name, avatar_url) được điền tự động nếu có.

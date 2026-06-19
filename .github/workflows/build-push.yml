@@ -3,6 +3,7 @@ name: Build & Push to GHCR
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
     branches: [main]
 
@@ -51,6 +52,8 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}
           tags: |
             type=sha,prefix=
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and push
