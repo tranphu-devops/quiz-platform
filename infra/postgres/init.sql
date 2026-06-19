@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS quiz_exams.questions (
 -- Migrations for existing databases
 ALTER TABLE quiz_exams.exams ADD COLUMN IF NOT EXISTS cover_image_url TEXT;
 ALTER TABLE quiz_exams.questions ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE quiz_exams.exams ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ DEFAULT NULL;
 
 -- Admin settings (key-value store for upload validation config)
 CREATE TABLE IF NOT EXISTS quiz_users.admin_settings (

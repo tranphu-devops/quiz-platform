@@ -6,6 +6,12 @@
   import { page } from '$app/stores'
   import { marked } from 'marked'
 
+  let now = $state(Date.now())
+  onMount(() => {
+    const t = setInterval(() => { now = Date.now() }, 1000)
+    return () => clearInterval(t)
+  })
+
   let exam = $state(null)
   let mySubmissions = $state([])
   let myCredits = $state(null)
@@ -16,6 +22,25 @@
 
   const mySubmission = $derived(mySubmissions[0] ?? null)
   const isTeacher = $derived($user?.role === 'teacher' || $user?.role === 'admin')
+  const isScheduledLocked = $derived(
+    exam?.scheduled_at && new Date(exam.scheduled_at).getTime() > now
+  )
+  const scheduledCountdown = $derived.by(() => {
+    if (!exam?.scheduled_at) return null
+    const diff = new Date(exam.scheduled_at).getTime() - now
+    if (diff <= 0) return null
+    const s = Math.floor(diff / 1000)
+    const d = Math.floor(s / 86400)
+    const h = Math.floor((s % 86400) / 3600)
+    const m = Math.floor((s % 3600) / 60)
+    const sec = s % 60
+    const parts = []
+    if (d > 0) parts.push(`${d} ngày`)
+    if (h > 0 || d > 0) parts.push(`${h} giờ`)
+    if (m > 0 || h > 0 || d > 0) parts.push(`${m} phút`)
+    parts.push(`${sec < 10 ? '0' : ''}${sec} giây`)
+    return parts.join(' ')
+  })
   const hasPassed = $derived(
     mySubmission != null && (exam?.passing_score == null || mySubmission.percentage >= exam.passing_score)
   )
@@ -106,8 +131,9 @@
     display: inline-flex; align-items: center; gap: 0.3rem;
     padding: 0.2rem 0.65rem; border-radius: 99px; font-size: 0.75rem; font-weight: 700;
   }
-  .badge-published { background: rgba(34,197,94,0.2); color: #86efac; border: 1px solid rgba(134,239,172,0.3); }
-  .badge-draft     { background: rgba(251,191,36,0.2); color: #fde68a; border: 1px solid rgba(253,230,138,0.3); }
+  .badge-published  { background: rgba(34,197,94,0.2); color: #86efac; border: 1px solid rgba(134,239,172,0.3); }
+  .badge-draft      { background: rgba(251,191,36,0.2); color: #fde68a; border: 1px solid rgba(253,230,138,0.3); }
+  .badge-scheduled  { background: rgba(124,58,237,0.25); color: #c4b5fd; border: 1px solid rgba(196,181,253,0.3); }
   .hero h1 {
     font-size: clamp(1.2rem, 3vw, 1.65rem); font-weight: 800;
     color: #fff; line-height: 1.3; margin-bottom: 0.6rem;
@@ -277,6 +303,23 @@
   .h-link { color: var(--primary); text-decoration: none; font-size: 0.82rem; font-weight: 600; }
   .h-link:hover { text-decoration: underline; }
 
+  /* Scheduled countdown banner */
+  .countdown-banner {
+    border-radius: var(--radius-card); padding: 1.25rem 1.5rem;
+    background: linear-gradient(135deg, rgba(124,58,237,0.12), rgba(99,102,241,0.08));
+    border: 1.5px solid rgba(124,58,237,0.3);
+    text-align: center; margin-bottom: 0.75rem;
+  }
+  .countdown-banner-icon { font-size: 2rem; margin-bottom: 0.4rem; }
+  .countdown-banner-title { font-weight: 800; font-size: 0.95rem; color: #7c3aed; margin-bottom: 0.2rem; }
+  .countdown-banner-datetime { font-size: 0.82rem; color: var(--muted); margin-bottom: 0.65rem; }
+  .countdown-banner-timer {
+    font-size: 1.25rem; font-weight: 800; letter-spacing: 0.02em;
+    color: var(--text);
+    background: rgba(124,58,237,0.12); border-radius: 8px;
+    padding: 0.35rem 0.9rem; display: inline-block;
+  }
+
   /* Misc */
   .error { color: var(--danger); padding: 1rem 0; }
   .teacher-meta { font-size: 0.8rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin-top: 0.5rem; }
@@ -298,8 +341,8 @@
   <div class="hero-overlay"></div>
   <div class="hero-body">
     <div class="hero-top">
-      <span class="badge {exam.is_published ? 'badge-published' : 'badge-draft'}">
-        {exam.is_published ? '● Đã xuất bản' : '○ Nháp'}
+      <span class="badge {isScheduledLocked ? 'badge-scheduled' : exam.is_published ? 'badge-published' : 'badge-draft'}">
+        {isScheduledLocked ? '🔒 Chưa mở' : exam.is_published ? '● Đã xuất bản' : '○ Nháp'}
       </span>
       {#if isTeacher}
         <span class="mode-badge">{exam.allow_retake ? 'Thi thực hành' : 'Thi chính thức'}</span>
@@ -526,9 +569,27 @@
 
         <hr class="divider" />
 
+        <!-- Scheduled countdown banner (student) -->
+        {#if $user?.role === 'student' && isScheduledLocked}
+          <div class="countdown-banner">
+            <div class="countdown-banner-icon">🔒</div>
+            <div class="countdown-banner-title">Đề thi chưa mở</div>
+            <div class="countdown-banner-datetime">
+              Mở lúc {new Date(exam.scheduled_at).toLocaleString('vi-VN', {weekday:'short', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'})}
+            </div>
+            {#if scheduledCountdown}
+              <div class="countdown-banner-timer">{scheduledCountdown}</div>
+            {:else}
+              <div class="countdown-banner-timer">Đang mở...</div>
+            {/if}
+          </div>
+        {/if}
+
         <!-- Action buttons -->
         {#if $user?.role === 'student'}
-          {#if !mySubmission}
+          {#if isScheduledLocked}
+            <button class="btn-block btn-primary" disabled>🔒 Chưa đến giờ mở</button>
+          {:else if !mySubmission}
             {#if hasEnoughCredits}
               <a href="/exams/{exam.id}/take" class="btn-block btn-primary">▶ Bắt đầu làm bài</a>
             {:else}

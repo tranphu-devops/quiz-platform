@@ -39,6 +39,15 @@
   let saving = $state(false)
   let saveError = $state('')
 
+  // ── Publish mode ─────────────────────────────────────────────────────────────
+  let publish_mode = $state('draft') // 'draft' | 'now' | 'scheduled'
+  let scheduled_at_input = $state('')  // datetime-local value
+
+  function minScheduledAt() {
+    const d = new Date(Date.now() + 5 * 60 * 1000) // min 5 minutes from now
+    return d.toISOString().slice(0, 16)
+  }
+
   const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
   const STEPS = [
@@ -224,6 +233,10 @@
     saveError = ''
     saving = true
     try {
+      const is_published = publish_mode !== 'draft'
+      const scheduled_at = publish_mode === 'scheduled' && scheduled_at_input
+        ? new Date(scheduled_at_input).toISOString()
+        : null
       const res = await examApi.create({
         title, description, cover_image_url: cover_image_url || null,
         time_limit: Number(time_limit),
@@ -231,7 +244,8 @@
         credit_cost: Number(credit_cost),
         tags, show_explanation, allow_retake,
         cooldown_minutes: Number(cooldown_minutes) || 0,
-        max_attempts: max_attempts !== '' ? Number(max_attempts) : null
+        max_attempts: max_attempts !== '' ? Number(max_attempts) : null,
+        is_published, scheduled_at
       })
       const data = await res.json()
       if (!res.ok) { saveError = data.error; return }
@@ -403,6 +417,28 @@
   .q-add-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
   .q-toolbar { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
   .q-count-badge { font-size: 0.8rem; font-weight: 700; background: var(--primary-light); color: var(--primary); padding: 0.15rem 0.6rem; border-radius: 99px; }
+
+  /* ── Publish mode card ───────────────────────────────────────────────────────*/
+  .publish-mode-card {
+    background: var(--surface); border-radius: var(--radius-card);
+    border: 1px solid var(--border); padding: 1.25rem;
+    box-shadow: var(--shadow); margin-bottom: 1.25rem;
+  }
+  .pub-mode-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 0.85rem; color: var(--text); }
+  .pub-mode-options { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .pub-mode-opt {
+    flex: 1; min-width: 140px; display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.75rem 1rem; border-radius: 10px; border: 2px solid var(--border);
+    background: var(--bg); cursor: pointer; transition: all 0.15s;
+  }
+  .pub-mode-opt.selected { border-color: var(--primary); background: var(--primary-light); }
+  .pub-mode-opt input { display: none; }
+  .pub-mode-icon { font-size: 1.25rem; flex-shrink: 0; }
+  .pub-mode-label { font-size: 0.88rem; font-weight: 700; color: var(--text); }
+  .pub-mode-sub { font-size: 0.75rem; color: var(--muted); }
+  .pub-schedule-row { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.85rem; flex-wrap: wrap; }
+  .pub-schedule-row label { font-size: 0.85rem; font-weight: 600; color: var(--text); white-space: nowrap; }
+  .pub-schedule-preview { font-size: 0.8rem; color: var(--muted); font-style: italic; }
 </style>
 
 <!-- ── Wizard header ─────────────────────────────────────────────────────────── -->
@@ -510,6 +546,48 @@
       </span>
     </div>
   </div>
+</div>
+
+<div class="publish-mode-card">
+  <div class="pub-mode-title">📅 Xuất bản</div>
+  <div class="pub-mode-options">
+    <label class="pub-mode-opt" class:selected={publish_mode === 'draft'}>
+      <input type="radio" bind:group={publish_mode} value="draft" />
+      <div class="pub-mode-icon">📝</div>
+      <div>
+        <div class="pub-mode-label">Lưu nháp</div>
+        <div class="pub-mode-sub">Chỉ bạn thấy</div>
+      </div>
+    </label>
+    <label class="pub-mode-opt" class:selected={publish_mode === 'now'}>
+      <input type="radio" bind:group={publish_mode} value="now" />
+      <div class="pub-mode-icon">🚀</div>
+      <div>
+        <div class="pub-mode-label">Xuất bản ngay</div>
+        <div class="pub-mode-sub">Học sinh thấy ngay</div>
+      </div>
+    </label>
+    <label class="pub-mode-opt" class:selected={publish_mode === 'scheduled'}>
+      <input type="radio" bind:group={publish_mode} value="scheduled" />
+      <div class="pub-mode-icon">🔒</div>
+      <div>
+        <div class="pub-mode-label">Theo lịch</div>
+        <div class="pub-mode-sub">Hiện nhưng khoá đến giờ</div>
+      </div>
+    </label>
+  </div>
+  {#if publish_mode === 'scheduled'}
+    <div class="pub-schedule-row">
+      <label for="scheduled_at_create">Mở bài thi lúc:</label>
+      <input id="scheduled_at_create" type="datetime-local" bind:value={scheduled_at_input}
+        min={minScheduledAt()} style="width:auto" />
+      {#if scheduled_at_input}
+        <span class="pub-schedule-preview">
+          → Đề thi hiển thị nhưng khoá đến {new Date(scheduled_at_input).toLocaleString('vi-VN')}
+        </span>
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <div class="nav-bar">
@@ -726,6 +804,12 @@
     <div class="review-item">
       <div class="review-label">Giải thích đáp án</div>
       <div class="review-val">{show_explanation ? 'Hiển thị' : 'Ẩn'}</div>
+    </div>
+    <div class="review-item">
+      <div class="review-label">Xuất bản</div>
+      <div class="review-val" style="color:{publish_mode === 'draft' ? 'var(--amber)' : publish_mode === 'scheduled' ? '#7c3aed' : '#16a34a'}">
+        {publish_mode === 'draft' ? '📝 Nháp' : publish_mode === 'scheduled' ? `🔒 Theo lịch: ${scheduled_at_input ? new Date(scheduled_at_input).toLocaleString('vi-VN') : '(chưa chọn giờ)'}` : '🚀 Ngay lập tức'}
+      </div>
     </div>
   </div>
   {#if tags.length}

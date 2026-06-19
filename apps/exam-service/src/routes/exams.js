@@ -41,15 +41,15 @@ export default async function examRoutes(fastify) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
 
-    const { title, description, cover_image_url = null, time_limit = 30, passing_score = null, tags = [], show_explanation = false, allow_retake = false, credit_cost = null, cooldown_minutes = 0, max_attempts = null } = req.body ?? {}
+    const { title, description, cover_image_url = null, time_limit = 30, passing_score = null, tags = [], show_explanation = false, allow_retake = false, credit_cost = null, cooldown_minutes = 0, max_attempts = null, scheduled_at = null } = req.body ?? {}
     if (!title) {
       return reply.status(400).send({ error: 'Title required', statusCode: 400 })
     }
 
     try {
       const result = await pool.query(
-        'INSERT INTO exams (title, description, cover_image_url, time_limit, passing_score, created_by, tags, show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *',
-        [title, description, cover_image_url, time_limit, passing_score, req.user.id, tags, show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts]
+        'INSERT INTO exams (title, description, cover_image_url, time_limit, passing_score, created_by, tags, show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts, scheduled_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *',
+        [title, description, cover_image_url, time_limit, passing_score, req.user.id, tags, show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts, scheduled_at || null]
       )
       return reply.status(201).send(result.rows[0])
     } catch (err) {
@@ -66,7 +66,7 @@ export default async function examRoutes(fastify) {
       // Student list: only published exams, public fields only
       const studentSelect = `
         SELECT e.id, e.title, e.description, e.cover_image_url, e.time_limit,
-          e.passing_score, e.tags, e.credit_cost, e.created_at,
+          e.passing_score, e.tags, e.credit_cost, e.created_at, e.scheduled_at,
           COALESCE(p.full_name, au.email, 'Unknown') AS creator_name,
           COUNT(DISTINCT CASE WHEN (sp.role IS NULL OR sp.role != 'banned') THEN s.id END)::int AS submission_count,
           COUNT(DISTINCT CASE WHEN (sp.role IS NULL OR sp.role != 'banned') AND (e.passing_score IS NULL OR s.percentage >= e.passing_score) THEN s.id END)::int AS pass_count
@@ -166,7 +166,10 @@ export default async function examRoutes(fastify) {
   // PUT /exams/:id
   fastify.put('/exams/:id', async (req, reply) => {
     const { id } = req.params
-    const { title, description, cover_image_url, time_limit, passing_score, is_published, tags, show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts } = req.body ?? {}
+    const body = req.body ?? {}
+    const { title, description, cover_image_url, time_limit, passing_score, is_published, tags, show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts } = body
+    const has_scheduled_at = 'scheduled_at' in body
+    const scheduled_at_val = has_scheduled_at ? (body.scheduled_at || null) : undefined
 
     try {
       const examResult = await pool.query('SELECT * FROM exams WHERE id = $1', [id])
@@ -192,9 +195,10 @@ export default async function examRoutes(fastify) {
           allow_retake = COALESCE($10, allow_retake),
           credit_cost = COALESCE($11, credit_cost),
           cooldown_minutes = COALESCE($12, cooldown_minutes),
-          max_attempts = CASE WHEN $13::int IS NOT NULL THEN $13::int ELSE max_attempts END
+          max_attempts = CASE WHEN $13::int IS NOT NULL THEN $13::int ELSE max_attempts END,
+          scheduled_at = CASE WHEN $14 THEN $15::timestamptz ELSE scheduled_at END
          WHERE id = $9 RETURNING *`,
-        [title, description, cover_image_url ?? null, time_limit, passing_score ?? null, is_published, tags ?? null, show_explanation ?? null, id, allow_retake ?? null, credit_cost ?? null, cooldown_minutes ?? null, max_attempts ?? null]
+        [title, description, cover_image_url ?? null, time_limit, passing_score ?? null, is_published, tags ?? null, show_explanation ?? null, id, allow_retake ?? null, credit_cost ?? null, cooldown_minutes ?? null, max_attempts ?? null, has_scheduled_at, scheduled_at_val]
       )
       return result.rows[0]
     } catch (err) {

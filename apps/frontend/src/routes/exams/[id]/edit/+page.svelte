@@ -28,8 +28,14 @@
   let cooldown_minutes = $state(0)
   let max_attempts = $state('')
   let is_published = $state(false)
+  let publish_mode = $state('draft') // 'draft' | 'now' | 'scheduled'
+  let scheduled_at_input = $state('')
   let tagInput = $state('')
   let step1Error = $state('')
+
+  function minScheduledAt() {
+    return new Date(Date.now() + 5 * 60 * 1000).toISOString().slice(0, 16)
+  }
 
   // ── Step 2: JSON import ───────────────────────────────────────────────────────
   let importDragging = $state(false)
@@ -79,6 +85,16 @@
       cooldown_minutes = exam.cooldown_minutes ?? 0
       max_attempts = exam.max_attempts != null ? exam.max_attempts : ''
       is_published = exam.is_published ?? false
+
+      // Derive publish_mode from exam data
+      if (!exam.is_published) {
+        publish_mode = 'draft'
+      } else if (exam.scheduled_at && new Date(exam.scheduled_at) > new Date()) {
+        publish_mode = 'scheduled'
+        scheduled_at_input = new Date(exam.scheduled_at).toISOString().slice(0, 16)
+      } else {
+        publish_mode = 'now'
+      }
 
       questions = (exam.questions ?? []).map(q => {
         const opts = Array.isArray(q.options)
@@ -247,14 +263,20 @@
   async function save() {
     saveError = ''; saving = true
     try {
+      const is_pub = publish_mode !== 'draft'
+      const scheduled_at = publish_mode === 'scheduled' && scheduled_at_input
+        ? new Date(scheduled_at_input).toISOString()
+        : null
       const res = await examApi.update(exam.id, {
         title, description, cover_image_url: cover_image_url || null,
         time_limit: Number(time_limit),
         passing_score: passing_score !== '' ? Number(passing_score) : null,
         credit_cost: Number(credit_cost),
-        tags, show_explanation, allow_retake, is_published,
+        tags, show_explanation, allow_retake,
+        is_published: is_pub,
         cooldown_minutes: Number(cooldown_minutes) || 0,
-        max_attempts: max_attempts !== '' ? Number(max_attempts) : null
+        max_attempts: max_attempts !== '' ? Number(max_attempts) : null,
+        scheduled_at
       })
       if (!res.ok) { const d = await res.json(); saveError = d.error; return }
 
@@ -344,14 +366,27 @@
   .toggle input:checked ~ .toggle-thumb { transform: translateX(18px); }
   .toggle-label { font-size: 0.9rem; cursor: pointer; }
 
-  /* Published toggle — prominent */
-  .publish-toggle-card { background: var(--primary-light); border: 1.5px solid rgba(99,102,241,0.3); border-radius: 12px; padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
-  .publish-toggle-card.published { background: #f0fdf4; border-color: #86efac; }
-  .pub-info { flex: 1; }
-  .pub-title { font-size: 0.95rem; font-weight: 700; }
-  .pub-sub { font-size: 0.8rem; color: var(--muted); margin-top: 0.15rem; }
-  .pub-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; margin-right: 0.35rem; }
-  .pub-dot.on { background: #16a34a; }
+  /* Publish mode selector */
+  .publish-mode-card {
+    background: var(--surface); border-radius: var(--radius-card);
+    border: 1px solid var(--border); padding: 1.25rem;
+    box-shadow: var(--shadow); margin-bottom: 1rem;
+  }
+  .pub-mode-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 0.85rem; color: var(--text); }
+  .pub-mode-options { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .pub-mode-opt {
+    flex: 1; min-width: 130px; display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.75rem 1rem; border-radius: 10px; border: 2px solid var(--border);
+    background: var(--bg); cursor: pointer; transition: all 0.15s;
+  }
+  .pub-mode-opt.selected { border-color: var(--primary); background: var(--primary-light); }
+  .pub-mode-opt input { display: none; }
+  .pub-mode-icon { font-size: 1.25rem; flex-shrink: 0; }
+  .pub-mode-label { font-size: 0.88rem; font-weight: 700; color: var(--text); }
+  .pub-mode-sub { font-size: 0.75rem; color: var(--muted); }
+  .pub-schedule-row { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.85rem; flex-wrap: wrap; }
+  .pub-schedule-row label { font-size: 0.85rem; font-weight: 600; color: var(--text); white-space: nowrap; }
+  .pub-schedule-preview { font-size: 0.8rem; color: var(--muted); font-style: italic; }
 
   /* ── Import step ─────────────────────────────────────────────────────────────*/
   .drop-zone { border: 2px dashed var(--border); border-radius: 14px; padding: 2.5rem 1.5rem; text-align: center; cursor: pointer; transition: all 0.15s; background: var(--bg); }
@@ -460,20 +495,47 @@
 <!-- ════════════════ STEP 1: Exam info ═════════════════════════════════════════ -->
 {#if step === 1}
 
-<!-- Publish toggle — prominent -->
-<div class="publish-toggle-card" class:published={is_published}>
-  <div class="pub-info">
-    <div class="pub-title">
-      <span class="pub-dot" class:on={is_published}></span>
-      {is_published ? 'Đang xuất bản' : 'Đang ở chế độ nháp'}
-    </div>
-    <div class="pub-sub">{is_published ? 'Học sinh có thể thấy và làm bài thi này.' : 'Chỉ giáo viên và admin mới thấy đề thi này.'}</div>
+<!-- Publish mode selector -->
+<div class="publish-mode-card">
+  <div class="pub-mode-title">📅 Xuất bản</div>
+  <div class="pub-mode-options">
+    <label class="pub-mode-opt" class:selected={publish_mode === 'draft'}>
+      <input type="radio" bind:group={publish_mode} value="draft" />
+      <div class="pub-mode-icon">📝</div>
+      <div>
+        <div class="pub-mode-label">Lưu nháp</div>
+        <div class="pub-mode-sub">Chỉ bạn thấy</div>
+      </div>
+    </label>
+    <label class="pub-mode-opt" class:selected={publish_mode === 'now'}>
+      <input type="radio" bind:group={publish_mode} value="now" />
+      <div class="pub-mode-icon">🚀</div>
+      <div>
+        <div class="pub-mode-label">Xuất bản ngay</div>
+        <div class="pub-mode-sub">Học sinh thấy ngay</div>
+      </div>
+    </label>
+    <label class="pub-mode-opt" class:selected={publish_mode === 'scheduled'}>
+      <input type="radio" bind:group={publish_mode} value="scheduled" />
+      <div class="pub-mode-icon">🔒</div>
+      <div>
+        <div class="pub-mode-label">Theo lịch</div>
+        <div class="pub-mode-sub">Hiện nhưng khoá đến giờ</div>
+      </div>
+    </label>
   </div>
-  <label class="toggle">
-    <input type="checkbox" bind:checked={is_published} />
-    <div class="toggle-track"></div>
-    <div class="toggle-thumb"></div>
-  </label>
+  {#if publish_mode === 'scheduled'}
+    <div class="pub-schedule-row">
+      <label for="scheduled_at_edit">Mở bài thi lúc:</label>
+      <input id="scheduled_at_edit" type="datetime-local" bind:value={scheduled_at_input}
+        min={minScheduledAt()} style="width:auto" />
+      {#if scheduled_at_input}
+        <span class="pub-schedule-preview">
+          → Đề thi hiển thị nhưng khoá đến {new Date(scheduled_at_input).toLocaleString('vi-VN')}
+        </span>
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <div class="card">
@@ -755,9 +817,9 @@
       <div class="review-val">{title}</div>
     </div>
     <div class="review-item">
-      <div class="review-label">Trạng thái</div>
-      <div class="review-val" style="color:{is_published ? '#16a34a' : 'var(--amber)'}">
-        {is_published ? '✓ Xuất bản' : '○ Nháp'}
+      <div class="review-label">Xuất bản</div>
+      <div class="review-val" style="color:{publish_mode === 'draft' ? 'var(--amber)' : publish_mode === 'scheduled' ? '#7c3aed' : '#16a34a'}">
+        {publish_mode === 'draft' ? '📝 Nháp' : publish_mode === 'scheduled' ? `🔒 ${scheduled_at_input ? new Date(scheduled_at_input).toLocaleString('vi-VN') : '(chưa chọn giờ)'}` : '🚀 Ngay lập tức'}
       </div>
     </div>
     <div class="review-item">

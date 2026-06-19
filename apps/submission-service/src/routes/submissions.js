@@ -69,6 +69,15 @@ export default async function submissionRoutes(fastify) {
       }
       const exam = await examRes.json()
 
+      // Check scheduled_at — exam not yet open
+      if (exam.scheduled_at && new Date(exam.scheduled_at) > new Date()) {
+        return reply.status(423).send({
+          error: 'Đề thi chưa mở. Vui lòng chờ đến thời gian quy định.',
+          scheduled_at: exam.scheduled_at,
+          statusCode: 423
+        })
+      }
+
       // Check max_attempts
       if (exam.max_attempts != null) {
         const countRes = await pool.query(

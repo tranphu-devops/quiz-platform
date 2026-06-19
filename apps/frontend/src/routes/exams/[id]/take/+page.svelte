@@ -137,6 +137,11 @@
         creditError = d.error ?? 'Không đủ credit để làm bài này'
         loading = false; return
       }
+      if (startRes.status === 423) {
+        const d = await startRes.json()
+        limitError = d.error ?? 'Đề thi chưa mở. Vui lòng quay lại sau.'
+        loading = false; return
+      }
       if (startRes.status === 429) {
         const d = await startRes.json()
         limitError = d.error ?? 'Không thể bắt đầu bài thi lúc này'

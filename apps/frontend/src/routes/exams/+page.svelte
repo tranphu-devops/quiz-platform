@@ -4,6 +4,30 @@
   import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
 
+  let now = $state(Date.now())
+  onMount(() => {
+    const t = setInterval(() => { now = Date.now() }, 1000)
+    return () => clearInterval(t)
+  })
+
+  function isScheduledLocked(exam) {
+    return exam.scheduled_at && new Date(exam.scheduled_at).getTime() > now
+  }
+
+  function examCountdown(exam) {
+    if (!exam.scheduled_at) return null
+    const diff = new Date(exam.scheduled_at).getTime() - now
+    if (diff <= 0) return null
+    const s = Math.floor(diff / 1000)
+    const d = Math.floor(s / 86400)
+    const h = Math.floor((s % 86400) / 3600)
+    const m = Math.floor((s % 3600) / 60)
+    const sec = s % 60
+    if (d > 0) return `${d}ng ${h}h ${m}p`
+    if (h > 0) return `${h}h ${m}p ${sec}s`
+    return `${m}p ${sec < 10 ? '0' : ''}${sec}s`
+  }
+
   let exams = $state([])
   let collections = $state([])
   let latestSub = $state({})
@@ -48,10 +72,12 @@
 
   function statusOf(exam) {
     if ($user?.role === 'student') {
+      if (isScheduledLocked(exam)) return 'scheduled'
       if (isPassed(exam)) return 'passed'
       if (latestSub[exam.id]) return 'failed'
       return 'new'
     }
+    if (isScheduledLocked(exam)) return 'scheduled'
     return exam.is_published ? 'published' : 'draft'
   }
 
@@ -222,6 +248,23 @@
   .badge.published{ background: rgba(255,255,255,0.9); color: #15803d; }
   .badge.draft    { background: rgba(255,255,255,0.85); color: #92400e; }
   .badge.new      { display: none; }
+  .badge.scheduled{ background: rgba(124,58,237,0.9); color: #fff; }
+
+  .countdown-overlay {
+    position: absolute; inset: 0;
+    background: rgba(15,23,42,0.55);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 0.3rem;
+    border-radius: 0;
+  }
+  .countdown-lock { font-size: 1.6rem; }
+  .countdown-timer {
+    font-size: 0.88rem; font-weight: 800;
+    color: #fff; letter-spacing: 0.03em;
+    background: rgba(0,0,0,0.4); border-radius: 6px;
+    padding: 0.15rem 0.5rem;
+  }
+  .countdown-label { font-size: 0.7rem; color: rgba(255,255,255,0.75); }
 
   .card-body { padding: 1rem 1.1rem; flex: 1; display: flex; flex-direction: column; gap: 0.4rem; }
   .card-title {
@@ -402,7 +445,19 @@
               <div class="cover-placeholder" style="background:{gradientFor(exam.title)}">{initial(exam.title)}</div>
             {/if}
             <div class="cover-overlay"></div>
-            {#if st !== 'new'}
+            {#if st === 'scheduled'}
+              {@const cd = examCountdown(exam)}
+              <div class="countdown-overlay">
+                <span class="countdown-lock">🔒</span>
+                {#if cd}
+                  <span class="countdown-timer">{cd}</span>
+                  <span class="countdown-label">Sắp mở</span>
+                {:else}
+                  <span class="countdown-label">Đang mở...</span>
+                {/if}
+              </div>
+              <span class="badge scheduled">🔒 Sắp mở</span>
+            {:else if st !== 'new'}
               <span class="badge {st}">
                 {st === 'passed' ? '✓ Đã pass' : st === 'failed' ? '✗ Chưa đạt' : st === 'published' ? '✓ Xuất bản' : 'Nháp'}
               </span>

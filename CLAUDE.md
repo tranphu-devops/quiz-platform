@@ -41,6 +41,7 @@ npm start        # node build (production)
 docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_image_upload.sql
 docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_credits.sql
 docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_collections.sql
+docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_security.sql
 ```
 
 ### Regenerate badge SVGs
@@ -109,7 +110,7 @@ JWT claims:
 - `user_metadata.role` → `req.user.role` (`student` | `teacher` | `admin`)
 - `role` → always `"authenticated"` — **this is GoTrue-internal, NOT our app role**
 
-Each backend verifies JWT locally via `JWT_SECRET` in `src/middleware/auth.js`, which sets `req.user` and `req.ability`.
+Each backend verifies JWT locally via `JWT_SECRET` in `src/middleware/auth.js`, which sets `req.user` and `req.ability`. After JWT verification, the middleware does a **live DB query** to check if the user's role is `banned` — this ensures bans take effect immediately without waiting for token expiry.
 
 ### Authorization — CASL
 Each service has `src/lib/ability.js` with `defineAbilityFor(user)` using `@casl/ability` / `createMongoAbility`.
@@ -118,6 +119,7 @@ Role rules:
 - `admin` — full access
 - `teacher` — CRUD own exams (`created_by === user.id`), read all submissions
 - `student` — read published exams, create/read own submissions
+- `banned` — blocked at auth middleware (live DB check); CASL grants no permissions
 
 In routes: `req.ability.cannot('action', subject('Type', plainObject))`. Always import `subject` from `@casl/ability` for condition-based checks.
 
@@ -207,7 +209,7 @@ Never manually create tables in `quiz_auth` — GoTrue manages that schema.
 Schema summary:
 - `quiz_users.profiles` — `id, full_name, avatar_url, role, credits, updated_at`
 - `quiz_users.admin_settings` — `key, value` (upload validation + credit config)
-- `quiz_exams.exams` — includes `cover_image_url`, `tags TEXT[]`, `show_explanation`, `allow_retake`, `credit_cost`
+- `quiz_exams.exams` — includes `cover_image_url`, `tags TEXT[]`, `show_explanation`, `allow_retake`, `credit_cost`, `cooldown_minutes` (int, minutes between retakes), `max_attempts` (int nullable, null = unlimited), `scheduled_at` (timestamptz nullable, when null or in the past the exam is open; when in the future the exam is visible but locked)
 - `quiz_exams.questions` — includes `image_url`, `question_type` (`single`|`multiple`), `correct_answer` (comma-separated keys for multiple)
 - `quiz_exams.collections` — `id, title, description, created_by, badge_image_url, is_published`
 - `quiz_exams.collection_exams` — `(collection_id, exam_id, position)` many-to-many
@@ -217,7 +219,7 @@ Schema summary:
 Seed files in `infra/postgres/`: `seed.sql` (sample data), `seed_aws_saa.sql` (AWS SAA exam with 45 questions).
 
 ### CI/CD
-GitHub Actions (`.github/workflows/build-push.yml`) builds multi-platform (amd64 + arm64) Docker images to GHCR on push to `main`. Matrix over 4 services: `user-service`, `exam-service`, `submission-service`, `frontend`.
+GitHub Actions (`.github/workflows/build-push.yml`) builds multi-platform (amd64 + arm64) Docker images to GHCR on push to `main`. Matrix over 5 services: `auth-service` (legacy, image built but not deployed), `user-service`, `exam-service`, `submission-service`, `frontend`.
 
 ## Conventions
 
@@ -234,6 +236,7 @@ GitHub Actions (`.github/workflows/build-push.yml`) builds multi-platform (amd64
 - **Public settings:** `GET /api/users/public/settings` — exposes `teacher_upgrade_cost`, `default_credits`, `default_exam_cost` without auth.
 - **Teacher upgrade:** `POST /api/users/upgrade-to-teacher` — deducts credits, updates `auth.users.raw_user_meta_data` directly. User must log out and back in for new role to take effect.
 - **Session credit flag:** Take page stores `credit_deducted: true` in localStorage session to avoid double-charging on page refresh.
+- **Scheduled publish:** `exams.scheduled_at` — if set to a future datetime and `is_published = true`, the exam is visible to students but locked. The frontend shows a live countdown (1 s interval via `setInterval`). Server blocks `POST /submissions/start` with HTTP 423 if `scheduled_at > NOW()`. Create/edit forms have a 3-way publish mode selector: draft / now / scheduled. `PUT /exams/:id` uses a `(has_scheduled_at, scheduled_at_val)` param pair so `null` can clear the field.
 
 ## Design System
 
