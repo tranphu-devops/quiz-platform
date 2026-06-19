@@ -1,0 +1,31 @@
+name: Cleanup old Docker images
+
+on:
+  schedule:
+    - cron: '0 17 * * 6'  # 00:00 Chủ Nhật giờ Việt Nam (UTC+7 = UTC 17:00 Thứ 7)
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+
+    strategy:
+      matrix:
+        service:
+          - auth-service
+          - user-service
+          - exam-service
+          - submission-service
+          - frontend
+
+    steps:
+      - name: Delete old versions (giữ 5 bản gần nhất + toàn bộ semver releases)
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ matrix.service }}
+          package-type: container
+          min-versions-to-keep: 5
+          ignore-versions: '^\d+\.\d+(\.\d+)?$'
+          token: ${{ secrets.GITHUB_TOKEN }}
