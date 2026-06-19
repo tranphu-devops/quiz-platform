@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@supabase/auth-js": "^2.65.1",
-    "@sveltejs/adapter-node": "^5.2.0",
+    "@sveltejs/adapter-node": "5.5.4",
     "@sveltejs/kit": "^2.5.28",
     "marked": "^18.0.5",
     "svelte": "^5.0.0"

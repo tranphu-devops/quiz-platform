@@ -12,5 +12,4 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY package.json ./
 EXPOSE 3000
 ENV PORT=3000
-WORKDIR /app/build
-CMD ["node", "index.js"]
+CMD ["node", "build"]
