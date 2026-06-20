@@ -81,16 +81,16 @@ export const submissionApi = {
       headers: authHeaders(),
       body: JSON.stringify({ exam_id })
     }),
-  saveProgress: (id, answers) =>
+  saveProgress: (id, answers, sessionId = null) =>
     apiFetch(`${SUB_URL}/submissions/${id}/progress`, {
       method: 'PUT',
-      headers: authHeaders(),
+      headers: { ...authHeaders(), ...(sessionId ? { 'x-exam-session': sessionId } : {}) },
       body: JSON.stringify({ answers })
     }),
-  submitById: (id, answers) =>
+  submitById: (id, answers, sessionId = null) =>
     apiFetch(`${SUB_URL}/submissions/${id}/submit`, {
       method: 'POST',
-      headers: authHeaders(),
+      headers: { ...authHeaders(), ...(sessionId ? { 'x-exam-session': sessionId } : {}) },
       body: JSON.stringify({ answers })
     }),
   submit: (data) =>

@@ -1,6 +1,11 @@
+import crypto from 'node:crypto'
 import { subject } from '@casl/ability'
 import { pool } from '../db.js'
 import { verifyAuth } from '../middleware/auth.js'
+
+// Session is considered "stale" if no heartbeat in this many seconds.
+// Allows legitimate re-login/crash recovery without manual intervention.
+const SESSION_STALE_SECS = 300
 
 // ── Shared grading logic ──────────────────────────────────────────────────────
 
@@ -147,7 +152,7 @@ export default async function submissionRoutes(fastify) {
 
       // ── Resume or clean up any existing in_progress submission ─────────────
       const ipRes = await pool.query(
-        `SELECT id, expires_at, answers FROM submissions
+        `SELECT id, expires_at, answers, exam_session_id, session_last_active FROM submissions
           WHERE exam_id = $1 AND user_id = $2 AND status = 'in_progress'
           LIMIT 1`,
         [exam_id, req.user.id]
@@ -155,11 +160,28 @@ export default async function submissionRoutes(fastify) {
       if (ipRes.rows.length > 0) {
         const existing = ipRes.rows[0]
         if (new Date(existing.expires_at) > new Date()) {
-          // Still valid — resume without charging credit again
+          // Block if another session is actively using this submission
+          if (existing.exam_session_id && existing.session_last_active) {
+            const staleSecs = (Date.now() - new Date(existing.session_last_active).getTime()) / 1000
+            if (staleSecs < SESSION_STALE_SECS) {
+              return reply.status(423).send({
+                error: 'Bài thi này đang được làm trên một thiết bị khác. Nếu thiết bị đó gặp sự cố, vui lòng thử lại sau vài phút.',
+                reason: 'session_conflict',
+                statusCode: 423
+              })
+            }
+          }
+          // Session stale or not set — claim it for this device
+          const sessionId = crypto.randomUUID()
+          await pool.query(
+            `UPDATE submissions SET exam_session_id = $1, session_last_active = NOW() WHERE id = $2`,
+            [sessionId, existing.id]
+          )
           return reply.send({
             success: true,
             submission_id: existing.id,
             expires_at: existing.expires_at,
+            session_id: sessionId,
             credit_cost: 0,
             new_balance: null,
             resumed: true
@@ -232,15 +254,16 @@ export default async function submissionRoutes(fastify) {
 
       // ── Create in_progress submission row ──────────────────────────────────
       const timeLimit = exam.time_limit ?? 30
+      const sessionId = crypto.randomUUID()
       const insertRes = await pool.query(
-        `INSERT INTO submissions (exam_id, user_id, status, started_at, expires_at)
-         VALUES ($1, $2, 'in_progress', NOW(), NOW() + ($3 * interval '1 minute'))
+        `INSERT INTO submissions (exam_id, user_id, status, started_at, expires_at, exam_session_id, session_last_active)
+         VALUES ($1, $2, 'in_progress', NOW(), NOW() + ($3 * interval '1 minute'), $4, NOW())
          RETURNING id, expires_at`,
-        [exam_id, req.user.id, timeLimit]
+        [exam_id, req.user.id, timeLimit, sessionId]
       )
       const { id: submission_id, expires_at } = insertRes.rows[0]
 
-      return reply.send({ success: true, submission_id, expires_at, credit_cost: creditCost, new_balance })
+      return reply.send({ success: true, submission_id, expires_at, session_id: sessionId, credit_cost: creditCost, new_balance })
     } catch (err) {
       fastify.log.error(err)
       return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
@@ -269,9 +292,14 @@ export default async function submissionRoutes(fastify) {
       if (sub.expires_at && new Date(sub.expires_at) < new Date()) {
         return reply.status(410).send({ error: 'Bài thi đã hết giờ', statusCode: 410 })
       }
+      // Reject saves from a session that was superseded by another device
+      const incomingSession = req.headers['x-exam-session']
+      if (sub.exam_session_id && incomingSession && sub.exam_session_id !== incomingSession) {
+        return reply.status(409).send({ error: 'Phiên làm bài không còn hiệu lực', reason: 'session_conflict', statusCode: 409 })
+      }
 
       await pool.query(
-        'UPDATE submissions SET answers = $1 WHERE id = $2',
+        'UPDATE submissions SET answers = $1, session_last_active = NOW() WHERE id = $2',
         [JSON.stringify(answers ?? {}), id]
       )
       return reply.send({ saved: true })
@@ -304,6 +332,10 @@ export default async function submissionRoutes(fastify) {
       }
       if (sub.status !== 'in_progress') {
         return reply.status(409).send({ error: 'Bài thi đã được nộp', submission_id: sub.id, statusCode: 409 })
+      }
+      const incomingSession = req.headers['x-exam-session']
+      if (sub.exam_session_id && incomingSession && sub.exam_session_id !== incomingSession) {
+        return reply.status(409).send({ error: 'Phiên làm bài không còn hiệu lực', reason: 'session_conflict', submission_id: sub.id, statusCode: 409 })
       }
 
       const examRes = await fetch(
@@ -394,7 +426,7 @@ export default async function submissionRoutes(fastify) {
 
     try {
       const result = await pool.query(
-        `SELECT id, exam_id, user_id, answers, started_at, expires_at
+        `SELECT id, exam_id, user_id, answers, started_at, expires_at, exam_session_id, session_last_active
            FROM submissions
           WHERE exam_id = $1 AND user_id = $2
             AND status = 'in_progress' AND expires_at > NOW()
@@ -405,7 +437,29 @@ export default async function submissionRoutes(fastify) {
       if (!result.rows.length) {
         return reply.status(404).send({ error: 'No active submission', statusCode: 404 })
       }
-      return result.rows[0]
+
+      const sub = result.rows[0]
+
+      // Block if another session is actively using this submission
+      if (sub.exam_session_id && sub.session_last_active) {
+        const staleSecs = (Date.now() - new Date(sub.session_last_active).getTime()) / 1000
+        if (staleSecs < SESSION_STALE_SECS) {
+          return reply.status(423).send({
+            error: 'Bài thi này đang được làm trên một thiết bị khác. Nếu thiết bị đó gặp sự cố, vui lòng thử lại sau vài phút.',
+            reason: 'session_conflict',
+            statusCode: 423
+          })
+        }
+      }
+
+      // Claim session for this device
+      const sessionId = crypto.randomUUID()
+      await pool.query(
+        `UPDATE submissions SET exam_session_id = $1, session_last_active = NOW() WHERE id = $2`,
+        [sessionId, sub.id]
+      )
+      const { exam_session_id: _drop1, session_last_active: _drop2, ...subData } = sub
+      return { ...subData, session_id: sessionId }
     } catch (err) {
       fastify.log.error(err)
       return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })

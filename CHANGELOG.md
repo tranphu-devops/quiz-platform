@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - **Mã hoá API response (production)**: Backend mã hoá toàn bộ response bằng AES-256-GCM; frontend giải mã trong suốt. Dùng ECDH P-256 key exchange — shared key không bao giờ truyền trên wire, bảo vệ khỏi Nginx/proxy inspection. Chỉ kích hoạt khi `NODE_ENV=production` + `API_ENCRYPTION_KEY` được set. Dev mode không ảnh hưởng.
 - **Resume bài thi sau khi đóng tab / đổi thiết bị**: Khi student vào lại trang làm bài, frontend kiểm tra server (`GET /submissions/active?exam_id=`) để tìm session `in_progress` còn thời hạn — kể cả khi localStorage đã bị xoá hoặc đang dùng thiết bị khác. Đáp án đã lưu trên server được restore, đồng hồ đếm ngược tiếp tục từ thời gian còn lại (server-authoritative). Không trừ credit lần 2.
 - **Dashboard student — bài thi đang làm dở**: Section mới hiển thị tất cả submission `in_progress` còn thời hạn kèm bộ đếm ngược và nút "Tiếp tục". Stat card "Đang thi dở" hiển thị số lượng.
+- **Chống gian lận: 1 tài khoản = 1 thiết bị làm bài**: Mỗi submission `in_progress` được gắn `exam_session_id` (UUID) và `session_last_active`. Khi một thiết bị đang làm bài, mọi thiết bị khác cố truy cập cùng bài thi đều bị chặn với thông báo rõ ràng. Session được xem là "stale" sau 5 phút không heartbeat — cho phép re-login hợp lệ sau sự cố. Frontend gửi heartbeat mỗi 30 giây qua `PUT /progress`; nếu bị đẩy ra sẽ hiện overlay thông báo và ngừng đếm giờ.
 
 ---
 

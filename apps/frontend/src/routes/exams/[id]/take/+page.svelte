@@ -24,6 +24,11 @@
   // Set after a successful start — used for progress saves and submit
   let submissionId = null
   let expiresAt = null
+  // In-memory only (not localStorage): per-tab exam session token.
+  // Sent as x-exam-session header; server rejects saves from mismatched sessions.
+  let sessionId = null
+  let heartbeatTimer = null
+  let sessionConflict = $state(false)
 
   function shuffle(arr) {
     const a = [...arr]
@@ -52,7 +57,8 @@
         answers, timeLeft, savedAt: Date.now(),
         credit_deducted: true,
         submission_id: submissionId,
-        expires_at: expiresAt
+        expires_at: expiresAt,
+        session_id: sessionId  // persisted so same browser can reclaim on reload
       }))
     } catch {}
   }
@@ -103,12 +109,12 @@
   // Called on "Câu sau →" — saves progress to backend (fire-and-forget) then advances
   function goNext() {
     if (submissionId) {
-      submissionApi.saveProgress(submissionId, answers).catch(() => {})
+      submissionApi.saveProgress(submissionId, answers, sessionId).catch(() => {})
     }
     currentIdx++
   }
 
-  onDestroy(() => clearInterval(timer))
+  onDestroy(() => { clearInterval(timer); clearInterval(heartbeatTimer) })
 
   onMount(async () => {
     if (!$user) { goto('/login'); return }
@@ -142,9 +148,10 @@
             goto(`/exams/${id}/result?submissionId=${sub.id}`, { replaceState: true })
             return
           }
-          // Still in_progress — merge server answers (base) with local answers (may have newest)
+          // Still in_progress — restore session_id from localStorage (same browser = same session)
           submissionId = sub.id
           expiresAt = sub.expires_at
+          sessionId = saved.session_id ?? null
           const merged = { ...(sub.answers ?? {}), ...(saved.answers ?? {}) }
           await _beginExam(id, { ...saved, answers: merged })
           return
@@ -157,10 +164,17 @@
       // Handles the case where user lost the tab, cleared browser data, or switched device.
       if ($user.role === 'student') {
         const activeRes = await submissionApi.getActive(id).catch(() => null)
+        if (activeRes?.status === 423) {
+          // Another device is actively taking this exam
+          sessionConflict = true
+          loading = false
+          return
+        }
         if (activeRes?.ok) {
           const activeSub = await activeRes.json()
           submissionId = activeSub.id
           expiresAt = activeSub.expires_at
+          sessionId = activeSub.session_id ?? null
           const remaining = Math.max(0, Math.floor((new Date(expiresAt) - Date.now()) / 1000))
           await _beginExam(id, { answers: activeSub.answers ?? {}, timeLeft: remaining })
           return
@@ -199,6 +213,10 @@
       }
       if (startRes.status === 423) {
         const d = await startRes.json()
+        if (d.reason === 'session_conflict') {
+          sessionConflict = true
+          loading = false; return
+        }
         limitError = d.error ?? 'Đề thi chưa mở. Vui lòng quay lại sau.'
         loading = false; return
       }
@@ -215,6 +233,7 @@
       if (startData.new_balance !== null) myCredits = startData.new_balance
       submissionId = startData.submission_id
       expiresAt = startData.expires_at
+      sessionId = startData.session_id ?? null
       await _beginExam(id, null)
     } catch {
       error = 'Không thể kết nối server'
@@ -224,14 +243,27 @@
 
   async function _beginExam(id, saved) {
     if (saved?.answers) answers = saved.answers
-    // timeLeft is already computed from expires_at inside loadSession
     timeLeft = saved?.timeLeft > 0 ? saved.timeLeft : (exam.time_limit ?? 30) * 60
     saveSession(exam.id)
+    // Touch session immediately so server sees it as active
+    if (submissionId) submissionApi.saveProgress(submissionId, answers, sessionId).catch(() => {})
     timer = setInterval(() => {
       timeLeft--
       saveSession(exam.id)
-      if (timeLeft <= 0) { clearInterval(timer); submitExam() }
+      if (timeLeft <= 0) { clearInterval(timer); clearInterval(heartbeatTimer); submitExam() }
     }, 1000)
+    // Heartbeat every 30s — keeps session alive even when user is reading (not clicking Next)
+    heartbeatTimer = setInterval(async () => {
+      if (!submissionId) return
+      const res = await submissionApi.saveProgress(submissionId, answers, sessionId).catch(() => null)
+      if (res?.status === 409) {
+        const d = await res.json().catch(() => ({}))
+        if (d.reason === 'session_conflict') {
+          clearInterval(timer); clearInterval(heartbeatTimer)
+          sessionConflict = true
+        }
+      }
+    }, 30000)
     loading = false
   }
 
@@ -247,13 +279,17 @@
   }
 
   async function submitExam() {
-    showConfirm = false; clearInterval(timer); submitting = true
+    showConfirm = false; clearInterval(timer); clearInterval(heartbeatTimer); submitting = true
     try {
       let res
       if (submissionId) {
-        res = await submissionApi.submitById(submissionId, answers)
-        // 409 means the batch grader already graded it — just redirect to result
+        res = await submissionApi.submitById(submissionId, answers, sessionId)
         if (res.status === 409) {
+          const d = await res.json().catch(() => ({}))
+          if (d.reason === 'session_conflict') {
+            sessionConflict = true; submitting = false; return
+          }
+          // Batch grader already graded it — redirect to result
           clearSession(exam.id)
           goto(`/exams/${exam.id}/result?submissionId=${submissionId}`, { replaceState: true })
           return
@@ -528,9 +564,36 @@
     .q-grid { grid-template-columns: repeat(8, 1fr); overflow-x: auto; }
     .q-dot { min-width: 36px; }
   }
+
+  /* ── Session conflict overlay ────────────────────────────────────────────────*/
+  .session-conflict-wrap {
+    min-height: 60vh; display: flex; align-items: center; justify-content: center;
+    padding: 2rem 1rem;
+  }
+  .session-conflict-card {
+    background: var(--surface); border-radius: var(--radius-card);
+    border: 1px solid #fca5a544; box-shadow: 0 8px 32px rgba(239,68,68,0.12);
+    padding: 2.5rem 2rem; max-width: 420px; width: 100%; text-align: center;
+  }
+  .session-conflict-icon { font-size: 2.8rem; margin-bottom: 1rem; }
+  .session-conflict-title { font-size: 1.2rem; font-weight: 800; color: var(--text); margin-bottom: 0.6rem; }
+  .session-conflict-msg { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.75rem; line-height: 1.6; }
 </style>
 
-{#if loading}
+{#if sessionConflict}
+  <div class="session-conflict-wrap">
+    <div class="session-conflict-card">
+      <div class="session-conflict-icon">🔒</div>
+      <div class="session-conflict-title">Bài thi đang mở trên thiết bị khác</div>
+      <div class="session-conflict-msg">
+        Tài khoản này đang làm bài thi trên một thiết bị hoặc trình duyệt khác.<br>
+        Mỗi tài khoản chỉ được phép làm bài trên một thiết bị tại một thời điểm.<br><br>
+        Nếu thiết bị đó gặp sự cố hoặc bị đóng, vui lòng thử lại sau vài phút.
+      </div>
+      <button class="btn-back" onclick={() => goto(`/exams/${_examId}`)}>Quay lại đề thi</button>
+    </div>
+  </div>
+{:else if loading}
   <div style="text-align:center;padding:4rem 0;color:var(--muted)">Đang tải đề thi...</div>
 {:else if creditError}
   <div class="credit-error-wrap">
