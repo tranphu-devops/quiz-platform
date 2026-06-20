@@ -6,7 +6,7 @@ import { verifyAuth } from '../middleware/auth.js'
 let _backendPublicKey = null
 function backendPublicKey() {
   if (_backendPublicKey) return _backendPublicKey
-  if (!process.env.API_ENCRYPTION_KEY || process.env.NODE_ENV !== 'production') return null
+  if (!process.env.API_ENCRYPTION_KEY) return null
   const ecdh = crypto.createECDH('prime256v1')
   ecdh.setPrivateKey(Buffer.from(process.env.API_ENCRYPTION_KEY, 'base64'))
   _backendPublicKey = ecdh.getPublicKey('base64')
