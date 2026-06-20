@@ -29,6 +29,12 @@ services:
     volumes:
       - ./apps/submission-service/src:/app/src
 
+  grader-service:
+    build:
+      context: ./apps/grader-service
+    volumes:
+      - ./apps/grader-service/src:/app/src
+
   frontend:
     build:
       context: ./apps/frontend

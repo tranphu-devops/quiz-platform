@@ -89,6 +89,21 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  grader-service:
+    image: quiz-platform/grader-service:latest
+    build:
+      context: ./apps/grader-service
+    environment:
+      DATABASE_URL: ${SUBMISSION_DATABASE_URL}
+      EXAM_SERVICE_URL: http://exam-service:3003
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      exam-service:
+        condition: service_started
+    restart: unless-stopped
+
   frontend:
     image: quiz-platform/frontend:latest
     build:

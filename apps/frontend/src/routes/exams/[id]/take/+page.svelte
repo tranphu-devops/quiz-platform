@@ -21,6 +21,10 @@
   let showConfirm = $state(false)
   let _examId = null
 
+  // Set after a successful start — used for progress saves and submit
+  let submissionId = null
+  let expiresAt = null
+
   function shuffle(arr) {
     const a = [...arr]
     for (let i = a.length - 1; i > 0; i--) {
@@ -41,18 +45,33 @@
   }
 
   function sessionKey(id) { return `quiz-session-${id}` }
+
   function saveSession(id) {
-    try { localStorage.setItem(sessionKey(id), JSON.stringify({ answers, timeLeft, savedAt: Date.now(), credit_deducted: true })) } catch {}
+    try {
+      localStorage.setItem(sessionKey(id), JSON.stringify({
+        answers, timeLeft, savedAt: Date.now(),
+        credit_deducted: true,
+        submission_id: submissionId,
+        expires_at: expiresAt
+      }))
+    } catch {}
   }
+
   function loadSession(id) {
     try {
       const raw = localStorage.getItem(sessionKey(id))
       if (!raw) return null
       const s = JSON.parse(raw)
-      s.timeLeft = Math.max(0, s.timeLeft - Math.floor((Date.now() - s.savedAt) / 1000))
+      // Use server-authoritative expires_at when available
+      if (s.expires_at) {
+        s.timeLeft = Math.max(0, Math.floor((new Date(s.expires_at) - Date.now()) / 1000))
+      } else {
+        s.timeLeft = Math.max(0, s.timeLeft - Math.floor((Date.now() - s.savedAt) / 1000))
+      }
       return s
     } catch { return null }
   }
+
   function clearSession(id) {
     try { localStorage.removeItem(sessionKey(id)) } catch {}
   }
@@ -81,6 +100,14 @@
     saveSession(exam.id)
   }
 
+  // Called on "Câu sau →" — saves progress to backend (fire-and-forget) then advances
+  function goNext() {
+    if (submissionId) {
+      submissionApi.saveProgress(submissionId, answers).catch(() => {})
+    }
+    currentIdx++
+  }
+
   onDestroy(() => clearInterval(timer))
 
   onMount(async () => {
@@ -105,8 +132,28 @@
 
       const saved = loadSession(id)
 
+      // If we have a saved submission_id, check its server-side status
+      if (saved?.submission_id && $user.role === 'student') {
+        const subRes = await submissionApi.get(saved.submission_id)
+        if (subRes.ok) {
+          const sub = await subRes.json()
+          if (sub.status === 'completed' || sub.status === 'timed_out') {
+            // Already graded (user submitted elsewhere or batch grader ran)
+            clearSession(id)
+            goto(`/exams/${id}/result?submissionId=${sub.id}`, { replaceState: true })
+            return
+          }
+          // Still in_progress — resume with server-authoritative expires_at
+          submissionId = sub.id
+          expiresAt = sub.expires_at
+          await _beginExam(id, saved)
+          return
+        }
+        // Submission not found (stale session) — clear and fall through to start confirm
+        clearSession(id)
+      }
+
       if (!saved?.credit_deducted && $user.role === 'student') {
-        // Fetch current balance to show in confirmation
         const profileRes = await userApi.getProfile($user.id).catch(() => null)
         if (profileRes?.ok) {
           const p = await profileRes.json()
@@ -117,7 +164,6 @@
         return
       }
 
-      // Resume session — credits already deducted, start timer immediately
       await _beginExam(id, saved)
     } catch {
       error = 'Không thể kết nối server'
@@ -152,7 +198,9 @@
         loading = false; return
       }
       const startData = await startRes.json()
-      myCredits = startData.new_balance
+      if (startData.new_balance !== null) myCredits = startData.new_balance
+      submissionId = startData.submission_id
+      expiresAt = startData.expires_at
       await _beginExam(id, null)
     } catch {
       error = 'Không thể kết nối server'
@@ -161,8 +209,9 @@
   }
 
   async function _beginExam(id, saved) {
-    if (saved && saved.timeLeft > 0) { answers = saved.answers; timeLeft = saved.timeLeft }
-    else timeLeft = (exam.time_limit ?? 30) * 60
+    if (saved?.answers) answers = saved.answers
+    // timeLeft is already computed from expires_at inside loadSession
+    timeLeft = saved?.timeLeft > 0 ? saved.timeLeft : (exam.time_limit ?? 30) * 60
     saveSession(exam.id)
     timer = setInterval(() => {
       timeLeft--
@@ -186,7 +235,18 @@
   async function submitExam() {
     showConfirm = false; clearInterval(timer); submitting = true
     try {
-      const res = await submissionApi.submit({ exam_id: exam.id, answers })
+      let res
+      if (submissionId) {
+        res = await submissionApi.submitById(submissionId, answers)
+        // 409 means the batch grader already graded it — just redirect to result
+        if (res.status === 409) {
+          clearSession(exam.id)
+          goto(`/exams/${exam.id}/result?submissionId=${submissionId}`, { replaceState: true })
+          return
+        }
+      } else {
+        res = await submissionApi.submit({ exam_id: exam.id, answers })
+      }
       const data = await res.json()
       if (!res.ok) { error = data.error; submitting = false; return }
       clearSession(exam.id)
@@ -504,7 +564,7 @@
         </div>
         {/if}
       </div>
-      <p class="start-confirm-note">Sau khi bắt đầu, credit sẽ bị trừ và đồng hồ đếm ngược sẽ chạy.</p>
+      <p class="start-confirm-note">Sau khi bắt đầu, credit sẽ bị trừ và đồng hồ đếm ngược sẽ chạy. Mỗi câu trả lời được tự động lưu khi bạn chuyển sang câu tiếp theo.</p>
       <div class="start-confirm-actions">
         <button class="btn-back" onclick={() => history.back()}>Huỷ</button>
         <button class="btn-start" onclick={handleConfirmStart}
@@ -583,7 +643,7 @@
     <div class="nav-row">
       <button class="btn btn-prev" disabled={currentIdx === 0} onclick={() => currentIdx--}>← Câu trước</button>
       <span class="q-counter">{currentIdx + 1} / {totalCount}</span>
-      <button class="btn btn-next" disabled={currentIdx === totalCount - 1} onclick={() => currentIdx++}>Câu sau →</button>
+      <button class="btn btn-next" disabled={currentIdx === totalCount - 1} onclick={goNext}>Câu sau →</button>
     </div>
     {#if error}<p class="error">{error}</p>{/if}
   </div>

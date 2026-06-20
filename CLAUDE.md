@@ -42,6 +42,8 @@ docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/po
 docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_credits.sql
 docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_collections.sql
 docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_security.sql
+docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_scheduled_exam.sql
+docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_submission_progress.sql
 ```
 
 ### Regenerate badge SVGs
@@ -71,6 +73,11 @@ GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_OAUTH_ENABLED=true
 TAG=latest                    # Docker image tag; used by docker-compose
+
+# Per-service DB connection strings (include schema via search_path)
+USER_DATABASE_URL=postgres://postgres:<pw>@postgres:5432/quizdb?search_path=quiz_users
+EXAM_DATABASE_URL=postgres://postgres:<pw>@postgres:5432/quizdb?search_path=quiz_exams
+SUBMISSION_DATABASE_URL=postgres://postgres:<pw>@postgres:5432/quizdb?search_path=quiz_submissions
 
 # AWS / Lightsail Object Storage (for image uploads)
 AWS_ACCESS_KEY_ID=
@@ -209,14 +216,21 @@ Never manually create tables in `quiz_auth` — GoTrue manages that schema.
 Schema summary:
 - `quiz_users.profiles` — `id, full_name, avatar_url, role, credits, updated_at`
 - `quiz_users.admin_settings` — `key, value` (upload validation + credit config)
-- `quiz_exams.exams` — includes `cover_image_url`, `tags TEXT[]`, `show_explanation`, `allow_retake`, `credit_cost`, `cooldown_minutes` (int, minutes between retakes), `max_attempts` (int nullable, null = unlimited), `scheduled_at` (timestamptz nullable, when null or in the past the exam is open; when in the future the exam is visible but locked)
+- `quiz_exams.exams` — includes `cover_image_url`, `tags TEXT[]`, `show_explanation`, `allow_retake`, `credit_cost`, `cooldown_minutes` (int, minutes between retakes), `max_attempts` (int nullable, null = unlimited), `scheduled_at` (timestamptz nullable, when null or in the past the exam is open; when in the future the exam is visible but locked), `passing_score` (float nullable, percentage threshold for "pass"; used by badge-award logic)
 - `quiz_exams.questions` — includes `image_url`, `question_type` (`single`|`multiple`), `correct_answer` (comma-separated keys for multiple)
 - `quiz_exams.collections` — `id, title, description, created_by, badge_image_url, is_published`
 - `quiz_exams.collection_exams` — `(collection_id, exam_id, position)` many-to-many
-- `quiz_submissions.submissions` — `answers JSONB`, `results_detail JSONB`, `percentage FLOAT`
+- `quiz_submissions.submissions` — `answers JSONB`, `results_detail JSONB`, `percentage FLOAT`, `status VARCHAR(20)` (`in_progress`|`completed`|`timed_out`, DEFAULT `completed`), `started_at TIMESTAMPTZ`, `expires_at TIMESTAMPTZ`
 - `quiz_submissions.student_badges` — `(user_id, collection_id)` unique; `earned_at`
 
 Seed files in `infra/postgres/`: `seed.sql` (sample data), `seed_aws_saa.sql` (AWS SAA exam with 45 questions).
+
+### Grader service (`apps/grader-service`)
+Standalone Node.js worker — no HTTP server, no Fastify. Runs `node-cron` every 15 minutes.
+
+On each tick it queries `quiz_submissions.submissions WHERE status = 'in_progress' AND expires_at < NOW()`, fetches exam questions via `EXAM_SERVICE_URL/exams/internal/:id` (internal key), grades each submission using the same logic as submission-service, then `UPDATE ... SET status = 'timed_out'` (the `WHERE status = 'in_progress'` acts as an optimistic lock against races with the user submit endpoint). Also runs once at startup to catch submissions that expired while the service was down.
+
+Environment: `DATABASE_URL` (same as `SUBMISSION_DATABASE_URL`), `EXAM_SERVICE_URL`, `INTERNAL_API_KEY`.
 
 ### CI/CD
 GitHub Actions (`.github/workflows/build-push.yml`) builds multi-platform (amd64 + arm64) Docker images to GHCR on push to `main`. Matrix over 5 services: `auth-service` (legacy, image built but not deployed), `user-service`, `exam-service`, `submission-service`, `frontend`.

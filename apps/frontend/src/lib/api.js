@@ -57,6 +57,18 @@ export const submissionApi = {
       headers: authHeaders(),
       body: JSON.stringify({ exam_id })
     }),
+  saveProgress: (id, answers) =>
+    fetch(`${SUB_URL}/submissions/${id}/progress`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({ answers })
+    }),
+  submitById: (id, answers) =>
+    fetch(`${SUB_URL}/submissions/${id}/submit`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ answers })
+    }),
   submit: (data) =>
     fetch(`${SUB_URL}/submissions`, {
       method: 'POST',
