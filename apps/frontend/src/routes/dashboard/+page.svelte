@@ -9,6 +9,7 @@
 
   // student
   let mySubmissions = $state([])
+  let inProgressSubs = $state([])
   let examMap = $state({})
 
   // teacher / admin
@@ -34,8 +35,13 @@
     if (!$user) { goto('/login'); return }
     try {
       if ($user.role === 'student') {
-        const [subRes, examRes] = await Promise.all([submissionApi.list(), examApi.list()])
+        const [subRes, ipRes, examRes] = await Promise.all([
+          submissionApi.list(),
+          submissionApi.list({ status: 'in_progress' }),
+          examApi.list()
+        ])
         if (subRes.ok)  mySubmissions = await subRes.json()
+        if (ipRes.ok)   inProgressSubs = await ipRes.json()
         if (examRes.ok) { const exams = await examRes.json(); examMap = Object.fromEntries(exams.map(e => [e.id, e])) }
       } else {
         const [examRes, subRes] = await Promise.all([examApi.list(), submissionApi.list()])
@@ -57,6 +63,12 @@
 
   function fmtDate(s) {
     return new Date(s).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
+  }
+
+  function timeRemaining(expiresAt) {
+    const secs = Math.max(0, Math.floor((new Date(expiresAt) - Date.now()) / 1000))
+    const m = Math.floor(secs / 60), s = secs % 60
+    return `${m}:${String(s).padStart(2, '0')}`
   }
 
   const studentRows = $derived(
@@ -165,6 +177,21 @@
   .empty a { color: var(--primary); font-weight: 600; }
   .error { color: var(--danger); }
 
+  /* ── In-progress cards ──────────────────────────────────────────────────────── */
+  .ip-cards { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 2rem; }
+  .ip-card {
+    background: var(--surface); border-radius: var(--radius-card);
+    border: 1px solid #f59e0b44; box-shadow: 0 2px 8px #f59e0b18;
+    padding: 1rem 1.2rem; display: flex; align-items: center; gap: 1rem;
+  }
+  .ip-icon { font-size: 1.6rem; flex-shrink: 0; }
+  .ip-body { flex: 1; min-width: 0; }
+  .ip-title { font-weight: 700; color: var(--text); font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ip-meta { font-size: 0.8rem; color: var(--muted); margin-top: 0.2rem; }
+  .ip-timer { font-size: 0.78rem; font-weight: 700; color: #d97706; background: #fef3c7; border-radius: 6px; padding: 0.15rem 0.5rem; }
+  .btn-amber { background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; }
+  .btn-amber:hover { background: #fde68a; }
+
   @media (max-width: 600px) {
     .stats { grid-template-columns: repeat(2, 1fr); }
     th:nth-child(n+4), td:nth-child(n+4) { display: none; }
@@ -203,7 +230,33 @@
     <div class="stat-num red">{studentRows.length - studentPassed}</div>
     <div class="stat-label">Chưa pass</div>
   </div>
+  {#if inProgressSubs.length > 0}
+  <div class="stat">
+    <div class="stat-icon">▶️</div>
+    <div class="stat-num amber">{inProgressSubs.length}</div>
+    <div class="stat-label">Đang thi dở</div>
+  </div>
+  {/if}
 </div>
+
+{#if inProgressSubs.length > 0}
+<div class="section-header">
+  <span class="section-title">Bài thi đang làm dở</span>
+</div>
+<div class="ip-cards">
+  {#each inProgressSubs as sub}
+  {@const exam = examMap[sub.exam_id]}
+  <div class="ip-card">
+    <div class="ip-icon">📋</div>
+    <div class="ip-body">
+      <div class="ip-title">{exam?.title ?? 'Đề thi'}</div>
+      <div class="ip-meta">Còn lại: <span class="ip-timer">{timeRemaining(sub.expires_at)}</span></div>
+    </div>
+    <a href="/exams/{sub.exam_id}/take" class="btn btn-amber">Tiếp tục →</a>
+  </div>
+  {/each}
+</div>
+{/if}
 
 <div class="section-header">
   <span class="section-title">Bài thi của bạn</span>

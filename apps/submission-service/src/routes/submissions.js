@@ -434,32 +434,39 @@ export default async function submissionRoutes(fastify) {
     }
   })
 
-  // GET /submissions?examId=&userId=
+  // GET /submissions?examId=&userId=&status=in_progress
   fastify.get('/submissions', async (req, reply) => {
-    const { examId, userId } = req.query
+    const { examId, userId, status } = req.query
 
     try {
-      const conditions = [`status != 'in_progress'`]
+      const conditions = []
       const params = []
 
-      if (examId) {
-        params.push(examId)
-        conditions.push(`exam_id = $${params.length}`)
-      }
-
-      if (userId) {
-        if (userId !== req.user.id && !['admin', 'teacher'].includes(req.user.role)) {
-          return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
-        }
-        params.push(userId)
-        conditions.push(`user_id = $${params.length}`)
-      } else if (req.user.role === 'student') {
+      if (status === 'in_progress') {
+        // Only current user's own unexpired in-progress submissions
+        conditions.push(`status = 'in_progress'`, `expires_at > NOW()`)
         params.push(req.user.id)
         conditions.push(`user_id = $${params.length}`)
+      } else {
+        conditions.push(`status != 'in_progress'`)
+        if (examId) {
+          params.push(examId)
+          conditions.push(`exam_id = $${params.length}`)
+        }
+        if (userId) {
+          if (userId !== req.user.id && !['admin', 'teacher'].includes(req.user.role)) {
+            return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+          }
+          params.push(userId)
+          conditions.push(`user_id = $${params.length}`)
+        } else if (req.user.role === 'student') {
+          params.push(req.user.id)
+          conditions.push(`user_id = $${params.length}`)
+        }
       }
 
       const result = await pool.query(
-        `SELECT id, exam_id, user_id, score, total_points, percentage, status, submitted_at
+        `SELECT id, exam_id, user_id, score, total_points, percentage, status, submitted_at, expires_at
          FROM submissions WHERE ${conditions.join(' AND ')} ORDER BY submitted_at DESC`,
         params
       )

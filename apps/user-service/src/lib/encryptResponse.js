@@ -1,7 +1,6 @@
 import crypto from 'crypto'
 
 const PRIVATE_KEY_B64 = process.env.API_ENCRYPTION_KEY
-const IS_PROD = process.env.NODE_ENV === 'production'
 
 // Cache derived AES keys per client public key (ECDH is expensive; same session = same key)
 const keyCache = new Map()
@@ -43,7 +42,7 @@ function encrypt(aesKey, plaintext) {
 
 // Call once at startup: fastify.addHook('onSend', encryptOnSend)
 export async function encryptOnSend(req, reply, payload) {
-  if (!IS_PROD || !PRIVATE_KEY_B64) return payload
+  if (!PRIVATE_KEY_B64) return payload
 
   const clientPubKey = req.headers['x-client-pubkey']
   if (!clientPubKey || typeof payload !== 'string') return payload

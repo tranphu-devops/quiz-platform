@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 - **Resume bài thi**: Khi học sinh quay lại sau khi thoát, frontend kiểm tra trạng thái submission trên server — nếu vẫn `in_progress` thì tiếp tục từ câu đã làm; nếu đã được chấm thì chuyển thẳng sang trang kết quả.
 - **Mã hoá API response (production)**: Backend mã hoá toàn bộ response bằng AES-256-GCM; frontend giải mã trong suốt. Dùng ECDH P-256 key exchange — shared key không bao giờ truyền trên wire, bảo vệ khỏi Nginx/proxy inspection. Chỉ kích hoạt khi `NODE_ENV=production` + `API_ENCRYPTION_KEY` được set. Dev mode không ảnh hưởng.
 - **Resume bài thi sau khi đóng tab / đổi thiết bị**: Khi student vào lại trang làm bài, frontend kiểm tra server (`GET /submissions/active?exam_id=`) để tìm session `in_progress` còn thời hạn — kể cả khi localStorage đã bị xoá hoặc đang dùng thiết bị khác. Đáp án đã lưu trên server được restore, đồng hồ đếm ngược tiếp tục từ thời gian còn lại (server-authoritative). Không trừ credit lần 2.
+- **Dashboard student — bài thi đang làm dở**: Section mới hiển thị tất cả submission `in_progress` còn thời hạn kèm bộ đếm ngược và nút "Tiếp tục". Stat card "Đang thi dở" hiển thị số lượng.
 
 ---
 
