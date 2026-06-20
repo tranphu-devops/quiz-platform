@@ -230,9 +230,10 @@ Active only when `NODE_ENV=production` AND `API_ENCRYPTION_KEY` is set. Transpar
 
 **Flow:** Frontend generates an ephemeral ECDH P-256 key pair (Web Crypto API, private key non-extractable) on session init. Sends base64 public key in `X-Client-Pubkey` header with every request. Backend derives the same AES-256 key via `ECDH(backend_private, client_public) → HKDF(sha256, info='quiz-api-v1')`. Encrypts response with AES-256-GCM → `{ iv, data }`. Frontend decrypts transparently in `apiFetch()`.
 
-- `scripts/generate-api-key.js` — generate key pair; `API_ENCRYPTION_KEY` goes to backend env, `PUBLIC_API_ENCRYPTION_PUBKEY` is baked into frontend image at build time
-- `src/lib/encryptResponse.js` in each backend service — `onSend` Fastify hook; skips plain if header absent (health checks, internal calls unaffected)
-- `apps/frontend/src/lib/crypto.js` — ECDH session init, `decryptIfNeeded()`
+- `scripts/generate-api-key.js` — generate key pair; only `API_ENCRYPTION_KEY` (private) goes to backend env — no frontend build var needed
+- `GET /api/users/public/crypto-key` — unauthenticated endpoint that serves the derived EC public key at runtime; frontend fetches this once on init (plain fetch, no encryption header → plain response)
+- `src/lib/encryptResponse.js` in each backend service — `onSend` Fastify hook; skips if header absent (health checks, internal calls unaffected)
+- `apps/frontend/src/lib/crypto.js` — fetches public key at runtime, ECDH session init, `decryptIfNeeded()`
 - `apps/frontend/src/lib/api.js` — all calls go through `apiFetch()` which adds the header and auto-decrypts
 
 ### Grader service (`apps/grader-service`)

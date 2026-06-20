@@ -1,5 +1,17 @@
+import crypto from 'node:crypto'
 import { pool } from '../db.js'
 import { verifyAuth } from '../middleware/auth.js'
+
+// Cached at first call — deriving public key from private is deterministic
+let _backendPublicKey = null
+function backendPublicKey() {
+  if (_backendPublicKey) return _backendPublicKey
+  if (!process.env.API_ENCRYPTION_KEY || process.env.NODE_ENV !== 'production') return null
+  const ecdh = crypto.createECDH('prime256v1')
+  ecdh.setPrivateKey(Buffer.from(process.env.API_ENCRYPTION_KEY, 'base64'))
+  _backendPublicKey = ecdh.getPublicKey('base64')
+  return _backendPublicKey
+}
 
 export default async function userRoutes(fastify) {
   // Internal endpoint — no JWT auth, uses x-internal-key
@@ -25,6 +37,14 @@ export default async function userRoutes(fastify) {
       fastify.log.error(err)
       return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
     }
+  })
+
+  // Public endpoint — returns backend EC public key for ECDH key exchange
+  // Returns 404 when encryption is not configured (dev / key not set)
+  fastify.get('/public/crypto-key', async (req, reply) => {
+    const key = backendPublicKey()
+    if (!key) return reply.status(404).send({ error: 'Encryption not configured', statusCode: 404 })
+    return { key }
   })
 
   // Public endpoint — returns non-sensitive settings for client display

@@ -1,29 +1,38 @@
 // Application-layer encryption: ECDH P-256 + AES-256-GCM
-// Backend public key is embedded at build time via PUBLIC_API_ENCRYPTION_PUBKEY.
-// If the env var is absent (dev/local), encryption is skipped transparently.
+// Backend EC public key is fetched at runtime from /api/users/public/crypto-key.
+// If the endpoint returns 404 (dev / key not configured), encryption is skipped transparently.
 
-const BACKEND_PUBKEY_B64 = import.meta.env.PUBLIC_API_ENCRYPTION_PUBKEY
+const CRYPTO_KEY_URL = '/api/users/public/crypto-key'
 
 let _sessionPromise = null
-let _clientPubKeyB64 = null  // base64 of ephemeral public key → sent in X-Client-Pubkey
+let _clientPubKeyB64 = null  // base64 ephemeral public key → sent in X-Client-Pubkey header
 let _aesKey = null            // CryptoKey for AES-256-GCM decrypt
 
 async function _initSession() {
-  if (!BACKEND_PUBKEY_B64) return  // not configured → no-op
+  // Fetch backend's static EC public key (plain fetch — no encryption header yet)
+  let backendPubKeyB64
+  try {
+    const res = await fetch(CRYPTO_KEY_URL)
+    if (!res.ok) return  // 404 = encryption not configured on backend; skip silently
+    const data = await res.json()
+    backendPubKeyB64 = data.key
+  } catch {
+    return  // network error — encryption unavailable, continue with plain responses
+  }
 
-  // Ephemeral ECDH key pair — private key non-extractable, stays in memory only
+  // Generate ephemeral ECDH key pair — private key non-extractable, stays in memory only
   const keyPair = await crypto.subtle.generateKey(
     { name: 'ECDH', namedCurve: 'P-256' },
     false,
     ['deriveBits']
   )
 
-  // Export our public key (uncompressed 65-byte point) to send to backend
+  // Export our public key (uncompressed 65-byte EC point) to send to backend
   const rawPub = await crypto.subtle.exportKey('raw', keyPair.publicKey)
   _clientPubKeyB64 = btoa(String.fromCharCode(...new Uint8Array(rawPub)))
 
-  // Import backend's static public key (uncompressed 65-byte point, base64)
-  const backendRaw = Uint8Array.from(atob(BACKEND_PUBKEY_B64), c => c.charCodeAt(0))
+  // Import backend's static public key (uncompressed 65-byte EC point, base64)
+  const backendRaw = Uint8Array.from(atob(backendPubKeyB64), c => c.charCodeAt(0))
   const backendPub = await crypto.subtle.importKey(
     'raw', backendRaw, { name: 'ECDH', namedCurve: 'P-256' }, false, []
   )
@@ -52,21 +61,21 @@ async function _initSession() {
   )
 }
 
-// Singleton init — safe to call multiple times concurrently
+// Singleton — safe to call concurrently; _initSession runs exactly once per page load
 function initSession() {
   if (!_sessionPromise) _sessionPromise = _initSession()
   return _sessionPromise
 }
 
-// Returns the base64 ephemeral public key to send as X-Client-Pubkey header.
-// Returns null if encryption is not configured (dev/local).
+// Returns the base64 ephemeral public key for X-Client-Pubkey header.
+// Returns null when encryption is not active (dev / backend key not set).
 export async function getClientPubKey() {
   await initSession()
   return _clientPubKeyB64
 }
 
-// Decrypts { iv, data } responses from the backend.
-// Returns the body unchanged if it is not an encrypted envelope.
+// Decrypts { iv, data } response envelopes from the backend.
+// Returns body unchanged when not encrypted.
 export async function decryptIfNeeded(body) {
   if (!body || typeof body !== 'object' || !body.iv || !body.data) return body
   await initSession()
