@@ -47,6 +47,7 @@ services:
       DATABASE_URL: ${USER_DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      API_ENCRYPTION_KEY: ${API_ENCRYPTION_KEY:-}
       PORT: 3002
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
@@ -67,6 +68,7 @@ services:
       DATABASE_URL: ${EXAM_DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      API_ENCRYPTION_KEY: ${API_ENCRYPTION_KEY:-}
       PORT: 3003
     depends_on:
       postgres:
@@ -83,6 +85,7 @@ services:
       EXAM_SERVICE_URL: http://exam-service:3003
       USER_SERVICE_URL: http://user-service:3002
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      API_ENCRYPTION_KEY: ${API_ENCRYPTION_KEY:-}
       PORT: 3004
     depends_on:
       postgres:

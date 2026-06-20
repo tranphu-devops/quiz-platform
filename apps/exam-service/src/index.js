@@ -2,10 +2,12 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import examRoutes from './routes/exams.js'
 import collectionRoutes from './routes/collections.js'
+import { encryptOnSend } from './lib/encryptResponse.js'
 
 const fastify = Fastify({ logger: true })
 
 await fastify.register(cors, { origin: true })
+fastify.addHook('onSend', encryptOnSend)
 
 fastify.get('/health', async () => ({
   status: 'ok',

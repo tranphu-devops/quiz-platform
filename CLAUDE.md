@@ -225,6 +225,16 @@ Schema summary:
 
 Seed files in `infra/postgres/`: `seed.sql` (sample data), `seed_aws_saa.sql` (AWS SAA exam with 45 questions).
 
+### API response encryption
+Active only when `NODE_ENV=production` AND `API_ENCRYPTION_KEY` is set. Transparent in dev.
+
+**Flow:** Frontend generates an ephemeral ECDH P-256 key pair (Web Crypto API, private key non-extractable) on session init. Sends base64 public key in `X-Client-Pubkey` header with every request. Backend derives the same AES-256 key via `ECDH(backend_private, client_public) → HKDF(sha256, info='quiz-api-v1')`. Encrypts response with AES-256-GCM → `{ iv, data }`. Frontend decrypts transparently in `apiFetch()`.
+
+- `scripts/generate-api-key.js` — generate key pair; `API_ENCRYPTION_KEY` goes to backend env, `PUBLIC_API_ENCRYPTION_PUBKEY` is baked into frontend image at build time
+- `src/lib/encryptResponse.js` in each backend service — `onSend` Fastify hook; skips plain if header absent (health checks, internal calls unaffected)
+- `apps/frontend/src/lib/crypto.js` — ECDH session init, `decryptIfNeeded()`
+- `apps/frontend/src/lib/api.js` — all calls go through `apiFetch()` which adds the header and auto-decrypts
+
 ### Grader service (`apps/grader-service`)
 Standalone Node.js worker — no HTTP server, no Fastify. Runs `node-cron` every 15 minutes.
 

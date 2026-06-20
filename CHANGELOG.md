@@ -4,13 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [Unreleased] — 2026-06-20
+## [Unreleased] — 2026-06-20 (updated)
 
 ### Added
 - **Auto-save tiến trình làm bài**: Mỗi lần học sinh bấm "Câu sau →", đáp án hiện tại được lưu lên backend (`PUT /submissions/:id/progress`) — đảm bảo không mất dữ liệu nếu thoát giữa chừng hoặc mất mạng.
 - **Auto-grade khi hết giờ (grader-service)**: Service mới chạy độc lập, cron 15 phút/lần, quét tất cả submission `in_progress` đã qua `expires_at`, tự động chấm điểm và ghi kết quả (status `timed_out`) — kể cả khi học sinh không bấm nộp bài.
 - **Submission có trạng thái (`status`)**: Schema submissions bổ sung `status` (`in_progress` | `completed` | `timed_out`), `started_at`, `expires_at`. Credit chỉ bị trừ 1 lần duy nhất; nếu còn `in_progress` hợp lệ, bấm vào lại sẽ resume mà không trừ thêm.
 - **Resume bài thi**: Khi học sinh quay lại sau khi thoát, frontend kiểm tra trạng thái submission trên server — nếu vẫn `in_progress` thì tiếp tục từ câu đã làm; nếu đã được chấm thì chuyển thẳng sang trang kết quả.
+- **Mã hoá API response (production)**: Backend mã hoá toàn bộ response bằng AES-256-GCM; frontend giải mã trong suốt. Dùng ECDH P-256 key exchange — shared key không bao giờ truyền trên wire, bảo vệ khỏi Nginx/proxy inspection. Chỉ kích hoạt khi `NODE_ENV=production` + `API_ENCRYPTION_KEY` được set. Dev mode không ảnh hưởng.
 
 ---
 
