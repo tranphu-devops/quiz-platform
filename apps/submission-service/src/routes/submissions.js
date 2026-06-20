@@ -383,6 +383,35 @@ export default async function submissionRoutes(fastify) {
     }
   })
 
+  // GET /submissions/active?exam_id=
+  // Returns the caller's current in_progress submission for an exam (if not expired).
+  // Used by take page to detect a resumable session after re-login or cross-device navigation.
+  fastify.get('/submissions/active', async (req, reply) => {
+    const { exam_id } = req.query
+    if (!exam_id) {
+      return reply.status(400).send({ error: 'exam_id required', statusCode: 400 })
+    }
+
+    try {
+      const result = await pool.query(
+        `SELECT id, exam_id, user_id, answers, started_at, expires_at
+           FROM submissions
+          WHERE exam_id = $1 AND user_id = $2
+            AND status = 'in_progress' AND expires_at > NOW()
+          LIMIT 1`,
+        [exam_id, req.user.id]
+      )
+
+      if (!result.rows.length) {
+        return reply.status(404).send({ error: 'No active submission', statusCode: 404 })
+      }
+      return result.rows[0]
+    } catch (err) {
+      fastify.log.error(err)
+      return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
+    }
+  })
+
   // GET /submissions/:id
   fastify.get('/submissions/:id', async (req, reply) => {
     const { id } = req.params

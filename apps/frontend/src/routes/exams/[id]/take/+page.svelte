@@ -132,25 +132,39 @@
 
       const saved = loadSession(id)
 
-      // If we have a saved submission_id, check its server-side status
+      // Same-device resume: localStorage has a submission_id — verify it server-side
       if (saved?.submission_id && $user.role === 'student') {
         const subRes = await submissionApi.get(saved.submission_id)
         if (subRes.ok) {
           const sub = await subRes.json()
           if (sub.status === 'completed' || sub.status === 'timed_out') {
-            // Already graded (user submitted elsewhere or batch grader ran)
             clearSession(id)
             goto(`/exams/${id}/result?submissionId=${sub.id}`, { replaceState: true })
             return
           }
-          // Still in_progress — resume with server-authoritative expires_at
+          // Still in_progress — merge server answers (base) with local answers (may have newest)
           submissionId = sub.id
           expiresAt = sub.expires_at
-          await _beginExam(id, saved)
+          const merged = { ...(sub.answers ?? {}), ...(saved.answers ?? {}) }
+          await _beginExam(id, { ...saved, answers: merged })
           return
         }
-        // Submission not found (stale session) — clear and fall through to start confirm
+        // Stale session — clear and fall through to cross-device check
         clearSession(id)
+      }
+
+      // Cross-device / re-login resume: no localStorage — check server for an active submission.
+      // Handles the case where user lost the tab, cleared browser data, or switched device.
+      if ($user.role === 'student') {
+        const activeRes = await submissionApi.getActive(id).catch(() => null)
+        if (activeRes?.ok) {
+          const activeSub = await activeRes.json()
+          submissionId = activeSub.id
+          expiresAt = activeSub.expires_at
+          const remaining = Math.max(0, Math.floor((new Date(expiresAt) - Date.now()) / 1000))
+          await _beginExam(id, { answers: activeSub.answers ?? {}, timeLeft: remaining })
+          return
+        }
       }
 
       if (!saved?.credit_deducted && $user.role === 'student') {

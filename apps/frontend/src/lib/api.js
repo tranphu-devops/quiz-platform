@@ -99,6 +99,8 @@ export const submissionApi = {
       headers: authHeaders(),
       body: JSON.stringify(data)
     }),
+  getActive: (exam_id) =>
+    apiFetch(`${SUB_URL}/submissions/active?exam_id=${exam_id}`, { headers: authHeaders(false) }),
   get: (id) => apiFetch(`${SUB_URL}/submissions/${id}`, { headers: authHeaders(false) }),
   list: (params = {}) => {
     const qs = new URLSearchParams(params).toString()
