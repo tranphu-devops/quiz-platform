@@ -4,271 +4,326 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>QuizPlatform — Nền tảng thi trực tuyến thông minh</title>
-  <meta name="description" content="Tạo đề thi, quản lý bộ đề, trao huy hiệu và theo dõi kết quả học tập — tất cả trên một nền tảng đơn giản, mạnh mẽ." />
+  <meta name="description" content="Tạo đề thi, quản lý bộ đề, trao huy hiệu và theo dõi kết quả học tập — tất cả trên một nền tảng đơn giản, mạnh mẽ, bảo mật." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --blue:     #1e40af;
+      --blue:     #1d4ed8;
       --blue-mid: #2563eb;
       --blue-lt:  #3b82f6;
       --blue-pale:#eff6ff;
       --indigo:   #4f46e5;
       --violet:   #7c3aed;
-      --text:     #111827;
-      --muted:    #6b7280;
-      --border:   #e5e7eb;
+      --text:     #0f172a;
+      --muted:    #64748b;
+      --border:   #e2e8f0;
       --white:    #ffffff;
       --bg:       #f8fafc;
       --green:    #16a34a;
       --amber:    #d97706;
-      --radius:   12px;
+      --red:      #dc2626;
+      --radius:   14px;
     }
 
     html { scroll-behavior: smooth; }
-    body { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
 
     /* ─── NAV ─── */
     nav {
       position: sticky; top: 0; z-index: 100;
-      background: rgba(255,255,255,.94); backdrop-filter: blur(14px);
+      background: rgba(255,255,255,.95); backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border);
-      padding: 0 1.5rem;
-      height: 60px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 1.75rem;
+      height: 64px; display: flex; align-items: center; justify-content: space-between;
     }
-    .nav-brand { font-size: 1.25rem; font-weight: 800; color: var(--blue); letter-spacing: -.02em; text-decoration: none; }
-    .nav-brand span { color: var(--blue-lt); }
-    .nav-links { display: flex; align-items: center; gap: 1rem; }
-    .nav-links a { color: var(--muted); text-decoration: none; font-size: .88rem; font-weight: 500; transition: color .15s; }
-    .nav-links a:hover { color: var(--text); }
-    .btn-ghost { padding: .45rem .9rem; border-radius: 6px; border: 1px solid var(--border); background: white; color: var(--text); font-size: .9rem; font-weight: 500; cursor: pointer; text-decoration: none; transition: border-color .15s; }
+    .nav-brand { font-size: 1.2rem; font-weight: 800; background: linear-gradient(135deg,#1d4ed8,#4f46e5); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: -.03em; text-decoration: none; }
+    .nav-links { display: flex; align-items: center; gap: 0.25rem; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: .875rem; font-weight: 500; padding: .4rem .75rem; border-radius: 8px; transition: color .15s, background .15s; }
+    .nav-links a:hover { color: var(--text); background: var(--bg); }
+    .btn-ghost { padding: .45rem .9rem; border-radius: 8px; border: 1.5px solid var(--border); background: white; color: var(--text); font-size: .875rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: all .15s; }
     .btn-ghost:hover { border-color: var(--blue-lt); color: var(--blue); }
-    .btn-primary { padding: .45rem 1rem; border-radius: 6px; border: none; background: var(--blue); color: white; font-size: .9rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: background .15s; }
-    .btn-primary:hover { background: var(--blue-mid); }
-    @media (max-width: 640px) { .nav-ghost-hide { display: none; } .nav-links a.link-hide { display: none; } }
+    .btn-nav { padding: .5rem 1.1rem; border-radius: 8px; border: none; background: linear-gradient(135deg,var(--blue),var(--indigo)); color: white; font-size: .875rem; font-weight: 700; cursor: pointer; text-decoration: none; transition: opacity .15s, transform .15s; box-shadow: 0 2px 8px rgba(79,70,229,.3); }
+    .btn-nav:hover { opacity: .92; transform: translateY(-1px); }
+    @media (max-width: 640px) { .nav-hide { display: none; } }
 
     /* ─── HERO ─── */
     .hero {
-      padding: 5.5rem 1.5rem 4.5rem;
+      padding: 6rem 1.5rem 5rem;
       text-align: center;
-      background: linear-gradient(160deg, #f0f7ff 0%, #e8f0fe 40%, #f5f3ff 80%, #f8fafc 100%);
+      background: linear-gradient(165deg, #f0f7ff 0%, #eef2ff 35%, #f5f3ff 65%, #fdf4ff 100%);
       position: relative; overflow: hidden;
     }
     .hero::before {
       content: ''; position: absolute; inset: 0;
-      background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(99,102,241,.1) 0%, transparent 70%);
+      background:
+        radial-gradient(ellipse 90% 70% at 30% 0%, rgba(59,130,246,.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 20%, rgba(124,58,237,.1) 0%, transparent 60%);
     }
-    .hero-badge { display: inline-flex; align-items: center; gap: .4rem; background: var(--blue-pale); color: var(--blue); border: 1px solid #bfdbfe; border-radius: 99px; padding: .25rem .85rem; font-size: .78rem; font-weight: 600; margin-bottom: 1.5rem; }
-    .hero h1 { font-size: clamp(2rem, 5.5vw, 3.4rem); font-weight: 900; line-height: 1.1; letter-spacing: -.04em; color: var(--text); margin-bottom: 1.25rem; }
-    .hero h1 em { font-style: normal; background: linear-gradient(135deg, var(--blue), var(--indigo)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-    .hero p { font-size: 1.1rem; color: var(--muted); max-width: 580px; margin: 0 auto 2.25rem; line-height: 1.7; }
-    .hero-actions { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
-    .btn-hero { padding: .75rem 1.75rem; border-radius: 8px; font-size: 1rem; font-weight: 700; text-decoration: none; transition: transform .15s, box-shadow .15s; }
-    .btn-hero-primary { background: linear-gradient(135deg, var(--blue) 0%, var(--indigo) 100%); color: white; border: none; box-shadow: 0 4px 18px rgba(79,70,229,.35); }
-    .btn-hero-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(79,70,229,.45); }
-    .btn-hero-secondary { background: white; color: var(--blue); border: 2px solid var(--blue); }
-    .btn-hero-secondary:hover { background: var(--blue-pale); }
+    .hero > * { position: relative; }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: .5rem;
+      background: white; border: 1px solid #c7d2fe;
+      border-radius: 99px; padding: .3rem 1rem; font-size: .78rem; font-weight: 700;
+      color: var(--indigo); margin-bottom: 1.75rem;
+      box-shadow: 0 2px 8px rgba(79,70,229,.1);
+    }
+    .hero h1 { font-size: clamp(2.1rem, 6vw, 3.75rem); font-weight: 900; line-height: 1.08; letter-spacing: -.05em; color: var(--text); margin-bottom: 1.5rem; }
+    .hero h1 em { font-style: normal; background: linear-gradient(135deg, var(--blue-mid) 0%, var(--indigo) 50%, var(--violet) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero p { font-size: 1.1rem; color: var(--muted); max-width: 560px; margin: 0 auto 2.5rem; line-height: 1.75; }
+    .hero-ctas { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; margin-bottom: 4rem; }
+    .btn-hero-primary {
+      padding: .8rem 2rem; border-radius: 10px; font-size: 1rem; font-weight: 700;
+      background: linear-gradient(135deg, var(--blue) 0%, var(--indigo) 100%);
+      color: white; border: none; text-decoration: none; transition: transform .15s, box-shadow .15s;
+      box-shadow: 0 6px 20px rgba(79,70,229,.38);
+    }
+    .btn-hero-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(79,70,229,.46); }
+    .btn-hero-secondary {
+      padding: .8rem 2rem; border-radius: 10px; font-size: 1rem; font-weight: 700;
+      background: white; color: var(--indigo); border: 2px solid #c7d2fe;
+      text-decoration: none; transition: background .15s, border-color .15s;
+    }
+    .btn-hero-secondary:hover { background: #eef2ff; border-color: #a5b4fc; }
 
     /* ─── HERO MOCKUP ─── */
-    .hero-mockup { margin: 3.5rem auto 0; max-width: 760px; position: relative; }
-    .mockup-card {
-      background: white; border-radius: 16px;
-      box-shadow: 0 24px 70px rgba(0,0,0,.12), 0 4px 14px rgba(0,0,0,.06);
-      overflow: hidden; border: 1px solid var(--border);
+    .hero-mockup { max-width: 780px; margin: 0 auto; position: relative; }
+    .hero-mockup::before {
+      content: ''; position: absolute; inset: -20px; border-radius: 28px;
+      background: linear-gradient(135deg, rgba(99,102,241,.15), rgba(124,58,237,.12));
+      filter: blur(30px); z-index: 0;
     }
-    .mockup-bar { background: #f9fafb; border-bottom: 1px solid var(--border); padding: .6rem 1rem; display: flex; align-items: center; gap: .5rem; }
-    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .mockup-card {
+      background: white; border-radius: 18px;
+      box-shadow: 0 28px 80px rgba(0,0,0,.13), 0 4px 16px rgba(0,0,0,.05);
+      overflow: hidden; border: 1px solid var(--border); position: relative; z-index: 1;
+    }
+    .mockup-bar { background: #f8fafc; border-bottom: 1px solid var(--border); padding: .65rem 1.1rem; display: flex; align-items: center; gap: .5rem; }
+    .dot { width: 11px; height: 11px; border-radius: 50%; }
     .dot.r { background: #fca5a5; } .dot.y { background: #fcd34d; } .dot.g { background: #86efac; }
-    .mockup-url { flex: 1; background: white; border: 1px solid var(--border); border-radius: 4px; padding: .2rem .6rem; font-size: .75rem; color: var(--muted); margin: 0 .75rem; text-align: center; font-family: monospace; }
-    .mockup-body { padding: 1.5rem; }
-    .mockup-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .mockup-url { flex: 1; background: white; border: 1px solid var(--border); border-radius: 6px; padding: .25rem .75rem; font-size: .75rem; color: var(--muted); margin: 0 .75rem; text-align: center; font-family: 'Courier New', monospace; }
+    .mockup-body { padding: 1.5rem 1.75rem; }
+    .mockup-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
     .m-title { font-weight: 700; font-size: .95rem; }
-    .m-timer { background: #fef2f2; color: #dc2626; padding: .2rem .6rem; border-radius: 6px; font-weight: 700; font-size: .85rem; }
-    .m-credit { background: #eff6ff; color: var(--blue); padding: .2rem .6rem; border-radius: 6px; font-weight: 700; font-size: .8rem; margin-left: .4rem; }
-    .m-progress { height: 6px; background: #e5e7eb; border-radius: 99px; margin-bottom: 1.25rem; }
-    .m-progress-fill { height: 100%; width: 60%; background: linear-gradient(90deg, var(--blue), var(--indigo)); border-radius: 99px; }
-    .m-question { background: var(--blue-pale); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
-    .m-question p { font-weight: 600; font-size: .9rem; margin-bottom: .75rem; }
-    .m-opt { display: flex; align-items: center; gap: .6rem; padding: .45rem .75rem; border-radius: 6px; font-size: .85rem; margin-bottom: .4rem; border: 1.5px solid var(--border); background: white; cursor: default; }
+    .m-badges { display: flex; gap: .4rem; }
+    .m-timer { background: #fef2f2; color: #dc2626; padding: .2rem .65rem; border-radius: 6px; font-weight: 700; font-size: .8rem; }
+    .m-credit { background: #eff6ff; color: var(--blue); padding: .2rem .65rem; border-radius: 6px; font-weight: 700; font-size: .8rem; }
+    .m-session { background: #f0fdf4; color: #16a34a; padding: .2rem .65rem; border-radius: 6px; font-weight: 700; font-size: .78rem; }
+    .m-progress { height: 6px; background: #e2e8f0; border-radius: 99px; margin-bottom: 1.35rem; }
+    .m-progress-fill { height: 100%; width: 55%; background: linear-gradient(90deg, var(--blue), var(--indigo)); border-radius: 99px; }
+    .m-question { background: #f0f7ff; border-radius: 10px; padding: 1rem 1.1rem; margin-bottom: 1rem; }
+    .m-question .m-q-meta { font-size: .78rem; color: var(--muted); font-weight: 600; margin-bottom: .5rem; }
+    .m-question p { font-weight: 600; font-size: .9rem; }
+    .m-opt { display: flex; align-items: center; gap: .65rem; padding: .5rem .85rem; border-radius: 8px; font-size: .86rem; margin-bottom: .4rem; border: 1.5px solid var(--border); background: white; cursor: default; }
     .m-opt.selected { border-color: var(--indigo); background: #eef2ff; font-weight: 600; color: var(--indigo); }
     .m-opt-key { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 700; flex-shrink: 0; }
-    .m-nav { display: flex; justify-content: space-between; }
-    .m-btn { padding: .4rem .9rem; border-radius: 6px; font-size: .82rem; font-weight: 600; cursor: default; border: none; }
-    .m-btn-prev { background: #f3f4f6; color: #374151; }
+    .m-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; }
+    .m-btn { padding: .4rem .9rem; border-radius: 8px; font-size: .82rem; font-weight: 600; cursor: default; border: none; }
+    .m-btn-prev { background: #f1f5f9; color: #475569; }
     .m-btn-next { background: linear-gradient(135deg, var(--blue), var(--indigo)); color: white; }
+    .m-autosave { font-size: .75rem; color: #16a34a; font-weight: 600; }
+
+    /* ─── TRUST BAR ─── */
+    .trust-bar {
+      display: flex; justify-content: center; gap: 2.5rem; flex-wrap: wrap;
+      padding: 1.5rem 1.5rem;
+      background: white; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    }
+    .trust-item { display: flex; align-items: center; gap: .5rem; font-size: .82rem; color: var(--muted); font-weight: 500; }
+    .trust-icon { font-size: 1rem; }
 
     /* ─── STATS ─── */
-    .stats { display: flex; justify-content: center; gap: 3rem; flex-wrap: wrap; padding: 2.5rem 1.5rem; background: white; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .stats { display: flex; justify-content: center; gap: 3.5rem; flex-wrap: wrap; padding: 3.5rem 1.5rem; background: white; }
     .stat { text-align: center; }
-    .stat-num { font-size: 2.1rem; font-weight: 900; background: linear-gradient(135deg, var(--blue), var(--indigo)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: -.04em; }
-    .stat-label { font-size: .85rem; color: var(--muted); margin-top: .2rem; }
+    .stat-num { font-size: 2.4rem; font-weight: 900; background: linear-gradient(135deg, var(--blue), var(--indigo)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: -.05em; }
+    .stat-label { font-size: .84rem; color: var(--muted); margin-top: .3rem; }
 
-    /* ─── SECTIONS ─── */
-    section { padding: 5rem 1.5rem; max-width: 1060px; margin: 0 auto; }
-    .section-tag { font-size: .73rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--indigo); margin-bottom: .75rem; }
-    .section-title { font-size: clamp(1.5rem, 3.5vw, 2.3rem); font-weight: 900; letter-spacing: -.04em; margin-bottom: 1rem; line-height: 1.15; }
-    .section-sub { font-size: 1rem; color: var(--muted); max-width: 560px; line-height: 1.7; }
+    /* ─── SECTION ─── */
+    section { padding: 5.5rem 1.5rem; }
+    .section-inner { max-width: 1080px; margin: 0 auto; }
+    .section-tag { font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: var(--indigo); margin-bottom: .75rem; display: inline-block; }
+    .section-title { font-size: clamp(1.6rem, 3.5vw, 2.4rem); font-weight: 900; letter-spacing: -.04em; margin-bottom: 1rem; line-height: 1.15; color: var(--text); }
+    .section-sub { font-size: 1rem; color: var(--muted); max-width: 560px; line-height: 1.75; }
+    .divider { border: none; border-top: 1px solid var(--border); }
 
     /* ─── FEATURES ─── */
     .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-top: 3rem; }
-    @media (max-width: 700px) { .features-grid { grid-template-columns: 1fr; } }
-    @media (max-width: 900px) and (min-width: 701px) { .features-grid { grid-template-columns: repeat(2, 1fr); } }
-    .feature-card { background: white; border-radius: var(--radius); padding: 1.5rem; border: 1px solid var(--border); transition: box-shadow .2s, transform .2s, border-color .2s; }
-    .feature-card:hover { box-shadow: 0 8px 28px rgba(79,70,229,.1); transform: translateY(-2px); border-color: #c7d2fe; }
-    .feature-icon { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; margin-bottom: 1rem; }
-    .feature-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: .5rem; }
-    .feature-card p { font-size: .87rem; color: var(--muted); line-height: 1.65; }
+    @media (max-width: 900px) { .features-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { .features-grid { grid-template-columns: 1fr; } }
+    .feature-card {
+      background: white; border-radius: var(--radius); padding: 1.5rem 1.6rem;
+      border: 1.5px solid var(--border); transition: box-shadow .2s, transform .2s, border-color .2s;
+    }
+    .feature-card:hover { box-shadow: 0 10px 30px rgba(79,70,229,.1); transform: translateY(-3px); border-color: #a5b4fc; }
+    .feature-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; margin-bottom: 1rem; }
+    .feature-card h3 { font-size: .98rem; font-weight: 700; margin-bottom: .5rem; color: var(--text); }
+    .feature-card p { font-size: .86rem; color: var(--muted); line-height: 1.68; }
+    .feature-card .new-badge { font-size: .65rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; background: #fffbeb; color: #d97706; border: 1px solid #fde68a; border-radius: 99px; padding: .1rem .5rem; margin-left: .4rem; vertical-align: middle; }
 
-    /* ─── SHOWCASE (two-col) ─── */
-    .showcase { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; }
-    .showcase.reverse { direction: rtl; }
-    .showcase.reverse > * { direction: ltr; }
-    @media (max-width: 720px) { .showcase { grid-template-columns: 1fr; gap: 2rem; } .showcase.reverse { direction: ltr; } }
-    .showcase-text .section-tag { margin-bottom: .5rem; }
-    .showcase-text .section-title { font-size: clamp(1.35rem, 3vw, 2rem); }
-    .showcase-text p { font-size: .95rem; color: var(--muted); line-height: 1.75; margin-bottom: 1.25rem; }
-    .check-list { list-style: none; display: flex; flex-direction: column; gap: .55rem; }
-    .check-list li { display: flex; align-items: flex-start; gap: .6rem; font-size: .9rem; color: var(--text); }
-    .check-list .ck { color: #16a34a; font-size: 1rem; flex-shrink: 0; line-height: 1.5; }
+    /* ─── SHOWCASE ─── */
+    .showcase { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; max-width: 1080px; margin: 0 auto; }
+    .showcase.flip { direction: rtl; }
+    .showcase.flip > * { direction: ltr; }
+    @media (max-width: 760px) { .showcase, .showcase.flip { grid-template-columns: 1fr; gap: 2.5rem; direction: ltr; } }
+    .showcase-text .section-title { font-size: clamp(1.4rem, 2.8vw, 2rem); }
+    .showcase-text p { font-size: .95rem; color: var(--muted); line-height: 1.8; margin-bottom: 1.25rem; }
+    .check-list { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
+    .check-list li { display: flex; align-items: flex-start; gap: .65rem; font-size: .9rem; }
+    .ck { color: #16a34a; flex-shrink: 0; line-height: 1.55; font-size: 1rem; }
 
-    /* Badge preview card */
-    .badge-preview-card { background: white; border-radius: 16px; border: 1px solid var(--border); padding: 1.5rem; box-shadow: 0 8px 32px rgba(0,0,0,.07); }
-    .badge-preview-card h4 { font-size: .88rem; font-weight: 700; margin-bottom: 1rem; color: var(--muted); }
+    /* Preview cards */
+    .preview-card { background: white; border-radius: 18px; border: 1px solid var(--border); padding: 1.5rem; box-shadow: 0 10px 40px rgba(0,0,0,.08); }
+    .preview-card h4 { font-size: .85rem; font-weight: 700; color: var(--muted); margin-bottom: 1.1rem; }
+
+    /* Badge grid */
     .badge-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: .5rem; margin-bottom: 1.25rem; }
-    .badge-item { width: 52px; height: 52px; border-radius: 12px; background: linear-gradient(135deg, #f0f7ff, #e8f0fe); display: flex; align-items: center; justify-content: center; font-size: 1.6rem; border: 2px solid transparent; transition: border-color .15s; cursor: default; }
+    .badge-item { width: 52px; height: 52px; border-radius: 12px; background: #f0f7ff; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; border: 2px solid transparent; }
     .badge-item.earned { border-color: #fbbf24; background: linear-gradient(135deg, #fefce8, #fef3c7); }
-    .badge-item.locked { filter: grayscale(1); opacity: .4; }
-    .collection-progress { background: var(--blue-pale); border-radius: 10px; padding: .85rem 1rem; display: flex; align-items: center; gap: .75rem; }
-    .coll-icon { font-size: 1.4rem; }
+    .badge-item.locked { filter: grayscale(1) opacity(.35); }
+    .coll-progress { background: #eff6ff; border-radius: 10px; padding: .85rem 1rem; display: flex; align-items: center; gap: .75rem; }
+    .coll-icon { font-size: 1.35rem; }
     .coll-info { flex: 1; }
-    .coll-name { font-size: .85rem; font-weight: 700; margin-bottom: .25rem; }
-    .coll-bar-wrap { background: #dbeafe; border-radius: 99px; height: 6px; }
+    .coll-name { font-size: .84rem; font-weight: 700; margin-bottom: .3rem; }
+    .coll-bar-wrap { background: #dbeafe; border-radius: 99px; height: 5px; }
     .coll-bar { height: 100%; width: 66%; background: var(--indigo); border-radius: 99px; }
-    .coll-label { font-size: .75rem; color: var(--muted); margin-top: .2rem; }
+    .coll-label { font-size: .74rem; color: var(--muted); margin-top: .25rem; }
 
-    /* Credit preview card */
-    .credit-card { background: white; border-radius: 16px; border: 1px solid var(--border); padding: 1.5rem; box-shadow: 0 8px 32px rgba(0,0,0,.07); }
-    .credit-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
-    .credit-header h4 { font-size: .88rem; font-weight: 700; color: var(--muted); }
-    .credit-balance { font-size: 2rem; font-weight: 900; background: linear-gradient(135deg, var(--blue), var(--indigo)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-    .credit-balance small { font-size: 1rem; font-weight: 600; }
-    .credit-exam-list { display: flex; flex-direction: column; gap: .5rem; }
-    .credit-exam-row { display: flex; align-items: center; justify-content: space-between; padding: .6rem .85rem; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); }
-    .credit-exam-title { font-size: .85rem; font-weight: 600; flex: 1; }
-    .credit-cost-tag { font-size: .78rem; font-weight: 700; background: #eff6ff; color: var(--blue); border: 1px solid #bfdbfe; border-radius: 99px; padding: .1rem .6rem; }
-    .credit-cta { margin-top: 1rem; background: linear-gradient(135deg, var(--blue), var(--indigo)); color: white; border: none; width: 100%; padding: .65rem; border-radius: 8px; font-weight: 700; font-size: .9rem; cursor: default; }
+    /* Security card */
+    .security-card { background: linear-gradient(135deg, #0f172a, #1e1b4b); border-radius: 18px; padding: 1.75rem; color: white; }
+    .security-card h4 { font-size: .88rem; font-weight: 700; color: rgba(255,255,255,.65); margin-bottom: 1.25rem; }
+    .sec-row { display: flex; align-items: flex-start; gap: .75rem; padding: .75rem 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .sec-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .sec-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: .1rem; }
+    .sec-title { font-size: .88rem; font-weight: 700; margin-bottom: .2rem; }
+    .sec-desc { font-size: .8rem; color: rgba(255,255,255,.6); line-height: 1.6; }
 
-    /* JSON import preview */
-    .import-card { background: white; border-radius: 16px; border: 1px solid var(--border); padding: 1.5rem; box-shadow: 0 8px 32px rgba(0,0,0,.07); }
-    .import-card h4 { font-size: .88rem; font-weight: 700; color: var(--muted); margin-bottom: .85rem; }
-    .code-block { background: #0f172a; border-radius: 10px; padding: 1rem 1.1rem; font-size: .78rem; line-height: 1.7; color: #e2e8f0; overflow-x: auto; font-family: 'Courier New', monospace; }
-    .code-key { color: #93c5fd; }
-    .code-str { color: #86efac; }
-    .code-num { color: #fcd34d; }
-    .code-kw { color: #c084fc; }
-    .import-result { margin-top: .85rem; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 10px; padding: .75rem 1rem; display: flex; align-items: center; gap: .6rem; }
-    .import-result-icon { font-size: 1.1rem; }
-    .import-result-text { font-size: .85rem; font-weight: 600; color: #15803d; }
+    /* Credit card */
+    .credit-card { background: white; border-radius: 18px; border: 1px solid var(--border); padding: 1.5rem; box-shadow: 0 10px 40px rgba(0,0,0,.08); }
+    .credit-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.1rem; }
+    .credit-header h4 { font-size: .85rem; font-weight: 700; color: var(--muted); }
+    .credit-balance { font-size: 2.1rem; font-weight: 900; background: linear-gradient(135deg, var(--blue), var(--indigo)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: -.04em; }
+    .credit-balance small { font-size: 1rem; }
+    .credit-list { display: flex; flex-direction: column; gap: .45rem; margin-top: 1.1rem; }
+    .credit-row { display: flex; align-items: center; justify-content: space-between; padding: .55rem .85rem; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); }
+    .credit-row-name { font-size: .84rem; font-weight: 600; }
+    .cost-tag { font-size: .76rem; font-weight: 700; background: #eff6ff; color: var(--blue); border: 1px solid #bfdbfe; border-radius: 99px; padding: .1rem .55rem; }
+    .credit-cta { margin-top: 1.1rem; width: 100%; padding: .65rem; background: linear-gradient(135deg, var(--blue), var(--indigo)); color: white; border: none; border-radius: 8px; font-weight: 700; font-size: .9rem; cursor: default; }
+
+    /* Resume card */
+    .resume-card { background: white; border-radius: 18px; border: 1px solid var(--border); padding: 1.5rem; box-shadow: 0 10px 40px rgba(0,0,0,.08); }
+    .resume-card h4 { font-size: .85rem; font-weight: 700; color: var(--muted); margin-bottom: 1.1rem; }
+    .resume-step { display: flex; align-items: center; gap: .75rem; padding: .65rem 0; border-bottom: 1px solid var(--border); }
+    .resume-step:last-child { border-bottom: none; }
+    .step-dot { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 800; flex-shrink: 0; }
+    .step-dot.done { background: #dcfce7; color: #16a34a; }
+    .step-dot.active { background: linear-gradient(135deg, var(--blue), var(--indigo)); color: white; }
+    .step-dot.pending { background: #f1f5f9; color: var(--muted); }
+    .step-text { font-size: .86rem; }
+    .step-label { font-weight: 600; color: var(--text); }
+    .step-sub { font-size: .78rem; color: var(--muted); margin-top: .1rem; }
 
     /* ─── HOW IT WORKS ─── */
-    .steps-wrap { background: white; border-radius: 16px; border: 1px solid var(--border); overflow: hidden; }
+    .steps-wrap { background: white; border-radius: 18px; border: 1px solid var(--border); overflow: hidden; margin-top: 3rem; }
     .steps { display: grid; grid-template-columns: repeat(4, 1fr); }
-    @media (max-width: 750px) { .steps { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 760px) { .steps { grid-template-columns: 1fr 1fr; } }
     @media (max-width: 480px) { .steps { grid-template-columns: 1fr; } }
-    .step { padding: 2rem; position: relative; border-right: 1px solid var(--border); }
+    .step { padding: 2rem 1.75rem; border-right: 1px solid var(--border); position: relative; }
     .step:last-child { border-right: none; }
-    @media (max-width: 750px) {
+    @media (max-width: 760px) {
       .step { border-bottom: 1px solid var(--border); }
       .step:nth-child(even) { border-right: none; }
       .step:nth-last-child(-n+2) { border-bottom: none; }
     }
     @media (max-width: 480px) { .step { border-right: none !important; } .step:last-child { border-bottom: none; } }
-    .step-num { font-size: 2.5rem; font-weight: 900; background: linear-gradient(135deg, #dbeafe, #e0e7ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; margin-bottom: .75rem; }
-    .step h3 { font-size: .97rem; font-weight: 700; margin-bottom: .5rem; }
-    .step p { font-size: .86rem; color: var(--muted); line-height: 1.65; }
+    .step-num { font-size: 2.6rem; font-weight: 900; background: linear-gradient(135deg, #dbeafe, #e0e7ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; margin-bottom: .85rem; }
+    .step h3 { font-size: .97rem; font-weight: 700; margin-bottom: .5rem; color: var(--text); }
+    .step p { font-size: .85rem; color: var(--muted); line-height: 1.7; }
 
     /* ─── ROLES ─── */
-    .roles-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 3rem; }
-    @media (max-width: 600px) { .roles-grid { grid-template-columns: 1fr; } }
-    .role-card { border-radius: 16px; padding: 2rem; }
-    .role-card.teacher { background: linear-gradient(135deg, #1e1b4b, #1e3a8a, #2563eb); color: white; }
-    .role-card.student { background: white; border: 2px solid var(--border); }
-    .role-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; opacity: .65; margin-bottom: .75rem; }
+    .roles-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 1080px; margin: 3rem auto 0; }
+    @media (max-width: 620px) { .roles-grid { grid-template-columns: 1fr; } }
+    .role-card { border-radius: 18px; padding: 2.25rem; }
+    .role-card.teacher { background: linear-gradient(140deg, #0f172a, #1e1b4b 40%, #1e3a8a 80%, #1d4ed8); color: white; }
+    .role-card.student { background: white; border: 1.5px solid var(--border); }
+    .role-label { font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; opacity: .6; margin-bottom: .8rem; }
     .role-card.student .role-label { color: var(--muted); }
-    .role-card h3 { font-size: 1.25rem; font-weight: 800; margin-bottom: 1.25rem; letter-spacing: -.02em; }
+    .role-card h3 { font-size: 1.3rem; font-weight: 900; margin-bottom: 1.35rem; letter-spacing: -.03em; }
     .role-card.student h3 { color: var(--text); }
-    .role-ul { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
-    .role-ul li { display: flex; align-items: flex-start; gap: .6rem; font-size: .9rem; }
-    .role-card.teacher .role-ul li { opacity: .92; }
+    .role-ul { list-style: none; display: flex; flex-direction: column; gap: .65rem; }
+    .role-ul li { display: flex; align-items: flex-start; gap: .65rem; font-size: .9rem; }
+    .role-card.teacher .role-ul li { opacity: .9; }
     .role-card.student .role-ul li { color: var(--text); }
-    .check { font-size: 1rem; flex-shrink: 0; line-height: 1.5; }
-    .role-card.teacher .check { color: #86efac; }
-    .role-card.student .check { color: var(--green); }
-    .role-cta { display: inline-block; margin-top: 1.75rem; padding: .6rem 1.25rem; border-radius: 8px; font-weight: 700; font-size: .9rem; text-decoration: none; transition: transform .15s, box-shadow .15s; }
+    .role-check { flex-shrink: 0; line-height: 1.55; }
+    .role-card.teacher .role-check { color: #86efac; }
+    .role-card.student .role-check { color: var(--green); }
+    .role-cta { display: inline-block; margin-top: 1.9rem; padding: .65rem 1.4rem; border-radius: 10px; font-weight: 700; font-size: .9rem; text-decoration: none; transition: transform .15s; }
     .role-cta:hover { transform: translateY(-1px); }
     .role-card.teacher .role-cta { background: white; color: var(--indigo); }
-    .role-card.student .role-cta { background: linear-gradient(135deg, var(--blue), var(--indigo)); color: white; box-shadow: 0 4px 14px rgba(79,70,229,.3); }
+    .role-card.student .role-cta { background: linear-gradient(135deg, var(--blue), var(--indigo)); color: white; box-shadow: 0 4px 14px rgba(79,70,229,.32); }
 
     /* ─── FAQ ─── */
-    .faq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: 3rem; }
+    .faq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; max-width: 1080px; margin: 3rem auto 0; }
     @media (max-width: 640px) { .faq-grid { grid-template-columns: 1fr; } }
-    .faq-item { background: white; border-radius: var(--radius); padding: 1.25rem 1.5rem; border: 1px solid var(--border); }
+    .faq-item { background: white; border-radius: var(--radius); padding: 1.35rem 1.5rem; border: 1.5px solid var(--border); }
     .faq-item h4 { font-size: .95rem; font-weight: 700; margin-bottom: .5rem; color: var(--text); }
-    .faq-item p { font-size: .87rem; color: var(--muted); line-height: 1.65; }
+    .faq-item p { font-size: .86rem; color: var(--muted); line-height: 1.7; }
 
-    /* ─── CTA HIGHLIGHT ─── */
-    .highlight { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 40%, #1e3a8a 80%, #2563eb 100%); color: white; text-align: center; padding: 5.5rem 1.5rem; position: relative; overflow: hidden; }
-    .highlight::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 70% 80% at 50% 50%, rgba(99,102,241,.3), transparent 70%); }
-    .highlight > * { position: relative; }
-    .highlight h2 { font-size: clamp(1.6rem, 4.5vw, 2.6rem); font-weight: 900; letter-spacing: -.04em; max-width: 640px; margin: 0 auto 1rem; line-height: 1.15; }
-    .highlight p { font-size: 1.05rem; opacity: .75; max-width: 500px; margin: 0 auto 2.5rem; line-height: 1.7; }
-    .highlight-actions { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
-    .btn-white { padding: .75rem 1.75rem; border-radius: 8px; font-size: 1rem; font-weight: 700; background: white; color: var(--indigo); text-decoration: none; border: none; transition: transform .15s, box-shadow .15s; box-shadow: 0 4px 18px rgba(0,0,0,.2); }
-    .btn-white:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(0,0,0,.28); }
-    .btn-outline-white { padding: .75rem 1.75rem; border-radius: 8px; font-size: 1rem; font-weight: 700; background: transparent; color: white; border: 2px solid rgba(255,255,255,.45); text-decoration: none; transition: border-color .15s, background .15s; }
-    .btn-outline-white:hover { border-color: white; background: rgba(255,255,255,.08); }
+    /* ─── CTA ─── */
+    .cta-section {
+      background: linear-gradient(140deg, #0f172a 0%, #1e1b4b 35%, #1e3a8a 70%, #1d4ed8 100%);
+      color: white; text-align: center; padding: 6rem 1.5rem; position: relative; overflow: hidden;
+    }
+    .cta-section::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse 70% 80% at 50% 50%, rgba(99,102,241,.35), transparent 70%);
+    }
+    .cta-section > * { position: relative; }
+    .cta-section h2 { font-size: clamp(1.8rem, 4.5vw, 2.8rem); font-weight: 900; letter-spacing: -.05em; max-width: 680px; margin: 0 auto 1.1rem; line-height: 1.12; }
+    .cta-section p { font-size: 1.05rem; opacity: .72; max-width: 500px; margin: 0 auto 2.75rem; line-height: 1.75; }
+    .cta-actions { display: flex; gap: .85rem; justify-content: center; flex-wrap: wrap; }
+    .btn-white { padding: .8rem 1.9rem; border-radius: 10px; font-size: 1rem; font-weight: 700; background: white; color: var(--indigo); text-decoration: none; border: none; box-shadow: 0 4px 20px rgba(0,0,0,.22); transition: transform .15s, box-shadow .15s; }
+    .btn-white:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,.3); }
+    .btn-outline-white { padding: .8rem 1.9rem; border-radius: 10px; font-size: 1rem; font-weight: 700; background: transparent; color: white; border: 2px solid rgba(255,255,255,.4); text-decoration: none; transition: all .15s; }
+    .btn-outline-white:hover { border-color: white; background: rgba(255,255,255,.1); }
 
     /* ─── FOOTER ─── */
-    footer { background: #0f172a; color: #94a3b8; text-align: center; padding: 2.75rem 1.5rem; font-size: .85rem; }
+    footer { background: #0f172a; color: #64748b; text-align: center; padding: 3rem 1.5rem; font-size: .84rem; }
     footer strong { color: white; }
-    .footer-links { display: flex; justify-content: center; align-items: center; gap: 1.25rem; margin-bottom: 1rem; flex-wrap: wrap; }
-    .footer-links a { color: #94a3b8; text-decoration: none; display: flex; align-items: center; gap: .4rem; transition: color .15s; }
+    .footer-links { display: flex; justify-content: center; align-items: center; gap: 1.5rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .footer-links a { color: #64748b; text-decoration: none; font-weight: 500; transition: color .15s; }
     .footer-links a:hover { color: white; }
     .footer-divider { color: #334155; }
-
-    /* ─── UTIL ─── */
-    .text-center { text-align: center; }
-    .mt-3 { margin-top: 3rem; }
-    .divider { border: none; border-top: 1px solid var(--border); margin: 0; }
   </style>
 </head>
 <body>
 
 <!-- NAV -->
 <nav>
-  <a class="nav-brand" href="/">Quiz<span>Platform</span></a>
+  <a class="nav-brand" href="/">QuizPlatform</a>
   <div class="nav-links">
-    <a href="#features" class="link-hide">Tính năng</a>
-    <a href="#how" class="link-hide">Cách dùng</a>
-    <a href="#faq" class="link-hide">FAQ</a>
-    <a href="https://quiz.phutx.top/login" class="btn-ghost nav-ghost-hide">Đăng nhập</a>
-    <a href="https://quiz.phutx.top/register" class="btn-primary">Bắt đầu miễn phí</a>
+    <a href="#features" class="nav-hide">Tính năng</a>
+    <a href="#security" class="nav-hide">Bảo mật</a>
+    <a href="#how" class="nav-hide">Cách dùng</a>
+    <a href="#faq" class="nav-hide">FAQ</a>
+    <a href="https://quiz.phutx.top/login" class="btn-ghost nav-hide">Đăng nhập</a>
+    <a href="https://quiz.phutx.top/register" class="btn-nav">Bắt đầu miễn phí</a>
   </div>
 </nav>
 
 <!-- HERO -->
 <div class="hero">
-  <div class="hero-badge">✦ Nền tảng học tập &amp; kiểm tra trực tuyến</div>
-  <h1>Thi trực tuyến <em>thông minh</em><br/>dành cho mọi lớp học</h1>
-  <p>Soạn đề thi wizard 4 bước, trao huy hiệu hoàn thành bộ đề, quản lý credit và theo dõi kết quả chi tiết — tất cả trên một nền tảng, không cần cài đặt.</p>
-  <div class="hero-actions">
-    <a href="https://quiz.phutx.top/register" class="btn-hero btn-hero-primary">Bắt đầu miễn phí →</a>
-    <a href="https://quiz.phutx.top/login" class="btn-hero btn-hero-secondary">Đăng nhập</a>
+  <div class="hero-eyebrow">✦ Nền tảng thi trực tuyến thế hệ mới</div>
+  <h1>Thi trực tuyến <em>thông minh</em>,<br/>bảo mật, công bằng</h1>
+  <p>Soạn đề wizard 4 bước, auto-save tiến trình, chống gian lận theo thời gian thực và trao huy hiệu tự động — tất cả trên một nền tảng.</p>
+  <div class="hero-ctas">
+    <a href="https://quiz.phutx.top/register" class="btn-hero-primary">Bắt đầu miễn phí →</a>
+    <a href="https://quiz.phutx.top/login" class="btn-hero-secondary">Đăng nhập</a>
   </div>
 
+  <!-- Browser Mockup -->
   <div class="hero-mockup">
     <div class="mockup-card">
       <div class="mockup-bar">
@@ -276,102 +331,160 @@
         <div class="mockup-url">quiz.phutx.top/exams/aws-saa/take</div>
       </div>
       <div class="mockup-body">
-        <div class="mockup-top">
-          <div class="m-title">AWS Solutions Architect — Practice Exam</div>
-          <div style="display:flex;align-items:center">
-            <div class="m-credit">💳 85 credit</div>
-            <div class="m-timer" style="margin-left:.4rem">⏱ 42:17</div>
+        <div class="mockup-header">
+          <div class="m-title">AWS Solutions Architect — Practice</div>
+          <div class="m-badges">
+            <span class="m-session">🔒 1 thiết bị</span>
+            <span class="m-credit">💳 85</span>
+            <span class="m-timer">⏱ 42:17</span>
           </div>
         </div>
         <div class="m-progress"><div class="m-progress-fill"></div></div>
         <div class="m-question">
-          <p>Câu 3 / 5 &nbsp;·&nbsp; 1 điểm</p>
-          <p>Dịch vụ nào của AWS cho phép lưu trữ object với độ bền 99.999999999%?</p>
+          <div class="m-q-meta">Câu 3 / 5 · 1 điểm · Đáp án đã lưu</div>
+          <p>Dịch vụ AWS nào cho phép lưu trữ object với độ bền 99.999999999%?</p>
         </div>
         <div class="m-opt"><div class="m-opt-key">A</div> Amazon EBS</div>
         <div class="m-opt"><div class="m-opt-key">B</div> Amazon EFS</div>
         <div class="m-opt selected"><div class="m-opt-key">C</div> Amazon S3</div>
         <div class="m-opt"><div class="m-opt-key">D</div> AWS Storage Gateway</div>
-        <div class="m-nav" style="margin-top:.75rem">
-          <button class="m-btn m-btn-prev">← Câu trước</button>
-          <button class="m-btn m-btn-next">Câu sau →</button>
+        <div class="m-nav">
+          <span class="m-autosave">✓ Đã lưu tự động</span>
+          <div style="display:flex;gap:.5rem">
+            <button class="m-btn m-btn-prev">← Câu trước</button>
+            <button class="m-btn m-btn-next">Câu sau →</button>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
+<!-- TRUST BAR -->
+<div class="trust-bar">
+  <div class="trust-item"><span class="trust-icon">🔒</span> 1 tài khoản = 1 thiết bị làm bài</div>
+  <div class="trust-item"><span class="trust-icon">💾</span> Auto-save mỗi câu, không mất tiến trình</div>
+  <div class="trust-item"><span class="trust-icon">🔄</span> Resume khi mất mạng hoặc đóng tab</div>
+  <div class="trust-item"><span class="trust-icon">🛡️</span> Mã hoá response API end-to-end</div>
+  <div class="trust-item"><span class="trust-icon">⏰</span> Auto-grade khi hết giờ</div>
+</div>
+
 <!-- STATS -->
 <div class="stats">
-  <div class="stat">
-    <div class="stat-num">500+</div>
-    <div class="stat-label">Đề thi đã tạo</div>
-  </div>
-  <div class="stat">
-    <div class="stat-num">12 000+</div>
-    <div class="stat-label">Bài thi đã nộp</div>
-  </div>
-  <div class="stat">
-    <div class="stat-num">3 000+</div>
-    <div class="stat-label">Học viên đang học</div>
-  </div>
-  <div class="stat">
-    <div class="stat-num">50+</div>
-    <div class="stat-label">Huy hiệu hoàn thành</div>
-  </div>
+  <div class="stat"><div class="stat-num">500+</div><div class="stat-label">Đề thi đã tạo</div></div>
+  <div class="stat"><div class="stat-num">12 000+</div><div class="stat-label">Bài thi đã nộp</div></div>
+  <div class="stat"><div class="stat-num">3 000+</div><div class="stat-label">Học viên đang học</div></div>
+  <div class="stat"><div class="stat-num">50+</div><div class="stat-label">Huy hiệu hoàn thành</div></div>
 </div>
+
+<hr class="divider" />
 
 <!-- FEATURES -->
 <section id="features">
-  <div class="section-tag">Tính năng</div>
-  <div class="section-title">Mọi thứ bạn cần để<br/>dạy và học hiệu quả</div>
-  <p class="section-sub">Từ tạo đề thi đến phân tích kết quả — QuizPlatform lo hết để bạn tập trung vào điều quan trọng.</p>
+  <div class="section-inner" style="text-align:center;margin-bottom:0">
+    <div class="section-tag">Tính năng</div>
+    <div class="section-title">Mọi thứ cần thiết để dạy và<br/>học hiệu quả</div>
+    <p class="section-sub" style="margin:0 auto">Từ soạn đề đến phân tích kết quả — QuizPlatform lo từ A đến Z.</p>
+  </div>
+  <div class="section-inner">
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#eff6ff">📝</div>
+        <h3>Wizard soạn đề 4 bước</h3>
+        <p>Thông tin → Import JSON → Sửa câu hỏi → Review. Tiết kiệm 80% thời gian, hỗ trợ câu đơn và nhiều đáp án đúng.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#f5f3ff">🗂️</div>
+        <h3>Bộ đề &amp; Huy hiệu tự động</h3>
+        <p>Teacher nhóm đề thi thành lộ trình. Student hoàn thành toàn bộ → tự động nhận huy hiệu trên profile.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#fefce8">💳</div>
+        <h3>Hệ thống Credit</h3>
+        <p>Kiểm soát quyền truy cập bằng credit. Admin cấu hình cost theo từng đề, student thấy số dư trước khi thi.</p>
+      </div>
+      <div class="feature-card" style="border-color:#bbf7d0">
+        <div class="feature-icon" style="background:#f0fdf4">💾</div>
+        <h3>Auto-save tiến trình <span class="new-badge">Mới</span></h3>
+        <p>Mỗi lần chuyển câu, đáp án lưu ngay lên server. Đóng tab, mất điện, mất mạng — không mất câu trả lời nào.</p>
+      </div>
+      <div class="feature-card" style="border-color:#bbf7d0">
+        <div class="feature-icon" style="background:#f0fdf4">🔄</div>
+        <h3>Resume bài thi <span class="new-badge">Mới</span></h3>
+        <p>Login lại trên bất kỳ thiết bị nào — nếu bài thi còn giờ, đồng hồ tiếp tục đúng chỗ cũ, đáp án được khôi phục đầy đủ.</p>
+      </div>
+      <div class="feature-card" style="border-color:#bbf7d0">
+        <div class="feature-icon" style="background:#f0fdf4">⏰</div>
+        <h3>Auto-grade hết giờ <span class="new-badge">Mới</span></h3>
+        <p>Grader service chạy ngầm 15 phút/lần, tự chấm điểm bài thi hết giờ. Student không cần bấm nộp — kết quả luôn được ghi nhận.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#fdf4ff">📤</div>
+        <h3>Import câu hỏi từ JSON</h3>
+        <p>Soạn ngân hàng câu hỏi trong Notion hay Excel rồi import một lần. Preview lỗi từng câu ngay trong wizard.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#fff7ed">📅</div>
+        <h3>Xuất bản theo lịch</h3>
+        <p>Đặt giờ mở đề thi — student thấy bộ đếm ngược, nút bắt đầu tự kích hoạt đúng giờ. Server chặn submit sớm.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#fff1f2">📊</div>
+        <h3>Kết quả &amp; Giải thích tức thì</h3>
+        <p>Điểm số, tỷ lệ đúng, phân tích từng câu và giải thích markdown ngay sau khi nộp bài. Xem lại bất cứ lúc nào.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-  <div class="features-grid mt-3">
-    <div class="feature-card">
-      <div class="feature-icon" style="background:#eff6ff">📝</div>
-      <h3>Wizard soạn đề 4 bước</h3>
-      <p>Nhập thông tin → Import JSON hàng loạt → Review &amp; sửa câu hỏi → Xác nhận lưu. Tiết kiệm 80% thời gian soạn bài.</p>
+<hr class="divider" />
+
+<!-- SHOWCASE: Security -->
+<section id="security">
+  <div class="showcase section-inner" style="padding:0">
+    <div class="showcase-text">
+      <div class="section-tag">Bảo mật &amp; Chống gian lận</div>
+      <div class="section-title">Mỗi bài thi,<br/>chỉ một thiết bị</div>
+      <p>Hệ thống theo dõi session real-time: khi một thiết bị đang làm bài, mọi thiết bị khác đăng nhập cùng tài khoản đều bị chặn ngay lập tức.</p>
+      <ul class="check-list">
+        <li><span class="ck">✓</span> Session token duy nhất per submission — không chia sẻ được</li>
+        <li><span class="ck">✓</span> Heartbeat 30s/lần để phát hiện thiết bị cũ bị ngắt kết nối</li>
+        <li><span class="ck">✓</span> Response API mã hoá AES-256-GCM — ECDH key exchange</li>
+        <li><span class="ck">✓</span> Auto-recovery sau 5 phút không heartbeat (crash / mất mạng)</li>
+      </ul>
     </div>
-    <div class="feature-card">
-      <div class="feature-icon" style="background:#f5f3ff">🗂️</div>
-      <h3>Bộ đề &amp; Huy hiệu</h3>
-      <p>Teacher tạo bộ đề nhóm nhiều đề thi. Student hoàn thành toàn bộ → tự động nhận huy hiệu. Tạo động lực học liên tục.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon" style="background:#fefce8">💳</div>
-      <h3>Hệ thống Credit</h3>
-      <p>Kiểm soát quyền truy cập bằng credit. Student mua credit để làm bài, hoặc nâng cấp lên Teacher. Admin cấu hình toàn bộ.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon" style="background:#fdf4ff">📤</div>
-      <h3>Import câu hỏi từ JSON</h3>
-      <p>Soạn câu hỏi ngoài rồi import một lần với file JSON chuẩn. Hỗ trợ đơn và nhiều đáp án, điểm, giải thích markdown.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon" style="background:#f0fdf4">⏱</div>
-      <h3>Đồng hồ &amp; Lưu tiến độ</h3>
-      <p>Thi có giới hạn thời gian. Lỡ đóng tab bài thi tự động khôi phục — không mất câu trả lời, không mất thời gian còn lại.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon" style="background:#fff7ed">📊</div>
-      <h3>Kết quả chi tiết tức thì</h3>
-      <p>Điểm số, tỷ lệ đúng, phân tích từng câu và giải thích đáp án markdown — hiển thị ngay sau khi nộp bài.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon" style="background:#fef2f2">🖼</div>
-      <h3>Ảnh bìa &amp; ảnh minh hoạ</h3>
-      <p>Ảnh bìa đề thi, ảnh từng câu hỏi, avatar giáo viên — tất cả upload lên cloud, tải nhanh toàn cầu.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon" style="background:#eff6ff">🔐</div>
-      <h3>Phân quyền 3 cấp</h3>
-      <p>Admin, Giáo viên, Học sinh — mỗi vai trò có đúng quyền hạn cần thiết. Bảo mật CASL trên toàn backend.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon" style="background:#f0fdf4">🔁</div>
-      <h3>Chế độ thi linh hoạt</h3>
-      <p>Chính thức (1 lần thi) hoặc Thực hành (làm lại không giới hạn). Teacher chọn mode khi tạo đề.</p>
+    <div>
+      <div class="security-card">
+        <h4>🛡️ Trạng thái bảo mật bài thi</h4>
+        <div class="sec-row">
+          <div class="sec-icon">🔒</div>
+          <div>
+            <div class="sec-title">Session độc quyền</div>
+            <div class="sec-desc">Thiết bị này đang giữ session. Mọi thiết bị khác thử vào đều bị chặn với thông báo rõ ràng.</div>
+          </div>
+        </div>
+        <div class="sec-row">
+          <div class="sec-icon">💾</div>
+          <div>
+            <div class="sec-title">Auto-save liên tục</div>
+            <div class="sec-desc">Đáp án lưu mỗi lần chuyển câu + heartbeat 30 giây, kể cả khi user đang đọc câu hỏi.</div>
+          </div>
+        </div>
+        <div class="sec-row">
+          <div class="sec-icon">🔐</div>
+          <div>
+            <div class="sec-title">Mã hoá end-to-end</div>
+            <div class="sec-desc">Backend mã hoá toàn bộ API response. Proxy hay packet sniffer chỉ thấy ciphertext.</div>
+          </div>
+        </div>
+        <div class="sec-row">
+          <div class="sec-icon">⏰</div>
+          <div>
+            <div class="sec-title">Server-authoritative timer</div>
+            <div class="sec-desc">Thời gian làm bài tính từ server, không thể can thiệp bằng DevTools hay sửa local storage.</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -380,29 +493,29 @@
 
 <!-- SHOWCASE: Collections & Badges -->
 <section>
-  <div class="showcase">
+  <div class="showcase flip section-inner" style="padding:0">
     <div class="showcase-text">
       <div class="section-tag">Bộ đề &amp; Huy hiệu</div>
       <div class="section-title">Tạo lộ trình học,<br/>trao phần thưởng xứng đáng</div>
-      <p>Teacher nhóm nhiều đề thi vào một <strong>bộ đề</strong> có chủ đề chung — ví dụ "AWS SAA Full Practice" gồm 3 đề. Khi student vượt qua tất cả, hệ thống <strong>tự động trao huy hiệu</strong> vào profile.</p>
+      <p>Teacher nhóm nhiều đề thi vào một <strong>bộ đề</strong> có chủ đề chung. Khi student vượt qua tất cả, hệ thống <strong>tự động trao huy hiệu</strong> vào profile.</p>
       <ul class="check-list">
-        <li><span class="ck">✓</span> Chọn từ 50 huy hiệu preset sẵn có hoặc tải lên ảnh tùy chỉnh</li>
-        <li><span class="ck">✓</span> Huy hiệu hiển thị nổi bật trên trang profile của student</li>
-        <li><span class="ck">✓</span> Tạo động lực hoàn thành toàn bộ lộ trình học</li>
+        <li><span class="ck">✓</span> 50 huy hiệu preset sẵn hoặc tải lên ảnh tùy chỉnh</li>
+        <li><span class="ck">✓</span> Huy hiệu hiển thị nổi bật trên trang profile</li>
+        <li><span class="ck">✓</span> Tạo động lực hoàn thành toàn bộ lộ trình</li>
         <li><span class="ck">✓</span> Admin theo dõi số huy hiệu đã trao theo từng bộ đề</li>
       </ul>
     </div>
     <div>
-      <div class="badge-preview-card">
+      <div class="preview-card">
         <h4>🗂️ Bộ đề — AWS Complete Roadmap</h4>
         <div class="badge-grid">
-          <div class="badge-item earned" title="Đã nhận">🏆</div>
-          <div class="badge-item earned" title="Đã nhận">⭐</div>
-          <div class="badge-item earned" title="Đã nhận">🎯</div>
-          <div class="badge-item locked" title="Chưa đạt">🔥</div>
-          <div class="badge-item locked" title="Chưa đạt">💎</div>
+          <div class="badge-item earned">🏆</div>
+          <div class="badge-item earned">⭐</div>
+          <div class="badge-item earned">🎯</div>
+          <div class="badge-item locked">🔥</div>
+          <div class="badge-item locked">💎</div>
         </div>
-        <div class="collection-progress">
+        <div class="coll-progress">
           <div class="coll-icon">📚</div>
           <div class="coll-info">
             <div class="coll-name">AWS Solutions Architect Series</div>
@@ -417,84 +530,50 @@
 
 <hr class="divider" />
 
-<!-- SHOWCASE: Credit system -->
+<!-- SHOWCASE: Resume & Recovery -->
 <section>
-  <div class="showcase reverse">
+  <div class="showcase section-inner" style="padding:0">
     <div class="showcase-text">
-      <div class="section-tag">Hệ thống Credit</div>
-      <div class="section-title">Kiểm soát truy cập<br/>linh hoạt bằng credit</div>
-      <p>Mỗi bài thi có mức credit riêng do giáo viên đặt. Student nhận credit khi đăng ký, có thể mua thêm hoặc <strong>nâng cấp lên Teacher</strong> bằng credit tích lũy.</p>
+      <div class="section-tag">Không mất tiến trình</div>
+      <div class="section-title">Đóng tab, login lại —<br/>tiếp tục đúng chỗ</div>
+      <p>Dù mất điện, hết pin hay vô tình đóng tab — khi login lại và vào trang bài thi, hệ thống tự động phát hiện session chưa kết thúc và khôi phục đúng trạng thái.</p>
       <ul class="check-list">
-        <li><span class="ck">✓</span> Tự động trừ credit khi bắt đầu làm bài (atomic — không bị double-charge)</li>
-        <li><span class="ck">✓</span> Admin cấu hình credit mặc định, chi phí nâng cấp Teacher</li>
-        <li><span class="ck">✓</span> Student thấy số dư và cảnh báo nếu không đủ trước khi thi</li>
-        <li><span class="ck">✓</span> Nâng cấp lên Teacher ngay trong trang profile</li>
+        <li><span class="ck">✓</span> Đáp án đã chọn được khôi phục từ server (không phụ thuộc localStorage)</li>
+        <li><span class="ck">✓</span> Đồng hồ đếm ngược từ thời gian còn lại (server-authoritative)</li>
+        <li><span class="ck">✓</span> Hoạt động trên mọi thiết bị có cùng tài khoản</li>
+        <li><span class="ck">✓</span> Credit không bị trừ lần 2 khi resume</li>
       </ul>
     </div>
     <div>
-      <div class="credit-card">
-        <div class="credit-header">
-          <h4>💳 Số dư Credit của bạn</h4>
-          <span style="font-size:.75rem;font-weight:700;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:99px;padding:.15rem .6rem">Đang học</span>
-        </div>
-        <div class="credit-balance">85 <small>credit</small></div>
-        <p style="font-size:.8rem;color:var(--muted);margin:.4rem 0 1rem">Cập nhật lần cuối: hôm nay</p>
-        <div class="credit-exam-list">
-          <div class="credit-exam-row">
-            <span class="credit-exam-title">AWS SAA Practice Set 1</span>
-            <span class="credit-cost-tag">💳 10</span>
-          </div>
-          <div class="credit-exam-row">
-            <span class="credit-exam-title">AWS Developer Associate</span>
-            <span class="credit-cost-tag">💳 15</span>
-          </div>
-          <div class="credit-exam-row">
-            <span class="credit-exam-title">Kubernetes CKA Full Mock</span>
-            <span class="credit-cost-tag">💳 20</span>
+      <div class="resume-card">
+        <h4>🔄 Khôi phục bài thi tự động</h4>
+        <div class="resume-step">
+          <div class="step-dot done">✓</div>
+          <div class="step-text">
+            <div class="step-label">Bắt đầu làm bài — trừ credit</div>
+            <div class="step-sub">Session được tạo, đồng hồ bắt đầu chạy</div>
           </div>
         </div>
-        <button class="credit-cta">Bắt đầu làm bài →</button>
-      </div>
-    </div>
-  </div>
-</section>
-
-<hr class="divider" />
-
-<!-- SHOWCASE: JSON Import -->
-<section>
-  <div class="showcase">
-    <div class="showcase-text">
-      <div class="section-tag">Import hàng loạt</div>
-      <div class="section-title">Soạn câu hỏi ở đâu,<br/>import vào trong 1 giây</div>
-      <p>Chuẩn bị sẵn ngân hàng câu hỏi trong Excel/Notion rồi export ra JSON. Kéo thả file vào Bước 2 của wizard — hệ thống tự parse, validate và điền sẵn toàn bộ câu hỏi.</p>
-      <ul class="check-list">
-        <li><span class="ck">✓</span> Hỗ trợ câu đơn và câu nhiều đáp án đúng</li>
-        <li><span class="ck">✓</span> Giải thích đáp án dạng Markdown</li>
-        <li><span class="ck">✓</span> Preview số câu import được, hiện chi tiết lỗi từng câu</li>
-        <li><span class="ck">✓</span> Tải file mẫu JSON ngay trong giao diện</li>
-      </ul>
-    </div>
-    <div>
-      <div class="import-card">
-        <h4>📄 question-template.json</h4>
-        <div class="code-block"><span class="code-kw">{</span>
-  <span class="code-key">"questions"</span>: [
-    <span class="code-kw">{</span>
-      <span class="code-key">"content"</span>: <span class="code-str">"AWS S3 là viết tắt của?"</span>,
-      <span class="code-key">"type"</span>: <span class="code-str">"single"</span>,
-      <span class="code-key">"options"</span>: [
-        <span class="code-kw">{</span> <span class="code-key">"key"</span>: <span class="code-str">"A"</span>, <span class="code-key">"text"</span>: <span class="code-str">"Simple Storage"</span> <span class="code-kw">}</span>,
-        <span class="code-kw">{</span> <span class="code-key">"key"</span>: <span class="code-str">"B"</span>, <span class="code-key">"text"</span>: <span class="code-str">"Secure Storage"</span> <span class="code-kw">}</span>
-      ],
-      <span class="code-key">"correct_answer"</span>: <span class="code-str">"A"</span>,
-      <span class="code-key">"points"</span>: <span class="code-num">1</span>
-    <span class="code-kw">}</span>
-  ]
-<span class="code-kw">}</span></div>
-        <div class="import-result">
-          <span class="import-result-icon">✅</span>
-          <span class="import-result-text">Đọc được 45 câu hỏi hợp lệ — Sẵn sàng import</span>
+        <div class="resume-step">
+          <div class="step-dot done">✓</div>
+          <div class="step-text">
+            <div class="step-label">Đóng tab / mất kết nối</div>
+            <div class="step-sub">Đáp án đã lưu lên server, session vẫn còn hiệu lực</div>
+          </div>
+        </div>
+        <div class="resume-step">
+          <div class="step-dot active">▶</div>
+          <div class="step-text">
+            <div class="step-label">Login lại → vào trang đề thi</div>
+            <div class="step-sub">Hệ thống phát hiện session chưa kết thúc</div>
+          </div>
+        </div>
+        <div class="resume-step">
+          <div class="step-dot pending">→</div>
+          <div class="step-text">
+            <div class="step-label">Tiếp tục đúng câu đang làm</div>
+            <div class="step-sub">Đáp án &amp; thời gian còn lại được khôi phục đầy đủ</div>
+          </div>
         </div>
       </div>
     </div>
@@ -504,133 +583,134 @@
 <hr class="divider" />
 
 <!-- HOW IT WORKS -->
-<section id="how" style="padding-top:5rem">
-  <div class="section-tag">Cách hoạt động</div>
-  <div class="section-title">Lên bài thi hoàn chỉnh<br/>trong 4 bước</div>
-
-  <div class="steps-wrap mt-3">
-    <div class="steps">
-      <div class="step">
-        <div class="step-num">01</div>
-        <h3>Nhập thông tin đề thi</h3>
-        <p>Tiêu đề, ảnh bìa, thời gian, điểm đạt, tags, credit cost — đầy đủ trong một form gọn gàng.</p>
-      </div>
-      <div class="step">
-        <div class="step-num">02</div>
-        <h3>Import câu hỏi từ JSON</h3>
-        <p>Kéo thả file JSON hoặc nhập tay. Import 45 câu hỏi trong vài giây thay vì vài tiếng.</p>
-      </div>
-      <div class="step">
-        <div class="step-num">03</div>
-        <h3>Review &amp; chỉnh sửa</h3>
-        <p>Sửa nội dung, thêm ảnh minh hoạ, đặt điểm riêng từng câu, thêm giải thích Markdown.</p>
-      </div>
-      <div class="step">
-        <div class="step-num">04</div>
-        <h3>Xem lại &amp; Xuất bản</h3>
-        <p>Preview toàn bộ đề thi, xác nhận và lưu. Học viên thi ngay sau khi teacher xuất bản.</p>
+<section id="how">
+  <div class="section-inner" style="text-align:center">
+    <div class="section-tag">Cách hoạt động</div>
+    <div class="section-title">Bắt đầu trong vài phút</div>
+    <p class="section-sub" style="margin:0 auto">Không cần cài đặt, không cần thẻ tín dụng — chỉ cần tài khoản.</p>
+    <div class="steps-wrap">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">01</div>
+          <h3>Đăng ký miễn phí</h3>
+          <p>Tạo tài khoản bằng email hoặc Google. Học sinh nhận credit mặc định ngay khi đăng ký.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">02</div>
+          <h3>Tạo hoặc chọn đề thi</h3>
+          <p>Teacher soạn đề wizard 4 bước hoặc import JSON. Student duyệt danh sách đề và bắt đầu khi sẵn sàng.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">03</div>
+          <h3>Làm bài an toàn</h3>
+          <p>Thi với đồng hồ đếm ngược, auto-save từng câu, session bảo mật — không lo mất dữ liệu.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">04</div>
+          <h3>Xem kết quả &amp; nhận huy hiệu</h3>
+          <p>Điểm số và phân tích chi tiết hiển thị ngay. Hoàn thành bộ đề — nhận huy hiệu tự động.</p>
+        </div>
       </div>
     </div>
   </div>
 </section>
+
+<hr class="divider" />
 
 <!-- ROLES -->
-<section style="padding-top:0">
-  <div class="section-tag">Dành cho ai?</div>
-  <div class="section-title">Một nền tảng,<br/>hai trải nghiệm</div>
-
+<section>
+  <div class="section-inner" style="text-align:center">
+    <div class="section-tag">Vai trò</div>
+    <div class="section-title">Phù hợp cho cả<br/>giáo viên lẫn học sinh</div>
+  </div>
   <div class="roles-grid">
     <div class="role-card teacher">
-      <div class="role-label">Dành cho Giáo viên</div>
-      <h3>Quản lý lớp học dễ dàng hơn</h3>
+      <div class="role-label">Giáo viên / Người tạo đề</div>
+      <h3>Tạo và quản lý<br/>toàn bộ nội dung</h3>
       <ul class="role-ul">
-        <li><span class="check">✓</span> Soạn đề thi wizard 4 bước, import hàng loạt từ JSON</li>
-        <li><span class="check">✓</span> Tạo bộ đề theo lộ trình, trao huy hiệu cho student xuất sắc</li>
-        <li><span class="check">✓</span> Thêm ảnh bìa &amp; ảnh minh hoạ từng câu hỏi</li>
-        <li><span class="check">✓</span> Đặt credit cost riêng cho mỗi đề thi</li>
-        <li><span class="check">✓</span> Xuất bản hoặc giữ nháp linh hoạt</li>
-        <li><span class="check">✓</span> Xem toàn bộ lịch sử nộp bài của học viên</li>
+        <li><span class="role-check">✓</span> Tạo đề thi với wizard 4 bước</li>
+        <li><span class="role-check">✓</span> Import hàng loạt câu hỏi từ JSON</li>
+        <li><span class="role-check">✓</span> Tổ chức bộ đề và trao huy hiệu</li>
+        <li><span class="role-check">✓</span> Đặt lịch xuất bản tự động</li>
+        <li><span class="role-check">✓</span> Xem thống kê lượt thi và tỷ lệ pass</li>
+        <li><span class="role-check">✓</span> Cấu hình credit cost, cooldown, max attempts</li>
       </ul>
-      <a href="https://quiz.phutx.top/register" class="role-cta">Đăng ký tài khoản Giáo viên →</a>
+      <a href="https://quiz.phutx.top/register" class="role-cta">Đăng ký làm giáo viên →</a>
     </div>
-
     <div class="role-card student">
-      <div class="role-label">Dành cho Học sinh</div>
-      <h3>Luyện thi hiệu quả hơn</h3>
+      <div class="role-label">Học sinh / Người thi</div>
+      <h3>Học và thi<br/>theo lộ trình</h3>
       <ul class="role-ul">
-        <li><span class="check">✓</span> Thi mọi lúc mọi nơi, chỉ cần trình duyệt</li>
-        <li><span class="check">✓</span> Tiến độ tự động lưu nếu lỡ đóng tab</li>
-        <li><span class="check">✓</span> Xem kết quả và giải thích Markdown ngay sau nộp</li>
-        <li><span class="check">✓</span> Nhận huy hiệu khi hoàn thành cả bộ đề</li>
-        <li><span class="check">✓</span> Theo dõi số dư credit và lịch sử điểm số</li>
-        <li><span class="check">✓</span> Nâng cấp lên Teacher bằng credit tích lũy</li>
+        <li><span class="role-check">✓</span> Nhận 20 credit khi đăng ký</li>
+        <li><span class="role-check">✓</span> Thi bài với đồng hồ và auto-save</li>
+        <li><span class="role-check">✓</span> Resume bài thi nếu mất kết nối</li>
+        <li><span class="role-check">✓</span> Xem kết quả chi tiết và giải thích</li>
+        <li><span class="role-check">✓</span> Sưu tập huy hiệu hoàn thành bộ đề</li>
+        <li><span class="role-check">✓</span> Nâng cấp lên Teacher bằng credit tích lũy</li>
       </ul>
-      <a href="https://quiz.phutx.top/register" class="role-cta">Đăng ký tài khoản Học sinh →</a>
+      <a href="https://quiz.phutx.top/register" class="role-cta">Đăng ký học ngay →</a>
     </div>
   </div>
 </section>
+
+<hr class="divider" />
 
 <!-- FAQ -->
-<section id="faq" style="padding-top:0">
-  <div class="section-tag">FAQ</div>
-  <div class="section-title text-center">Câu hỏi thường gặp</div>
-
+<section id="faq">
+  <div class="section-inner" style="text-align:center;margin-bottom:0">
+    <div class="section-tag">FAQ</div>
+    <div class="section-title">Câu hỏi thường gặp</div>
+  </div>
   <div class="faq-grid">
     <div class="faq-item">
-      <h4>Đăng ký mất phí không?</h4>
-      <p>Hoàn toàn miễn phí. Bạn nhận ngay 20 credit khi đăng ký, đủ để làm nhiều bài thi ngay lập tức.</p>
+      <h4>Tôi có thể dùng nhiều thiết bị cùng lúc không?</h4>
+      <p>Không — trong lúc làm bài, hệ thống chỉ cho phép 1 thiết bị hoạt động. Nếu mở trên thiết bị khác, thiết bị đó sẽ bị chặn. Sau 5 phút không có hoạt động, session cũ tự giải phóng để thiết bị mới có thể vào.</p>
     </div>
     <div class="faq-item">
-      <h4>Credit là gì? Mua ở đâu?</h4>
-      <p>Credit là đơn vị truy cập bài thi. Bạn nhận credit khi đăng ký; admin có thể tặng thêm. Hệ thống do admin cấu hình linh hoạt.</p>
+      <h4>Nếu đóng tab hoặc mất điện, bài thi có bị mất không?</h4>
+      <p>Không. Đáp án được lưu tự động lên server mỗi lần chuyển câu và mỗi 30 giây. Khi login lại, hệ thống tự phát hiện bài thi còn dang dở và khôi phục đúng trạng thái — không mất câu trả lời, không mất thời gian còn lại.</p>
     </div>
     <div class="faq-item">
-      <h4>Tôi có thể làm giáo viên không?</h4>
-      <p>Có. Đăng ký tài khoản Teacher ngay lúc đầu, hoặc Student dùng credit tích lũy để nâng cấp lên Teacher trong trang profile.</p>
+      <h4>Nếu hết giờ mà chưa nộp thì sao?</h4>
+      <p>Grader service tự động chấm điểm tất cả bài thi hết giờ mỗi 15 phút. Kết quả được ghi nhận dựa trên những đáp án đã lưu. Student nhận kết quả chính xác dù không bấm nộp bài.</p>
     </div>
     <div class="faq-item">
-      <h4>Dữ liệu lưu ở đâu?</h4>
-      <p>PostgreSQL trên server riêng. Ảnh upload lên AWS S3 / Lightsail Object Storage. Không dùng dịch vụ bên thứ ba cho dữ liệu học tập.</p>
+      <h4>Credit là gì và tôi có thể mua thêm không?</h4>
+      <p>Credit là đơn vị để làm bài thi — mỗi đề có mức phí riêng. Bạn nhận 20 credit khi đăng ký. Hiện tại admin cấp thêm credit; tương lai sẽ có hệ thống mua thêm trực tiếp.</p>
     </div>
     <div class="faq-item">
-      <h4>Hỗ trợ đăng nhập bằng Google không?</h4>
-      <p>Có. Ngoài email/mật khẩu, hệ thống hỗ trợ đăng nhập Google OAuth một chạm, không cần nhớ thêm mật khẩu.</p>
+      <h4>Làm sao trở thành Giáo viên?</h4>
+      <p>Sau khi đăng ký tài khoản Student, vào trang Profile → dùng credit để nâng cấp lên Teacher. Sau khi nâng cấp, bạn có thể tạo đề thi, bộ đề và quản lý học viên. Cần đăng xuất và đăng nhập lại để role có hiệu lực.</p>
     </div>
     <div class="faq-item">
-      <h4>Câu hỏi nhiều đáp án có hỗ trợ không?</h4>
-      <p>Có đầy đủ. Câu đơn và câu nhiều đáp án đúng, điểm riêng từng câu, giải thích Markdown, và ảnh minh hoạ.</p>
+      <h4>Dữ liệu tôi có được bảo mật không?</h4>
+      <p>Có. Toàn bộ API response được mã hoá AES-256-GCM với ECDH P-256 key exchange — dữ liệu truyền giữa trình duyệt và server không thể đọc được nếu bị chặn. JWT auth, CASL authorization và rate limiting bảo vệ mọi endpoint.</p>
     </div>
   </div>
 </section>
 
-<!-- CTA HIGHLIGHT -->
-<div class="highlight">
-  <h2>Sẵn sàng nâng cấp cách<br/>dạy và học của bạn?</h2>
-  <p>Miễn phí để bắt đầu. Không cần thẻ tín dụng. Đăng ký và thi thử ngay trong vài giây.</p>
-  <div class="highlight-actions">
-    <a href="https://quiz.phutx.top/register" class="btn-white">Tạo tài khoản miễn phí →</a>
-    <a href="https://quiz.phutx.top/login" class="btn-outline-white">Đăng nhập</a>
+<!-- CTA -->
+<div class="cta-section">
+  <h2>Sẵn sàng tổ chức bài thi<br/>công bằng và thông minh?</h2>
+  <p>Miễn phí để bắt đầu. Không cần thẻ tín dụng. Chạy trong vài phút.</p>
+  <div class="cta-actions">
+    <a href="https://quiz.phutx.top/register" class="btn-white">Bắt đầu miễn phí →</a>
+    <a href="https://quiz.phutx.top/login" class="btn-outline-white">Đã có tài khoản? Đăng nhập</a>
   </div>
 </div>
 
 <!-- FOOTER -->
 <footer>
   <div class="footer-links">
-    <a href="https://github.com/tranphu-devops" target="_blank" rel="noopener">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
-      tranphu-devops
-    </a>
+    <a href="https://quiz.phutx.top/login">Đăng nhập</a>
     <span class="footer-divider">·</span>
-    <a href="https://www.linkedin.com/in/tran-phu-281190/" target="_blank" rel="noopener">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
-      Trần Phú
-    </a>
+    <a href="https://quiz.phutx.top/register">Đăng ký</a>
     <span class="footer-divider">·</span>
-    <a href="https://quiz.phutx.top" target="_blank" rel="noopener">quiz.phutx.top</a>
+    <a href="#features">Tính năng</a>
     <span class="footer-divider">·</span>
-    <a href="https://quiz.phutx.top/register" target="_blank" rel="noopener">Đăng ký miễn phí</a>
+    <a href="#faq">FAQ</a>
   </div>
-  <p>© 2026 <strong>QuizPlatform</strong> · Built by <strong>Trần Phú</strong></p>
+  <p>© 2026 <strong>QuizPlatform</strong> · Nền tảng thi trực tuyến thông minh</p>
 </footer>
 
 </body>

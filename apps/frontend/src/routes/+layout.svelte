@@ -3,11 +3,34 @@
   import { userApi } from '$lib/api'
   import { goto } from '$app/navigation'
   import { page } from '$app/stores'
+  import { onMount } from 'svelte'
 
   let { children } = $props()
 
   let sidebarOpen = $state(false)
   let avatarUrl = $state(null)
+  let theme = $state('system')  // 'light' | 'dark' | 'system'
+
+  onMount(() => {
+    theme = localStorage.getItem('quiz-theme') || 'system'
+  })
+
+  function applyTheme(t) {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const isDark = t === 'dark' || (t === 'system' && prefersDark)
+    document.documentElement.dataset.theme = isDark ? 'dark' : 'light'
+  }
+
+  function cycleTheme() {
+    const order = ['light', 'dark', 'system']
+    const next = order[(order.indexOf(theme) + 1) % 3]
+    theme = next
+    localStorage.setItem('quiz-theme', next)
+    applyTheme(next)
+  }
+
+  const themeIcon  = $derived(theme === 'light' ? '☀️' : theme === 'dark' ? '🌙' : '💻')
+  const themeLabel = $derived(theme === 'light' ? 'Sáng' : theme === 'dark' ? 'Tối' : 'Hệ thống')
 
   $effect(() => {
     const u = $user
@@ -69,6 +92,36 @@
     --radius-btn:     10px;
     --shadow:         0 4px 20px rgba(99,102,241,0.08);
     --shadow-hover:   0 12px 36px rgba(99,102,241,0.18);
+    --nav-bg:         rgba(255,255,255,0.92);
+    --sidebar-bg:     #ffffff;
+  }
+
+  :global([data-theme="dark"]) {
+    --bg:             #0f172a;
+    --surface:        #1e293b;
+    --border:         #334155;
+    --text:           #f1f5f9;
+    --muted:          #94a3b8;
+    --primary-light:  rgba(99,102,241,0.18);
+    --shadow:         0 4px 20px rgba(0,0,0,0.4);
+    --shadow-hover:   0 12px 36px rgba(0,0,0,0.55);
+    --nav-bg:         rgba(15,23,42,0.94);
+    --sidebar-bg:     #1e293b;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme="light"])) {
+      --bg:             #0f172a;
+      --surface:        #1e293b;
+      --border:         #334155;
+      --text:           #f1f5f9;
+      --muted:          #94a3b8;
+      --primary-light:  rgba(99,102,241,0.18);
+      --shadow:         0 4px 20px rgba(0,0,0,0.4);
+      --shadow-hover:   0 12px 36px rgba(0,0,0,0.55);
+      --nav-bg:         rgba(15,23,42,0.94);
+      --sidebar-bg:     #1e293b;
+    }
   }
 
   :global(*, *::before, *::after) { box-sizing: border-box; margin: 0; padding: 0; }
@@ -83,7 +136,7 @@
   /* ── Navbar ─────────────────────────────────────────────────────────────────── */
   nav {
     position: sticky; top: 0; z-index: 50;
-    background: rgba(255,255,255,0.92);
+    background: var(--nav-bg);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border);
     padding: 0 1.5rem;
@@ -141,7 +194,21 @@
     cursor: pointer; font-size: 0.85rem; font-weight: 500;
     transition: all 0.15s;
   }
-  .btn-logout:hover { border-color: var(--danger); color: var(--danger); background: #fff1f2; }
+  .btn-logout:hover { border-color: var(--danger); color: var(--danger); background: rgba(239,68,68,0.08); }
+
+  .theme-toggle {
+    width: 34px; height: 34px; border: 1px solid var(--border);
+    border-radius: 8px; background: var(--bg); cursor: pointer;
+    font-size: 1rem; display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.15s, background 0.15s; flex-shrink: 0;
+  }
+  .theme-toggle:hover { border-color: var(--primary); background: var(--primary-light); }
+
+  .theme-row {
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.5rem 0; font-size: 0.85rem; color: var(--muted);
+  }
+  .theme-row span { flex: 1; }
 
   /* ── Hamburger ────────────────────────────────────────────────────────────────*/
   .hamburger {
@@ -171,7 +238,7 @@
 
   .sidebar {
     position: fixed; top: 0; right: -300px; bottom: 0;
-    width: 280px; background: white; z-index: 90;
+    width: 280px; background: var(--sidebar-bg); z-index: 90;
     box-shadow: -8px 0 32px rgba(99,102,241,0.15);
     display: flex; flex-direction: column;
     transition: right 0.3s cubic-bezier(0.4,0,0.2,1);
@@ -218,7 +285,7 @@
     background: var(--bg); padding: 2rem;
   }
   .banned-card {
-    background: white; border-radius: 16px; padding: 3rem 2.5rem;
+    background: var(--surface); border-radius: 16px; padding: 3rem 2.5rem;
     max-width: 400px; width: 100%; text-align: center;
     border: 1.5px solid #fca5a5; box-shadow: 0 8px 32px rgba(239,68,68,0.12);
   }
@@ -303,6 +370,9 @@
     </div>
     <div class="spacer"></div>
     <div class="nav-right">
+      <button class="theme-toggle" onclick={cycleTheme} title="{themeLabel}">
+        {themeIcon}
+      </button>
       <a href="/profile" class="user-chip">
         {#if avatarUrl}
           <img src={avatarUrl} alt="avatar" class="avatar" />
@@ -377,6 +447,10 @@
       </a>
     </nav>
     <div class="sidebar-footer">
+      <div class="theme-row">
+        <span>Giao diện: <strong>{themeLabel}</strong></span>
+        <button class="theme-toggle" onclick={cycleTheme} title="Đổi giao diện">{themeIcon}</button>
+      </div>
       <button class="btn-sidebar-logout" onclick={logout}>↩ Đăng xuất</button>
     </div>
   </aside>
