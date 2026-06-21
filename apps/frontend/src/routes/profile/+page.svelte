@@ -84,45 +84,46 @@
 
 <style>
   h1 { margin-bottom: 1.5rem; }
-  .card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,.08); max-width: 480px; }
+  .card { background: var(--surface); border-radius: 8px; padding: 1.5rem; box-shadow: var(--shadow); border: 1px solid var(--border); max-width: 480px; }
   .form-group { margin-bottom: 1.25rem; }
-  label { display: block; margin-bottom: 0.3rem; font-size: 0.9rem; font-weight: 500; }
-  input[type=text] { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 1rem; box-sizing: border-box; }
+  label { display: block; margin-bottom: 0.3rem; font-size: 0.9rem; font-weight: 500; color: var(--text); }
+  input[type=text] { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 6px; font-size: 1rem; box-sizing: border-box; background: var(--surface); color: var(--text); }
   .actions { display: flex; gap: 1rem; margin-top: 1.5rem; }
   .btn { padding: 0.6rem 1.2rem; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 600; }
-  .btn-primary { background: #1e40af; color: white; }
+  .btn-primary { background: var(--primary); color: white; }
   .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
   .btn-success { background: #16a34a; color: white; }
   .btn-success:disabled { opacity: 0.6; cursor: not-allowed; }
-  .btn-outline { background: white; border: 1px solid #d1d5db; color: #374151; }
-  .error { color: #dc2626; margin-bottom: 1rem; font-size: 0.9rem; }
+  .btn-outline { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+  .error { color: var(--danger); margin-bottom: 1rem; font-size: 0.9rem; }
   .success { color: #16a34a; margin-bottom: 1rem; font-size: 0.9rem; }
-  .role-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 99px; font-size: 0.8rem; font-weight: 600; color: white; background: #1e40af; }
+  .role-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 99px; font-size: 0.8rem; font-weight: 600; color: white; background: var(--primary); }
   /* Credits section */
-  .credits-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb; }
+  .credits-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
   .credits-display { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
-  .credits-number { font-size: 2rem; font-weight: 800; color: #1e40af; }
-  .credits-label { font-size: 0.9rem; color: #6b7280; }
+  .credits-number { font-size: 2rem; font-weight: 800; color: var(--primary); }
+  .credits-label { font-size: 0.9rem; color: var(--muted); }
   .upgrade-box {
-    background: linear-gradient(135deg, #eff6ff, #f0fdf4);
-    border: 1px solid #bfdbfe; border-radius: 10px;
+    background: var(--primary-light);
+    border: 1px solid rgba(99,102,241,0.3); border-radius: 10px;
     padding: 1.25rem; margin-top: 1rem;
   }
-  .upgrade-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.3rem; color: #1e40af; }
-  .upgrade-desc { font-size: 0.875rem; color: #6b7280; margin-bottom: 1rem; line-height: 1.5; }
+  .upgrade-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.3rem; color: var(--primary); }
+  .upgrade-desc { font-size: 0.875rem; color: var(--muted); margin-bottom: 1rem; line-height: 1.5; }
   .upgrade-cost { font-weight: 700; color: #16a34a; }
   /* Modal overlay */
   .overlay {
     position: fixed; inset: 0;
-    background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+    background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);
     display: flex; align-items: center; justify-content: center; z-index: 100;
   }
   .modal {
-    background: white; border-radius: 16px; padding: 2rem;
-    max-width: 380px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    background: var(--surface); border-radius: 16px; padding: 2rem;
+    max-width: 380px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
   }
-  .modal h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
-  .modal p { color: #6b7280; font-size: 0.9rem; margin-bottom: 1.5rem; line-height: 1.5; }
+  .modal h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text); }
+  .modal p { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; line-height: 1.5; }
   .modal-actions { display: flex; gap: 0.75rem; }
   .modal-actions .btn { flex: 1; }
   /* Badges section */
@@ -165,7 +166,7 @@
 
   <div class="form-group">
     <label>Email</label>
-    <input type="text" value={$user?.email ?? ''} disabled style="background:#f9fafb; color:#6b7280" />
+    <input type="text" value={$user?.email ?? ''} disabled style="background:var(--bg); color:var(--muted)" />
   </div>
 
   <div class="form-group">

@@ -101,8 +101,8 @@
     font-size: 0.8rem; font-weight: 700;
   }
   .role-pill.student { background: var(--primary-light); color: var(--primary); }
-  .role-pill.teacher { background: #fef9c3; color: #854d0e; }
-  .role-pill.admin   { background: #fce7f3; color: #9d174d; }
+  .role-pill.teacher { background: rgba(234,179,8,0.15); color: #a16207; }
+  .role-pill.admin   { background: rgba(236,72,153,0.15); color: #9d174d; }
 
   /* ── Stats ───────────────────────────────────────────────────────────────────── */
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
@@ -148,9 +148,9 @@
     font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em;
     font-weight: 700; white-space: nowrap; background: var(--bg);
   }
-  td { padding: 0.8rem 1.1rem; border-bottom: 1px solid #f5f3ff; vertical-align: middle; }
+  td { padding: 0.8rem 1.1rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
   tr:last-child td { border-bottom: none; }
-  tr:hover td { background: #f5f3ff; }
+  tr:hover td { background: var(--primary-light); }
   .link { color: var(--primary); text-decoration: none; font-weight: 600; }
   .link:hover { text-decoration: underline; }
   .pass { color: #15803d; font-weight: 700; }
@@ -188,9 +188,9 @@
   .ip-body { flex: 1; min-width: 0; }
   .ip-title { font-weight: 700; color: var(--text); font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ip-meta { font-size: 0.8rem; color: var(--muted); margin-top: 0.2rem; }
-  .ip-timer { font-size: 0.78rem; font-weight: 700; color: #d97706; background: #fef3c7; border-radius: 6px; padding: 0.15rem 0.5rem; }
-  .btn-amber { background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; }
-  .btn-amber:hover { background: #fde68a; }
+  .ip-timer { font-size: 0.78rem; font-weight: 700; color: #d97706; background: rgba(245,158,11,0.15); border-radius: 6px; padding: 0.15rem 0.5rem; }
+  .btn-amber { background: rgba(245,158,11,0.15); color: #d97706; border: 1px solid rgba(245,158,11,0.4); }
+  .btn-amber:hover { background: rgba(245,158,11,0.25); }
 
   @media (max-width: 600px) {
     .stats { grid-template-columns: repeat(2, 1fr); }

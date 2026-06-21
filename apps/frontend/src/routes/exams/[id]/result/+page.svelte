@@ -115,7 +115,7 @@
   .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99,102,241,0.45); }
   .btn-outline {
     padding: 0.7rem 1.5rem; border-radius: var(--radius-btn);
-    background: white; color: var(--text);
+    background: var(--surface); color: var(--text);
     border: 1.5px solid var(--border); font-size: 0.9rem; font-weight: 600;
     text-decoration: none; cursor: pointer; transition: all 0.15s;
   }
@@ -150,12 +150,12 @@
     padding: 0.5rem 0.85rem; border-radius: 8px; font-size: 0.9rem;
     border: 1px solid transparent;
   }
-  .correct-chosen  { background: #dcfce7; color: #15803d; font-weight: 600; border-color: #86efac; }
-  .correct-unchosen{ background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
-  .wrong-chosen    { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+  .correct-chosen  { background: rgba(22,163,74,0.18); color: #16a34a; font-weight: 600; border-color: rgba(22,163,74,0.4); }
+  .correct-unchosen{ background: rgba(22,163,74,0.08); color: #16a34a; border-color: rgba(22,163,74,0.25); }
+  .wrong-chosen    { background: rgba(239,68,68,0.12); color: #dc2626; border-color: rgba(239,68,68,0.35); }
 
   .expl-box {
-    margin-top: 1rem; background: #f5f3ff; border-left: 3px solid var(--primary);
+    margin-top: 1rem; background: var(--primary-light); border-left: 3px solid var(--primary);
     padding: 0.75rem 1rem; border-radius: 0 10px 10px 0; font-size: 0.9rem; line-height: 1.6;
   }
   .expl-title { font-size: 0.78rem; font-weight: 700; color: var(--primary); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.06em; }

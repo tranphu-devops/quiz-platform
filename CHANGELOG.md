@@ -4,11 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [Unreleased] — 2026-06-20 (updated 3)
+## [Unreleased] — 2026-06-21
 
 ### Added
-- **Dark / Light / System theme toggle**: Nút chuyển giao diện (☀️ / 🌙 / 💻) trong navbar và sidebar mobile. Tuỳ chọn lưu vào localStorage, áp dụng ngay không cần refresh. Chế độ "Hệ thống" tự theo `prefers-color-scheme`. Thêm anti-FOUC script trong `app.html` để tránh nhấp nhánh khi tải trang.
-- **Cập nhật Landing page**: Thiết kế lại toàn diện với hero mockup thực tế, trust bar, bổ sung tính năng mới (resume, anti-fraud, auto-grade, encryption), security showcase section, resume showcase section, FAQ cập nhật.
+- **Dark / Light theme toggle**: Nút chuyển giao diện (☀️ / 🌙) trong navbar và sidebar mobile. Tuỳ chọn lưu vào localStorage, áp dụng ngay không cần refresh. Anti-FOUC script trong `app.html`. Dark mode CSS variables phủ toàn bộ layout, admin, profile, dashboard, take, result, login — không còn vùng trắng hoặc chữ trắng trên nền trắng.
+- **Cập nhật Landing page**: Thiết kế lại toàn diện với hero mockup thực tế, trust bar, bổ sung tính năng mới (resume, anti-fraud, auto-grade, encryption), security showcase section, resume showcase section, FAQ cập nhật. Chỉ còn 1 nút CTA duy nhất "Bắt đầu khám phá". Thêm thông tin tác giả ở footer.
 
 - **Auto-save tiến trình làm bài**: Mỗi lần học sinh bấm "Câu sau →", đáp án hiện tại được lưu lên backend (`PUT /submissions/:id/progress`) — đảm bảo không mất dữ liệu nếu thoát giữa chừng hoặc mất mạng.
 - **Auto-grade khi hết giờ (grader-service)**: Service mới chạy độc lập, cron 15 phút/lần, quét tất cả submission `in_progress` đã qua `expires_at`, tự động chấm điểm và ghi kết quả (status `timed_out`) — kể cả khi học sinh không bấm nộp bài.

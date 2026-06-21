@@ -71,7 +71,7 @@
   }
   .card {
     width: 100%; max-width: 380px;
-    background: white; border-radius: 20px;
+    background: var(--surface); border-radius: 20px;
     padding: 2.5rem 2rem;
     box-shadow: 0 8px 40px rgba(99,102,241,0.12);
     border: 1px solid var(--border);
@@ -97,7 +97,7 @@
   .btn-google {
     width: 100%; padding: 0.9rem 1.25rem;
     border: 1.5px solid var(--border); border-radius: var(--radius-btn);
-    background: white; cursor: pointer; font-size: 0.95rem; font-weight: 600;
+    background: var(--surface); cursor: pointer; font-size: 0.95rem; font-weight: 600;
     display: flex; align-items: center; justify-content: center; gap: 0.75rem;
     color: var(--text); transition: all 0.2s;
     box-shadow: 0 1px 3px rgba(0,0,0,0.06);

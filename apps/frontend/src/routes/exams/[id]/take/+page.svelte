@@ -389,7 +389,7 @@
   .options label {
     display: flex; align-items: flex-start; gap: 0.9rem;
     cursor: pointer; padding: 0.85rem 1rem; border-radius: 12px;
-    border: 1.5px solid var(--border); background: white;
+    border: 1.5px solid var(--border); background: var(--surface);
     transition: all 0.15s; font-size: 0.95rem; line-height: 1.5;
     color: var(--text);
   }
@@ -436,7 +436,7 @@
   .q-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.4rem; margin-bottom: 1rem; }
   .q-dot {
     width: 100%; aspect-ratio: 1; border-radius: 8px;
-    border: 1.5px solid var(--border); background: white;
+    border: 1.5px solid var(--border); background: var(--surface);
     font-size: 0.72rem; font-weight: 700; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     color: var(--muted); transition: all 0.15s;
@@ -450,7 +450,7 @@
   .legend-dot { width: 11px; height: 11px; border-radius: 3px; border: 1.5px solid; flex-shrink: 0; }
   .legend-dot.answered { background: var(--primary-light); border-color: var(--primary); }
   .legend-dot.current  { background: var(--primary); border-color: var(--primary); }
-  .legend-dot.empty    { background: white; border-color: var(--border); }
+  .legend-dot.empty    { background: var(--surface); border-color: var(--border); }
 
   .btn-submit {
     width: 100%; padding: 0.8rem;
@@ -486,17 +486,17 @@
     display: flex; align-items: center; justify-content: center; z-index: 100;
   }
   .modal {
-    background: white; border-radius: 20px; padding: 2rem;
+    background: var(--surface); border-radius: 20px; padding: 2rem;
     max-width: 380px; width: 90%;
-    box-shadow: 0 20px 60px rgba(99,102,241,0.2);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
     border: 1px solid var(--border);
   }
-  .modal h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+  .modal h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text); }
   .modal p { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; line-height: 1.5; }
   .modal-actions { display: flex; gap: 0.75rem; }
   .btn-outline {
     flex: 1; padding: 0.65rem; border-radius: var(--radius-btn);
-    border: 1px solid var(--border); background: white; color: var(--text);
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
     font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.15s;
   }
   .btn-outline:hover { border-color: var(--primary); color: var(--primary); }

@@ -9,28 +9,22 @@
 
   let sidebarOpen = $state(false)
   let avatarUrl = $state(null)
-  let theme = $state('system')  // 'light' | 'dark' | 'system'
+  let theme = $state('light')  // 'light' | 'dark'
 
   onMount(() => {
-    theme = localStorage.getItem('quiz-theme') || 'system'
+    theme = localStorage.getItem('quiz-theme') || 'light'
+    document.documentElement.dataset.theme = theme
   })
 
-  function applyTheme(t) {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    const isDark = t === 'dark' || (t === 'system' && prefersDark)
-    document.documentElement.dataset.theme = isDark ? 'dark' : 'light'
-  }
-
-  function cycleTheme() {
-    const order = ['light', 'dark', 'system']
-    const next = order[(order.indexOf(theme) + 1) % 3]
+  function toggleTheme() {
+    const next = theme === 'light' ? 'dark' : 'light'
     theme = next
     localStorage.setItem('quiz-theme', next)
-    applyTheme(next)
+    document.documentElement.dataset.theme = next
   }
 
-  const themeIcon  = $derived(theme === 'light' ? '☀️' : theme === 'dark' ? '🌙' : '💻')
-  const themeLabel = $derived(theme === 'light' ? 'Sáng' : theme === 'dark' ? 'Tối' : 'Hệ thống')
+  const themeIcon  = $derived(theme === 'dark' ? '☀️' : '🌙')
+  const themeLabel = $derived(theme === 'dark' ? 'Sáng' : 'Tối')
 
   $effect(() => {
     const u = $user
@@ -109,19 +103,51 @@
     --sidebar-bg:     #1e293b;
   }
 
-  @media (prefers-color-scheme: dark) {
-    :global(:root:not([data-theme="light"])) {
-      --bg:             #0f172a;
-      --surface:        #1e293b;
-      --border:         #334155;
-      --text:           #f1f5f9;
-      --muted:          #94a3b8;
-      --primary-light:  rgba(99,102,241,0.18);
-      --shadow:         0 4px 20px rgba(0,0,0,0.4);
-      --shadow-hover:   0 12px 36px rgba(0,0,0,0.55);
-      --nav-bg:         rgba(15,23,42,0.94);
-      --sidebar-bg:     #1e293b;
-    }
+  /* ── Global dark mode corrections ─────────────────────────────────────────── */
+  /* Form controls */
+  :global([data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"])),
+  :global([data-theme="dark"] select),
+  :global([data-theme="dark"] textarea) {
+    background: var(--surface);
+    color: var(--text);
+    border-color: var(--border);
+  }
+  /* Common white-card patterns used across pages */
+  :global([data-theme="dark"] .card),
+  :global([data-theme="dark"] .stat),
+  :global([data-theme="dark"] .settings-card),
+  :global([data-theme="dark"] .col-card) {
+    background: var(--surface);
+    color: var(--text);
+  }
+  /* Table rows */
+  :global([data-theme="dark"] tr:hover td) {
+    background: var(--primary-light) !important;
+  }
+  :global([data-theme="dark"] td) {
+    border-color: var(--border) !important;
+  }
+  /* Login right panel */
+  :global([data-theme="dark"] .login-right) {
+    background: var(--surface);
+  }
+  /* Option buttons in take page */
+  :global([data-theme="dark"] .option-btn) {
+    background: var(--surface);
+    color: var(--text);
+  }
+  /* Modal / overlay cards */
+  :global([data-theme="dark"] .session-modal),
+  :global([data-theme="dark"] .confirm-card),
+  :global([data-theme="dark"] .modal-card) {
+    background: var(--surface);
+    color: var(--text);
+  }
+  /* Google OAuth button */
+  :global([data-theme="dark"] .btn-google) {
+    background: var(--surface);
+    color: var(--text);
+    border-color: var(--border);
   }
 
   :global(*, *::before, *::after) { box-sizing: border-box; margin: 0; padding: 0; }
@@ -274,10 +300,10 @@
     display: inline-block; margin-top: 0.5rem;
     padding: 0.15rem 0.6rem; border-radius: 99px; font-size: 0.75rem; font-weight: 600;
   }
-  .role-pill.student { background: #ede9fe; color: var(--primary); }
-  .role-pill.teacher { background: #fef9c3; color: #854d0e; }
-  .role-pill.admin   { background: #fce7f3; color: #9d174d; }
-  .role-pill.banned  { background: #fee2e2; color: #991b1b; }
+  .role-pill.student { background: rgba(99,102,241,0.15);  color: var(--primary); }
+  .role-pill.teacher { background: rgba(234,179,8,0.15);   color: #a16207; }
+  .role-pill.admin   { background: rgba(236,72,153,0.15);  color: #9d174d; }
+  .role-pill.banned  { background: rgba(239,68,68,0.15);   color: #dc2626; }
 
   /* ── Banned screen ─────────────────────────────────────────────────────────── */
   .banned-screen {
@@ -325,7 +351,7 @@
     cursor: pointer; transition: all 0.15s;
     display: flex; align-items: center; justify-content: center; gap: 0.5rem;
   }
-  .btn-sidebar-logout:hover { background: #fff1f2; border-color: var(--danger); }
+  .btn-sidebar-logout:hover { background: rgba(239,68,68,0.08); border-color: var(--danger); }
 
   /* ── Main ─────────────────────────────────────────────────────────────────────*/
   main {
@@ -370,7 +396,7 @@
     </div>
     <div class="spacer"></div>
     <div class="nav-right">
-      <button class="theme-toggle" onclick={cycleTheme} title="{themeLabel}">
+      <button class="theme-toggle" onclick={toggleTheme} title="{themeLabel}">
         {themeIcon}
       </button>
       <a href="/profile" class="user-chip">
@@ -448,8 +474,8 @@
     </nav>
     <div class="sidebar-footer">
       <div class="theme-row">
-        <span>Giao diện: <strong>{themeLabel}</strong></span>
-        <button class="theme-toggle" onclick={cycleTheme} title="Đổi giao diện">{themeIcon}</button>
+        <span>Giao diện: <strong>{theme === 'dark' ? 'Tối 🌙' : 'Sáng ☀️'}</strong></span>
+        <button class="theme-toggle" onclick={toggleTheme} title="Chuyển sang {themeLabel}">{themeIcon}</button>
       </div>
       <button class="btn-sidebar-logout" onclick={logout}>↩ Đăng xuất</button>
     </div>
