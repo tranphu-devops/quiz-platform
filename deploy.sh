@@ -21,6 +21,7 @@ APP_DIR="/opt/quiz-platform"
 REPO_URL="https://github.com/tranphu-devops/quiz-platform.git"
 COMPOSE_FILE="docker-compose.yml"          # skip override (dev only)
 ADMIN_EMAIL="tranphu.dev@gmail.com"
+GHCR_ORG="${GHCR_ORG:-tranphu-devops}"
 UPDATE_MODE=false
 SET_ADMIN_ONLY=false
 
@@ -340,10 +341,25 @@ EOF
 fi
 
 # =============================================================================
-# PHASE 7 — Build images locally
+# PHASE 7 — GHCR login (update mode only — pulls pre-built images from CI)
 # =============================================================================
 hr
-info "Phase 7: Building images locally (this takes a few minutes)"
+if [[ "$UPDATE_MODE" == true ]]; then
+  info "Phase 7: Authenticating with GHCR"
+  GHCR_TOKEN="${GHCR_TOKEN:-}"
+  if [[ -n "$GHCR_TOKEN" ]]; then
+    echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_ORG" --password-stdin \
+      && log "Logged in to ghcr.io as $GHCR_ORG" \
+      || warn "GHCR login failed — will use cached images if available"
+  else
+    warn "GHCR_TOKEN not set in .env — will use cached images if available"
+  fi
+  info "Pulling latest images from GHCR..."
+  docker compose -f "$COMPOSE_FILE" pull
+  log "Images pulled"
+else
+  info "Phase 7: Building images locally (this takes a few minutes)"
+fi
 hr
 
 # =============================================================================
@@ -353,8 +369,13 @@ hr
 info "Phase 8: Starting services"
 hr
 
-# Use -f to explicitly skip docker-compose.override.yml (dev only)
-docker compose -f "$COMPOSE_FILE" up -d --build
+if [[ "$UPDATE_MODE" == true ]]; then
+  # Pull-based deploy: images already pulled from GHCR above
+  docker compose -f "$COMPOSE_FILE" up -d
+else
+  # Fresh install: build locally from source
+  docker compose -f "$COMPOSE_FILE" up -d --build
+fi
 
 log "All containers started"
 
@@ -388,56 +409,59 @@ info "Restarting nginx..."
 docker compose -f "$COMPOSE_FILE" restart nginx 2>/dev/null && log "nginx restarted" || warn "nginx restart failed"
 
 # =============================================================================
-# PHASE 10 — Optional: migrate / seed data / admin
+# PHASE 10 — Optional: migrate / seed data / admin  (skipped in --update mode)
 # =============================================================================
 hr
 info "Phase 10: Optional setup"
 hr
 
-echo ""
-echo -e "${BOLD}Tuỳ chọn bổ sung (Enter để bỏ qua):${NC}"
-echo ""
+if [[ "$UPDATE_MODE" == true ]]; then
+  info "Update mode — skipping interactive setup (run manually if needed)"
+else
+  echo ""
+  echo -e "${BOLD}Tuỳ chọn bổ sung (Enter để bỏ qua):${NC}"
+  echo ""
 
-# ── Migration (cho DB cũ đang upgrade) ────────────────────────────────────────
-read -rp "  Chạy migrate_image_upload.sql? (chỉ cần nếu DB cũ chưa có cột image) (y/N): " DO_MIGRATE
-if [[ "$DO_MIGRATE" =~ ^[Yy]$ ]]; then
-  docker compose -f "$COMPOSE_FILE" exec -T postgres \
-    psql -U postgres -d quizdb -f /dev/stdin \
-    < "$APP_DIR/infra/postgres/migrate_image_upload.sql" \
-    && log "Migration applied" || warn "Migration failed — xem lại logs"
-fi
-
-# ── Sample seed data ───────────────────────────────────────────────────────────
-read -rp "  Seed dữ liệu mẫu (seed.sql)? (y/N): " DO_SEED
-if [[ "$DO_SEED" =~ ^[Yy]$ ]]; then
-  docker compose -f "$COMPOSE_FILE" exec -T postgres \
-    psql -U postgres -d quizdb -f /dev/stdin \
-    < "$APP_DIR/infra/postgres/seed.sql" \
-    && log "Sample data seeded" || warn "Seed thất bại"
-fi
-
-# ── AWS SAA exam seed ──────────────────────────────────────────────────────────
-read -rp "  Seed đề AWS SAA (45 câu hỏi)? (y/N): " DO_SEED_AWS
-if [[ "$DO_SEED_AWS" =~ ^[Yy]$ ]]; then
-  docker compose -f "$COMPOSE_FILE" exec -T postgres \
-    psql -U postgres -d quizdb -f /dev/stdin \
-    < "$APP_DIR/infra/postgres/seed_aws_saa.sql" \
-    && log "AWS SAA data seeded" || warn "Seed AWS thất bại"
-fi
-
-# ── Admin account ──────────────────────────────────────────────────────────────
-read -rp "  Set ${ADMIN_EMAIL} thành admin? (y/N): " DO_ADMIN
-if [[ "$DO_ADMIN" =~ ^[Yy]$ ]]; then
-  ROWS=$(docker compose -f "$COMPOSE_FILE" exec -T postgres \
-    psql -U postgres -d quizdb -tAc \
-    "SELECT COUNT(*) FROM auth.users WHERE email='${ADMIN_EMAIL}';" 2>/dev/null | tr -d '[:space:]')
-  if [[ "${ROWS}" == "0" || -z "${ROWS}" ]]; then
-    warn "${ADMIN_EMAIL} chưa có trong DB."
-    warn "Hãy đăng nhập bằng Google trước, rồi chạy:"
-    echo -e "  ${BOLD}sudo bash $APP_DIR/deploy.sh --set-admin${NC}"
-  else
+  # ── Migration (cho DB cũ đang upgrade) ──────────────────────────────────────
+  read -rp "  Chạy migrate_image_upload.sql? (chỉ cần nếu DB cũ chưa có cột image) (y/N): " DO_MIGRATE
+  if [[ "$DO_MIGRATE" =~ ^[Yy]$ ]]; then
     docker compose -f "$COMPOSE_FILE" exec -T postgres \
-      psql -U postgres -d quizdb <<SQL
+      psql -U postgres -d quizdb -f /dev/stdin \
+      < "$APP_DIR/infra/postgres/migrate_image_upload.sql" \
+      && log "Migration applied" || warn "Migration failed — xem lại logs"
+  fi
+
+  # ── Sample seed data ─────────────────────────────────────────────────────────
+  read -rp "  Seed dữ liệu mẫu (seed.sql)? (y/N): " DO_SEED
+  if [[ "$DO_SEED" =~ ^[Yy]$ ]]; then
+    docker compose -f "$COMPOSE_FILE" exec -T postgres \
+      psql -U postgres -d quizdb -f /dev/stdin \
+      < "$APP_DIR/infra/postgres/seed.sql" \
+      && log "Sample data seeded" || warn "Seed thất bại"
+  fi
+
+  # ── AWS SAA exam seed ────────────────────────────────────────────────────────
+  read -rp "  Seed đề AWS SAA (45 câu hỏi)? (y/N): " DO_SEED_AWS
+  if [[ "$DO_SEED_AWS" =~ ^[Yy]$ ]]; then
+    docker compose -f "$COMPOSE_FILE" exec -T postgres \
+      psql -U postgres -d quizdb -f /dev/stdin \
+      < "$APP_DIR/infra/postgres/seed_aws_saa.sql" \
+      && log "AWS SAA data seeded" || warn "Seed AWS thất bại"
+  fi
+
+  # ── Admin account ────────────────────────────────────────────────────────────
+  read -rp "  Set ${ADMIN_EMAIL} thành admin? (y/N): " DO_ADMIN
+  if [[ "$DO_ADMIN" =~ ^[Yy]$ ]]; then
+    ROWS=$(docker compose -f "$COMPOSE_FILE" exec -T postgres \
+      psql -U postgres -d quizdb -tAc \
+      "SELECT COUNT(*) FROM auth.users WHERE email='${ADMIN_EMAIL}';" 2>/dev/null | tr -d '[:space:]')
+    if [[ "${ROWS}" == "0" || -z "${ROWS}" ]]; then
+      warn "${ADMIN_EMAIL} chưa có trong DB."
+      warn "Hãy đăng nhập bằng Google trước, rồi chạy:"
+      echo -e "  ${BOLD}sudo bash $APP_DIR/deploy.sh --set-admin${NC}"
+    else
+      docker compose -f "$COMPOSE_FILE" exec -T postgres \
+        psql -U postgres -d quizdb <<SQL
 UPDATE quiz_users.profiles
   SET role = 'admin'
   WHERE id = (SELECT id FROM auth.users WHERE email = '${ADMIN_EMAIL}');
@@ -445,11 +469,12 @@ UPDATE auth.users
   SET raw_user_meta_data = raw_user_meta_data || '{"role":"admin"}'::jsonb
   WHERE email = '${ADMIN_EMAIL}';
 SQL
-    log "${ADMIN_EMAIL} đã được set thành admin. Đăng xuất và đăng nhập lại để JWT cập nhật."
+      log "${ADMIN_EMAIL} đã được set thành admin. Đăng xuất và đăng nhập lại để JWT cập nhật."
+    fi
   fi
-fi
 
-echo ""
+  echo ""
+fi
 
 # =============================================================================
 # DONE

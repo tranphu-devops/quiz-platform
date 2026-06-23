@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased] — 2026-06-23
+
+### Added
+- **CI/CD tự động lên Lightsail**: Workflow `deploy.yml` trigger sau khi `build-push.yml` thành công — SSH vào server và chạy `deploy.sh --update` tự động.
+- **Pull images từ GHCR thay vì build trên server**: `deploy.sh --update` giờ chạy `docker compose pull` + `up -d` (không `--build`), tận dụng image đã được CI build sẵn — deploy nhanh hơn, không cần RAM để build.
+- **Thêm `grader-service` vào build matrix**: Service này trước đây không được build lên GHCR.
+
+### Changed
+- **`deploy.sh --update` không còn hỏi tương tác**: Phase 10 (migrate/seed/admin) bị bỏ qua hoàn toàn khi chạy `--update` — CI/CD không bị block bởi `read -rp` nữa.
+- **`docker-compose.yml`**: Image names đổi sang `ghcr.io/${GHCR_ORG:-tranphu-devops}/<service>:${TAG:-latest}` — pull từ GHCR trong update mode, build local vẫn hoạt động với `--build`.
+- **`.env.example`**: Bổ sung `GHCR_ORG` và `GHCR_TOKEN` (GitHub PAT với `read:packages` scope để server login vào GHCR).
+
+---
+
 ## [Unreleased] — 2026-06-21
 
 ### Added

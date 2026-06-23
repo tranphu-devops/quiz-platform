@@ -40,7 +40,7 @@ services:
     restart: unless-stopped
 
   user-service:
-    image: quiz-platform/user-service:latest
+    image: ghcr.io/${GHCR_ORG:-tranphu-devops}/user-service:${TAG:-latest}
     build:
       context: ./apps/user-service
     environment:
@@ -61,7 +61,7 @@ services:
     restart: unless-stopped
 
   exam-service:
-    image: quiz-platform/exam-service:latest
+    image: ghcr.io/${GHCR_ORG:-tranphu-devops}/exam-service:${TAG:-latest}
     build:
       context: ./apps/exam-service
     environment:
@@ -76,7 +76,7 @@ services:
     restart: unless-stopped
 
   submission-service:
-    image: quiz-platform/submission-service:latest
+    image: ghcr.io/${GHCR_ORG:-tranphu-devops}/submission-service:${TAG:-latest}
     build:
       context: ./apps/submission-service
     environment:
@@ -93,7 +93,7 @@ services:
     restart: unless-stopped
 
   grader-service:
-    image: quiz-platform/grader-service:latest
+    image: ghcr.io/${GHCR_ORG:-tranphu-devops}/grader-service:${TAG:-latest}
     build:
       context: ./apps/grader-service
     environment:
@@ -108,7 +108,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: quiz-platform/frontend:latest
+    image: ghcr.io/${GHCR_ORG:-tranphu-devops}/frontend:${TAG:-latest}
     build:
       context: ./apps/frontend
     environment:

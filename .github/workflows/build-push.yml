@@ -26,6 +26,7 @@ jobs:
           - user-service
           - exam-service
           - submission-service
+          - grader-service
           - frontend
 
     steps:
