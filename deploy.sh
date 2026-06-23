@@ -415,8 +415,8 @@ hr
 info "Phase 10: Optional setup"
 hr
 
-if [[ "$UPDATE_MODE" == true ]]; then
-  info "Update mode — skipping interactive setup (run manually if needed)"
+if [[ "$UPDATE_MODE" == true ]] || [[ ! -t 0 ]]; then
+  info "Update mode / non-interactive — skipping optional setup (run manually if needed)"
 else
   echo ""
   echo -e "${BOLD}Tuỳ chọn bổ sung (Enter để bỏ qua):${NC}"
