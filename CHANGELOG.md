@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - **Nginx hỗ trợ include config ngoài**: Thêm `include /opt/nginx/*.conf;` vào `nginx.conf` và mount `/opt/nginx` từ host vào container — cho phép thêm vhost cho các app khác trên cùng server mà không cần sửa repo.
+- **Nginx có thể proxy đến app ngoài Docker**: Thêm `extra_hosts: host.docker.internal:host-gateway` — dùng `http://host.docker.internal:<port>` trong các file conf để proxy đến app chạy trực tiếp trên host.
 
 ---
 
