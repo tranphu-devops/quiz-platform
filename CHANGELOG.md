@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased] — 2026-06-24
+
+### Changed
+- **Nginx hỗ trợ include config ngoài**: Thêm `include /opt/nginx/*.conf;` vào `nginx.conf` và mount `/opt/nginx` từ host vào container — cho phép thêm vhost cho các app khác trên cùng server mà không cần sửa repo.
+
+---
+
 ## [Unreleased] — 2026-06-23
 
 ### Added
