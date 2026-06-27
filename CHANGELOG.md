@@ -10,8 +10,9 @@ All notable changes to this project will be documented in this file.
 - **`DESIGN.md`**: File định nghĩa design system theo spec của Google Stitch — YAML tokens (colors, typography, rounded, spacing, components) + prose rationale cho cả light/dark mode.
 
 ### Changed
-- **Thống nhất brand color toàn site**: Landing page và quiz app giờ dùng chung brand gradient `#6366f1 → #8b5cf6` (indigo-violet). Trước đây landing page dùng `#1d4ed8 → #4f46e5` (blue-indigo) — khác quiz app.
-- **Chuẩn hoá CSS tokens landing page**: Đổi tên `--blue/--indigo/--violet` → `--primary/--accent/--primary-lt`; border radius `14px → 16px`; border color `#e2e8f0 → #e5e3f7` (purple-tinted như quiz app); bg `#f8fafc → #f8f7ff`.
+- **Udemy-inspired palette (Option C)**: Cập nhật brand color từ indigo-violet (`#6366f1 → #8b5cf6`) sang deep purple (`#5625d1 → #6d29d3`) — lấy cảm hứng từ Udemy, chuyên nghiệp hơn, vẫn giữ rounded corners. Text màu `#2b2a3f` (Udemy body text), muted `#595d72`, border `#d0d2e1`. Dark mode bg đổi từ `#0f172a` sang `#202331` (Udemy dark navy). Gradient simplify: cùng hue purple, không wide-hue sweep.
+- **Thống nhất brand color toàn site**: Landing page và quiz app giờ dùng chung brand gradient `#5625d1 → #6d29d3`. Áp dụng cho cả landing CSS vars, dark sections, footer, feature icons.
+- **Chuẩn hoá CSS tokens landing page**: Đổi tên `--blue/--indigo/--violet` → `--primary/--accent/--primary-lt`; border radius `14px → 16px`.
 - **Cập nhật CLAUDE.md**: Bổ sung CI/CD workflows còn thiếu (`deploy.yml`, `cleanup-images.yml`), landing page, `GHCR_ORG` env var; cập nhật Design System section tham chiếu đến `DESIGN.md`.
 
 ---

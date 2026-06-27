@@ -285,14 +285,14 @@ Three GitHub Actions workflows:
 
 Xem chi tiết đầy đủ tại `DESIGN.md`. Tóm tắt nhanh:
 
-- **Brand gradient**: `linear-gradient(135deg, #6366f1, #8b5cf6)` — dùng thống nhất trên cả landing page và quiz app
+- **Brand gradient**: `linear-gradient(135deg, #5625d1, #6d29d3)` — monochromatic deep purple, dùng thống nhất trên cả landing page và quiz app (Udemy-inspired)
 - **CSS tokens** (quiz app — `+layout.svelte` `:root`):
-  - `--primary: #6366f1` · `--accent: #8b5cf6` · `--primary-light: #ede9fe`
-  - Light: `--bg: #f8f7ff` · `--surface: #ffffff` · `--text: #1a1730` · `--border: #e5e3f7`
-  - Dark (`[data-theme="dark"]`): `--bg: #0f172a` · `--surface: #1e293b` · `--text: #f1f5f9` · `--border: #334155`
+  - `--primary: #5625d1` · `--accent: #6d29d3` · `--primary-light: #ede6ff`
+  - Light: `--bg: #f8f7ff` · `--surface: #ffffff` · `--text: #2b2a3f` · `--border: #d0d2e1`
+  - Dark (`[data-theme="dark"]`): `--bg: #202331` · `--surface: #2d2b42` · `--text: #f1f5f9` · `--border: #3d4055`
 - **Typography**: Inter (body/UI), JetBrains Mono (code). Google Fonts import.
 - **Border radius**: `--radius-card: 16px` · `--radius-btn: 10px` · inputs 8px
-- **Shadows**: `0 4px 20px rgba(99,102,241,0.08)` default · `0 12px 36px rgba(99,102,241,0.18)` hover
+- **Shadows**: `0 4px 20px rgba(86,37,209,0.08)` default · `0 12px 36px rgba(86,37,209,0.18)` hover
 - **Dark mode**: toggle via `localStorage('quiz-theme')`, applied as `document.documentElement.dataset.theme`
 - Dùng CSS custom properties (`var(--primary)`, không hard-code hex)
 - Mobile-first, breakpoint 768px

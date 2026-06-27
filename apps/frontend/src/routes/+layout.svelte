@@ -70,37 +70,37 @@
 <style>
   /* ── Design tokens ─────────────────────────────────────────────────────────── */
   :global(:root) {
-    --primary:        #6366f1;
-    --primary-dark:   #4f46e5;
-    --primary-light:  #ede9fe;
-    --accent:         #8b5cf6;
+    --primary:        #5625d1;
+    --primary-dark:   #4318b0;
+    --primary-light:  #ede6ff;
+    --accent:         #6d29d3;
     --success:        #22c55e;
     --danger:         #ef4444;
     --warning:        #f59e0b;
     --bg:             #f8f7ff;
     --surface:        #ffffff;
-    --border:         #e5e3f7;
-    --text:           #1a1730;
-    --muted:          #6b7280;
+    --border:         #d0d2e1;
+    --text:           #2b2a3f;
+    --muted:          #595d72;
     --radius-card:    16px;
     --radius-btn:     10px;
-    --shadow:         0 4px 20px rgba(99,102,241,0.08);
-    --shadow-hover:   0 12px 36px rgba(99,102,241,0.18);
+    --shadow:         0 4px 20px rgba(86,37,209,0.08);
+    --shadow-hover:   0 12px 36px rgba(86,37,209,0.18);
     --nav-bg:         rgba(255,255,255,0.92);
     --sidebar-bg:     #ffffff;
   }
 
   :global([data-theme="dark"]) {
-    --bg:             #0f172a;
-    --surface:        #1e293b;
-    --border:         #334155;
+    --bg:             #202331;
+    --surface:        #2d2b42;
+    --border:         #3d4055;
     --text:           #f1f5f9;
     --muted:          #94a3b8;
-    --primary-light:  rgba(99,102,241,0.18);
+    --primary-light:  rgba(86,37,209,0.18);
     --shadow:         0 4px 20px rgba(0,0,0,0.4);
     --shadow-hover:   0 12px 36px rgba(0,0,0,0.55);
-    --nav-bg:         rgba(15,23,42,0.94);
-    --sidebar-bg:     #1e293b;
+    --nav-bg:         rgba(32,35,49,0.94);
+    --sidebar-bg:     #2d2b42;
   }
 
   /* ── Global dark mode corrections ─────────────────────────────────────────── */
@@ -265,7 +265,7 @@
   .sidebar {
     position: fixed; top: 0; right: -300px; bottom: 0;
     width: 280px; background: var(--sidebar-bg); z-index: 90;
-    box-shadow: -8px 0 32px rgba(99,102,241,0.15);
+    box-shadow: -8px 0 32px rgba(86,37,209,0.15);
     display: flex; flex-direction: column;
     transition: right 0.3s cubic-bezier(0.4,0,0.2,1);
     padding: 0;
@@ -300,7 +300,7 @@
     display: inline-block; margin-top: 0.5rem;
     padding: 0.15rem 0.6rem; border-radius: 99px; font-size: 0.75rem; font-weight: 600;
   }
-  .role-pill.student { background: rgba(99,102,241,0.15);  color: var(--primary); }
+  .role-pill.student { background: rgba(86,37,209,0.15);  color: var(--primary); }
   .role-pill.teacher { background: rgba(234,179,8,0.15);   color: #a16207; }
   .role-pill.admin   { background: rgba(236,72,153,0.15);  color: #9d174d; }
   .role-pill.banned  { background: rgba(239,68,68,0.15);   color: #dc2626; }
@@ -317,7 +317,7 @@
   }
   .banned-icon { font-size: 3rem; margin-bottom: 1rem; }
   .banned-title { font-size: 1.3rem; font-weight: 700; color: #991b1b; margin-bottom: 0.75rem; }
-  .banned-msg { color: #6b7280; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.75rem; }
+  .banned-msg { color: #595d72; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.75rem; }
   .banned-back {
     display: inline-block; padding: 0.65rem 1.5rem;
     background: #ef4444; color: white; border-radius: 8px;
