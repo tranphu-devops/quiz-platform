@@ -44,6 +44,7 @@ docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/po
 docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_security.sql
 docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_scheduled_exam.sql
 docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_submission_progress.sql
+docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_exam_session.sql
 ```
 
 ### Regenerate badge SVGs
@@ -86,6 +87,14 @@ AWS_BUCKET=
 AWS_REGION=ap-southeast-1
 AWS_ENDPOINT=                 # optional; set for non-standard S3-compatible endpoints
 AWS_PUBLIC_URL=               # public base URL of the bucket, e.g. https://bucket.s3.region.amazonaws.com
+
+# Optional
+API_ENCRYPTION_KEY=          # EC private key for response encryption (production only); generate with scripts/generate-api-key.js
+GHCR_ORG=tranphu-devops      # GHCR org prefix for docker-compose image names
+# Frontend Vite overrides (defaults point to /api/* via Nginx; override for direct service access)
+PUBLIC_EXAM_URL=
+PUBLIC_SUBMISSION_URL=
+PUBLIC_USER_URL=
 ```
 
 ## Architecture
@@ -97,7 +106,7 @@ Microservices monorepo. All services share a single PostgreSQL 16 instance with 
 Browser → Nginx :80
   /auth/            → gotrue:9999           (GoTrue SSO engine)
   /api/users/       → user-service:3002
-  /api/exams/       → exam-service:3003     (Nginx blocks /api/exams/exams/internal/)
+  /api/exams/       → exam-service:3003     (Nginx blocks /api/exams/exams/internal/ and /api/exams/collections/internal/ — these map to the exam-service's /exams/internal/ and /collections/internal/ paths after proxy stripping)
   /api/submissions/ → submission-service:3004
   /                 → frontend:3000
 ```
@@ -220,7 +229,7 @@ Schema summary:
 - `quiz_exams.questions` — includes `image_url`, `question_type` (`single`|`multiple`), `correct_answer` (comma-separated keys for multiple)
 - `quiz_exams.collections` — `id, title, description, created_by, badge_image_url, is_published`
 - `quiz_exams.collection_exams` — `(collection_id, exam_id, position)` many-to-many
-- `quiz_submissions.submissions` — `answers JSONB`, `results_detail JSONB`, `percentage FLOAT`, `status VARCHAR(20)` (`in_progress`|`completed`|`timed_out`, DEFAULT `completed`), `started_at TIMESTAMPTZ`, `expires_at TIMESTAMPTZ`
+- `quiz_submissions.submissions` — `answers JSONB`, `results_detail JSONB`, `percentage FLOAT`, `status VARCHAR(20)` (`in_progress`|`completed`|`timed_out`, DEFAULT `completed`), `started_at TIMESTAMPTZ`, `expires_at TIMESTAMPTZ`, `exam_session_id UUID` (UUID assigned per active browser tab to enforce single-device rule), `session_last_active TIMESTAMPTZ` (updated on every progress heartbeat; used to detect stale sessions)
 - `quiz_submissions.student_badges` — `(user_id, collection_id)` unique; `earned_at`
 
 Seed files in `infra/postgres/`: `seed.sql` (sample data), `seed_aws_saa.sql` (AWS SAA exam with 45 questions).
@@ -243,8 +252,16 @@ On each tick it queries `quiz_submissions.submissions WHERE status = 'in_progres
 
 Environment: `DATABASE_URL` (same as `SUBMISSION_DATABASE_URL`), `EXAM_SERVICE_URL`, `INTERNAL_API_KEY`.
 
+### Landing page
+`landing/` contains a static HTML landing page served by Nginx for the production domain (`phutx.top` / `www.phutx.top`). The `default_server` block (used locally) skips it and goes straight to the frontend SPA.
+
 ### CI/CD
-GitHub Actions (`.github/workflows/build-push.yml`) builds multi-platform (amd64 + arm64) Docker images to GHCR on push to `main`. Matrix over 5 services: `auth-service` (legacy, image built but not deployed), `user-service`, `exam-service`, `submission-service`, `frontend`.
+Three GitHub Actions workflows:
+- `build-push.yml` — triggered on push to `main`; builds multi-platform (amd64 + arm64) Docker images to GHCR. Matrix: `auth-service` (legacy, built but not deployed), `user-service`, `exam-service`, `submission-service`, `grader-service`, `frontend`.
+- `deploy.yml` — triggered after `build-push.yml` succeeds; SSHs into the production server and runs `deploy.sh --update`.
+- `cleanup-images.yml` — runs weekly (Sunday 00:00 ICT); deletes GHCR image versions beyond the 5 most recent, keeping all semver-tagged releases.
+
+`GHCR_ORG` env var (default `tranphu-devops`) controls the GHCR org prefix used in `docker-compose.yml` image names.
 
 ## Conventions
 
@@ -261,17 +278,22 @@ GitHub Actions (`.github/workflows/build-push.yml`) builds multi-platform (amd64
 - **Public settings:** `GET /api/users/public/settings` — exposes `teacher_upgrade_cost`, `default_credits`, `default_exam_cost` without auth.
 - **Teacher upgrade:** `POST /api/users/upgrade-to-teacher` — deducts credits, updates `auth.users.raw_user_meta_data` directly. User must log out and back in for new role to take effect.
 - **Session credit flag:** Take page stores `credit_deducted: true` in localStorage session to avoid double-charging on page refresh.
+- **Single-device exam session:** `POST /submissions/start` generates a UUID `session_id` and stores it as `exam_session_id`. Each `PUT /submissions/:id/progress` (heartbeat + answer save) and `POST /submissions/:id/submit` must pass this UUID in the `X-Session-Id` header. If the header doesn't match the stored `exam_session_id`, the server returns HTTP 409 — preventing a second tab or device from taking over the session. If `session_last_active` is stale (>30 s), the new session may claim the submission. `GET /submissions/active?exam_id=` returns any existing `in_progress` submission for the user+exam pair.
 - **Scheduled publish:** `exams.scheduled_at` — if set to a future datetime and `is_published = true`, the exam is visible to students but locked. The frontend shows a live countdown (1 s interval via `setInterval`). Server blocks `POST /submissions/start` with HTTP 423 if `scheduled_at > NOW()`. Create/edit forms have a 3-way publish mode selector: draft / now / scheduled. `PUT /exams/:id` uses a `(has_scheduled_at, scheduled_at_val)` param pair so `null` can clear the field.
 
 ## Design System
 
-Khi sinh HTML/CSS, luôn follow:
+Xem chi tiết đầy đủ tại `DESIGN.md`. Tóm tắt nhanh:
 
-- **Color palette**: #0F172A (bg), #1E293B (surface), #38BDF8 (accent), #F8FAFC (text)
-- **Typography**: Inter cho body, JetBrains Mono cho code
-- **Border radius**: 8px card, 4px button
-- **Font import**: Google Fonts (Inter + JetBrains Mono)
-- **Style**: Dark theme, glassmorphism card, subtle shadows
-- Dùng CSS custom properties (--var)
-- Responsive mobile-first
-- Không dùng Bootstrap/jQuery, ưu tiên vanilla CSS
+- **Brand gradient**: `linear-gradient(135deg, #6366f1, #8b5cf6)` — dùng thống nhất trên cả landing page và quiz app
+- **CSS tokens** (quiz app — `+layout.svelte` `:root`):
+  - `--primary: #6366f1` · `--accent: #8b5cf6` · `--primary-light: #ede9fe`
+  - Light: `--bg: #f8f7ff` · `--surface: #ffffff` · `--text: #1a1730` · `--border: #e5e3f7`
+  - Dark (`[data-theme="dark"]`): `--bg: #0f172a` · `--surface: #1e293b` · `--text: #f1f5f9` · `--border: #334155`
+- **Typography**: Inter (body/UI), JetBrains Mono (code). Google Fonts import.
+- **Border radius**: `--radius-card: 16px` · `--radius-btn: 10px` · inputs 8px
+- **Shadows**: `0 4px 20px rgba(99,102,241,0.08)` default · `0 12px 36px rgba(99,102,241,0.18)` hover
+- **Dark mode**: toggle via `localStorage('quiz-theme')`, applied as `document.documentElement.dataset.theme`
+- Dùng CSS custom properties (`var(--primary)`, không hard-code hex)
+- Mobile-first, breakpoint 768px
+- Không dùng Bootstrap/jQuery, vanilla CSS

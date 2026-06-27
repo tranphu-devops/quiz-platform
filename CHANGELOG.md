@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased] — 2026-06-27
+
+### Added
+- **`DESIGN.md`**: File định nghĩa design system theo spec của Google Stitch — YAML tokens (colors, typography, rounded, spacing, components) + prose rationale cho cả light/dark mode.
+
+### Changed
+- **Thống nhất brand color toàn site**: Landing page và quiz app giờ dùng chung brand gradient `#6366f1 → #8b5cf6` (indigo-violet). Trước đây landing page dùng `#1d4ed8 → #4f46e5` (blue-indigo) — khác quiz app.
+- **Chuẩn hoá CSS tokens landing page**: Đổi tên `--blue/--indigo/--violet` → `--primary/--accent/--primary-lt`; border radius `14px → 16px`; border color `#e2e8f0 → #e5e3f7` (purple-tinted như quiz app); bg `#f8fafc → #f8f7ff`.
+- **Cập nhật CLAUDE.md**: Bổ sung CI/CD workflows còn thiếu (`deploy.yml`, `cleanup-images.yml`), landing page, `GHCR_ORG` env var; cập nhật Design System section tham chiếu đến `DESIGN.md`.
+
+---
+
 ## [Unreleased] — 2026-06-24
 
 ### Changed
