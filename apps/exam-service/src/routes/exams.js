@@ -63,25 +63,28 @@ export default async function examRoutes(fastify) {
     try {
       const isStudent = req.user.role === 'student'
 
+      const { creator_id } = req.query
+
       // Student list: only published exams, public fields only
-      const studentSelect = `
+      const studentBase = `
         SELECT e.id, e.title, e.description, e.cover_image_url, e.time_limit,
           e.passing_score, e.tags, e.credit_cost, e.created_at, e.scheduled_at,
+          e.created_by,
           COALESCE(p.full_name, au.email, 'Unknown') AS creator_name,
+          p.avatar_url AS creator_avatar,
           COUNT(DISTINCT CASE WHEN (sp.role IS NULL OR sp.role != 'banned') THEN s.id END)::int AS submission_count,
           COUNT(DISTINCT CASE WHEN (sp.role IS NULL OR sp.role != 'banned') AND (e.passing_score IS NULL OR s.percentage >= e.passing_score) THEN s.id END)::int AS pass_count
         FROM exams e
         LEFT JOIN quiz_users.profiles p ON p.id = e.created_by
         LEFT JOIN auth.users au ON au.id = e.created_by
         LEFT JOIN quiz_submissions.submissions s ON s.exam_id = e.id
-        LEFT JOIN quiz_users.profiles sp ON sp.id = s.user_id
-        WHERE e.is_published = true
-        GROUP BY e.id, p.full_name, au.email ORDER BY e.created_at DESC`
+        LEFT JOIN quiz_users.profiles sp ON sp.id = s.user_id`
 
       // Teacher/admin: full fields + stats
       const fullSelect = `
         SELECT e.*,
           COALESCE(p.full_name, au.email, 'Unknown') AS creator_name,
+          p.avatar_url AS creator_avatar,
           COUNT(DISTINCT CASE WHEN (sp.role IS NULL OR sp.role != 'banned') THEN s.id END)::int AS submission_count,
           COUNT(DISTINCT CASE WHEN (sp.role IS NULL OR sp.role != 'banned') AND (e.passing_score IS NULL OR s.percentage >= e.passing_score) THEN s.id END)::int AS pass_count
         FROM exams e
@@ -90,11 +93,17 @@ export default async function examRoutes(fastify) {
         LEFT JOIN quiz_submissions.submissions s ON s.exam_id = e.id
         LEFT JOIN quiz_users.profiles sp ON sp.id = s.user_id
       `
-      const group = 'GROUP BY e.id, p.full_name, au.email ORDER BY e.created_at DESC'
+      const group = 'GROUP BY e.id, p.full_name, p.avatar_url, au.email ORDER BY e.created_at DESC'
 
       let query, params = []
-      if (isStudent) {
-        query = studentSelect
+      if (isStudent || creator_id) {
+        // When filtering by creator (public profile page), anyone gets published exams only
+        if (creator_id) {
+          query = `${studentBase} WHERE e.is_published = true AND e.created_by = $1 GROUP BY e.id, p.full_name, p.avatar_url, au.email ORDER BY e.created_at DESC`
+          params = [creator_id]
+        } else {
+          query = `${studentBase} WHERE e.is_published = true GROUP BY e.id, p.full_name, p.avatar_url, au.email ORDER BY e.created_at DESC`
+        }
       } else if (req.user.role === 'teacher') {
         query = `${fullSelect} WHERE e.created_by = $1 ${group}`
         params = [req.user.id]

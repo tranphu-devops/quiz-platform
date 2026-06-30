@@ -12,7 +12,18 @@ CREATE TABLE IF NOT EXISTS quiz_users.profiles (
   full_name TEXT,
   avatar_url TEXT,
   role TEXT NOT NULL DEFAULT 'student',
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  bio TEXT,
+  birth_year SMALLINT,
+  gender VARCHAR(20),
+  interests TEXT,
+  facebook_url VARCHAR(500),
+  zalo VARCHAR(30),
+  tiktok_url VARCHAR(500),
+  youtube_url VARCHAR(500),
+  instagram_url VARCHAR(500),
+  linkedin_url VARCHAR(500),
+  website_url VARCHAR(500)
 );
 
 -- Exams

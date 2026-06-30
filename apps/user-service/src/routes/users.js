@@ -47,6 +47,27 @@ export default async function userRoutes(fastify) {
     return { key }
   })
 
+  // Public endpoint — returns public profile of any user (for creator profile page)
+  fastify.get('/public/profile/:userId', async (req, reply) => {
+    const { userId } = req.params
+    try {
+      const { rows } = await pool.query(`
+        SELECT p.id, p.full_name, p.avatar_url, p.role, p.bio, p.birth_year,
+               p.gender, p.interests, p.facebook_url, p.zalo, p.tiktok_url,
+               p.youtube_url, p.instagram_url, p.linkedin_url, p.website_url,
+               p.updated_at, au.email, au.created_at AS joined_at
+        FROM profiles p
+        JOIN auth.users au ON au.id = p.id
+        WHERE p.id = $1`,
+        [userId])
+      if (rows.length === 0) return reply.status(404).send({ error: 'User not found', statusCode: 404 })
+      return rows[0]
+    } catch (err) {
+      fastify.log.error(err)
+      return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
+    }
+  })
+
   // Public endpoint — returns non-sensitive settings for client display
   fastify.get('/public/settings', async (req, reply) => {
     try {
@@ -90,7 +111,10 @@ export default async function userRoutes(fastify) {
     const { id } = req.params
     try {
       const result = await pool.query(
-        'SELECT id, full_name, avatar_url, role, credits, updated_at FROM profiles WHERE id = $1',
+        `SELECT id, full_name, avatar_url, role, credits, updated_at,
+                bio, birth_year, gender, interests,
+                facebook_url, zalo, tiktok_url, youtube_url, instagram_url, linkedin_url, website_url
+         FROM profiles WHERE id = $1`,
         [id]
       )
       if (result.rows.length === 0) {
@@ -105,7 +129,11 @@ export default async function userRoutes(fastify) {
 
   fastify.put('/:id', async (req, reply) => {
     const { id } = req.params
-    const { full_name, avatar_url } = req.body ?? {}
+    const {
+      full_name, avatar_url,
+      bio, birth_year, gender, interests,
+      facebook_url, zalo, tiktok_url, youtube_url, instagram_url, linkedin_url, website_url
+    } = req.body ?? {}
 
     if (req.user.id !== id && req.user.role !== 'admin') {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
@@ -113,16 +141,31 @@ export default async function userRoutes(fastify) {
 
     try {
       const result = await pool.query(
-        `INSERT INTO profiles (id, full_name, avatar_url, role, credits, updated_at)
+        `INSERT INTO profiles (id, full_name, avatar_url, role, credits, bio, birth_year, gender, interests,
+           facebook_url, zalo, tiktok_url, youtube_url, instagram_url, linkedin_url, website_url, updated_at)
          VALUES ($1, $2, $3, 'student',
            (SELECT COALESCE(value::int, 20) FROM admin_settings WHERE key = 'default_credits'),
-           NOW())
+           $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
          ON CONFLICT (id) DO UPDATE
-         SET full_name = COALESCE(EXCLUDED.full_name, profiles.full_name),
-             avatar_url = COALESCE(EXCLUDED.avatar_url, profiles.avatar_url),
-             updated_at = NOW()
+         SET full_name      = COALESCE(EXCLUDED.full_name, profiles.full_name),
+             avatar_url     = COALESCE(EXCLUDED.avatar_url, profiles.avatar_url),
+             bio            = EXCLUDED.bio,
+             birth_year     = EXCLUDED.birth_year,
+             gender         = EXCLUDED.gender,
+             interests      = EXCLUDED.interests,
+             facebook_url   = EXCLUDED.facebook_url,
+             zalo           = EXCLUDED.zalo,
+             tiktok_url     = EXCLUDED.tiktok_url,
+             youtube_url    = EXCLUDED.youtube_url,
+             instagram_url  = EXCLUDED.instagram_url,
+             linkedin_url   = EXCLUDED.linkedin_url,
+             website_url    = EXCLUDED.website_url,
+             updated_at     = NOW()
          RETURNING *`,
-        [id, full_name ?? null, avatar_url ?? null]
+        [id, full_name ?? null, avatar_url ?? null,
+         bio ?? null, birth_year ?? null, gender ?? null, interests ?? null,
+         facebook_url ?? null, zalo ?? null, tiktok_url ?? null,
+         youtube_url ?? null, instagram_url ?? null, linkedin_url ?? null, website_url ?? null]
       )
       return result.rows[0]
     } catch (err) {

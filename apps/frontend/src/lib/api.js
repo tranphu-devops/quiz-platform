@@ -39,6 +39,7 @@ async function apiFetch(url, options = {}) {
 
 export const examApi = {
   list: () => apiFetch(`${EXAM_URL}/exams`, { headers: authHeaders(false) }),
+  listByCreator: (creatorId) => apiFetch(`${EXAM_URL}/exams?creator_id=${creatorId}`, { headers: authHeaders(false) }),
   get: (id) => apiFetch(`${EXAM_URL}/exams/${id}`, { headers: authHeaders(false) }),
   getPreview: (id) => apiFetch(`${EXAM_URL}/exams/${id}?preview=true`, { headers: authHeaders(false) }),
   create: (data) =>
@@ -110,6 +111,7 @@ export const submissionApi = {
 
 export const userApi = {
   getProfile: (id) => apiFetch(`${USER_URL}/${id}`, { headers: authHeaders(false) }),
+  getPublicProfile: (userId) => apiFetch(`${USER_URL}/public/profile/${userId}`),
   updateProfile: (id, data) =>
     apiFetch(`${USER_URL}/${id}`, {
       method: 'PUT',

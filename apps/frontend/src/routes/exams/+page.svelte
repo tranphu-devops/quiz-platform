@@ -1,5 +1,5 @@
 <script>
-  import { examApi, submissionApi, collectionApi } from '$lib/api'
+  import { examApi, submissionApi } from '$lib/api'
   import { user } from '$lib/stores/auth'
   import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
@@ -30,7 +30,6 @@
   }
 
   let exams = $state([])
-  let collections = $state([])
   let latestSub = $state({})
   let loading = $state(true)
   let error = $state('')
@@ -38,13 +37,9 @@
   onMount(async () => {
     if (!$user) { goto('/login'); return }
     try {
-      const [examRes, colRes] = await Promise.all([
-        examApi.list(),
-        collectionApi.list()
-      ])
+      const examRes = await examApi.list()
       if (!examRes.ok) { error = 'Không thể tải danh sách đề thi'; return }
       exams = await examRes.json()
-      if (colRes.ok) collections = await colRes.json()
 
       if ($user.role === 'student') {
         const subRes = await submissionApi.list()
@@ -116,13 +111,6 @@
     return GRADIENTS[i]
   }
 
-  // For student: filter exams that are part of a published collection
-  // (we still show individual exams regardless; collections shown separately)
-  let visibleCollections = $derived(
-    $user?.role === 'student'
-      ? collections.filter(c => c.is_published && Array.isArray(c.exams) && c.exams.length > 0)
-      : collections
-  )
 </script>
 
 <style>
@@ -139,64 +127,17 @@
   }
   .btn-create:hover { opacity: 0.82; }
 
-  /* Section heading */
-  .section-heading {
-    font-size: 1rem; font-weight: 800; margin-bottom: 1rem;
-    display: flex; align-items: center; gap: 0.6rem; color: var(--text);
-  }
-  .section-heading .count-pill {
-    font-size: 0.72rem; font-weight: 700;
-    background: var(--primary-light); color: var(--primary);
-    padding: 0.1rem 0.5rem; border-radius: 99px;
-  }
-
-  /* ── Collections grid ──────────────────────────────────────────────────────── */
-  .col-grid {
-    display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem;
-    margin-bottom: 2.5rem;
-  }
-  @media (max-width: 700px) { .col-grid { grid-template-columns: 1fr; } }
-
-  .col-card {
-    background: var(--surface); border-radius: var(--radius-card);
-    border: 1px solid var(--border); padding: 1.25rem;
-    box-shadow: var(--shadow); transition: all 0.2s;
-    display: flex; flex-direction: column; gap: 0.85rem;
-  }
-  .col-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); border-color: #c4b5fd; }
-
-  .col-head { display: flex; align-items: flex-start; gap: 0.85rem; }
-  .col-badge-img { width: 52px; height: 52px; border-radius: 12px; object-fit: cover; flex-shrink: 0; border: 2px solid rgba(99,102,241,0.15); }
-  .col-badge-placeholder { width: 52px; height: 52px; border-radius: 12px; flex-shrink: 0; background: linear-gradient(135deg, var(--primary), var(--accent)); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
-  .col-meta { flex: 1; min-width: 0; }
-  .col-title { font-size: 1rem; font-weight: 800; margin-bottom: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .col-creator { font-size: 0.75rem; color: var(--muted); }
-  .col-desc { font-size: 0.83rem; color: var(--muted); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-
-  .col-exams { display: flex; flex-direction: column; gap: 0.35rem; }
-  .col-exam-row {
-    display: flex; align-items: center; gap: 0.5rem;
-    padding: 0.4rem 0.7rem; background: var(--bg); border-radius: 8px;
-    border: 1px solid var(--border); text-decoration: none;
-    transition: border-color 0.15s;
-  }
-  .col-exam-row:hover { border-color: var(--primary); }
-  .col-exam-icon { font-size: 0.85rem; flex-shrink: 0; }
-  .col-exam-title { font-size: 0.82rem; font-weight: 600; color: var(--text); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .col-exam-arrow { font-size: 0.75rem; color: var(--muted); flex-shrink: 0; }
-  .col-more { font-size: 0.78rem; color: var(--muted); padding-left: 0.5rem; }
-
-  .col-footer { display: flex; align-items: center; justify-content: space-between; font-size: 0.78rem; color: var(--muted); }
-  .col-badge-label { display: flex; align-items: center; gap: 0.3rem; color: var(--primary); font-weight: 600; }
-
   /* ── Exam grid ─────────────────────────────────────────────────────────────── */
   .grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1.5rem;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 1rem;
   }
-  @media (max-width: 860px) { .grid { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
+  @media (max-width: 1600px) { .grid { grid-template-columns: repeat(5, 1fr); } }
+  @media (max-width: 1300px) { .grid { grid-template-columns: repeat(4, 1fr); } }
+  @media (max-width: 1000px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 680px)  { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 420px)  { .grid { grid-template-columns: 1fr; } }
 
   .card {
     background: var(--surface); border-radius: var(--radius-card);
@@ -219,7 +160,7 @@
   .cover-placeholder {
     width: 100%; height: 100%;
     display: flex; align-items: center; justify-content: center;
-    font-size: 3rem; font-weight: 800; color: rgba(255,255,255,0.9);
+    font-size: clamp(1.2rem, 3vw, 3rem); font-weight: 800; color: rgba(255,255,255,0.9);
     user-select: none; letter-spacing: -0.05em;
   }
   .cover-overlay {
@@ -270,6 +211,8 @@
   }
   .card-meta { font-size: 0.77rem; color: #a0aec0; }
   .card-creator { font-size: 0.75rem; color: var(--muted); display: flex; align-items: center; gap: 0.25rem; margin-top: 0.1rem; }
+  .creator-link { color: var(--muted); text-decoration: none; }
+  .creator-link:hover { color: var(--primary); text-decoration: underline; }
   .card-stats { font-size: 0.75rem; color: var(--muted); display: flex; align-items: center; gap: 0.5rem; margin-top: auto; padding-top: 0.4rem; }
   .stat-pill { background: var(--bg); border: 1px solid var(--border); border-radius: 99px; padding: 0.1rem 0.5rem; font-size: 0.72rem; font-weight: 600; color: var(--text); }
   .stat-pill.pass { color: #15803d; background: #f0fdf4; border-color: #bbf7d0; }
@@ -308,9 +251,12 @@
   .btn-danger:hover { background: #fecaca; }
 
   /* Loading */
-  .loading-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
-  @media (max-width: 860px) { .loading-grid { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 520px) { .loading-grid { grid-template-columns: 1fr; } }
+  .loading-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1rem; }
+  @media (max-width: 1600px) { .loading-grid { grid-template-columns: repeat(5, 1fr); } }
+  @media (max-width: 1300px) { .loading-grid { grid-template-columns: repeat(4, 1fr); } }
+  @media (max-width: 1000px) { .loading-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 680px)  { .loading-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 420px)  { .loading-grid { grid-template-columns: 1fr; } }
   .skeleton-card { background: var(--surface); border-radius: var(--radius-card); border: 1px solid var(--border); overflow: hidden; }
   .skeleton-cover { aspect-ratio: 16/9; background: linear-gradient(90deg,#f0eeff,#e9e4ff,#f0eeff); background-size: 200%; animation: shimmer 1.5s infinite; }
   .skeleton-body { padding: 1rem; display: flex; flex-direction: column; gap: 0.6rem; }
@@ -346,66 +292,6 @@
 {:else if error}
   <p class="error">{error}</p>
 {:else}
-
-  <!-- ── Collections section ───────────────────────────────────────────────── -->
-  {#if visibleCollections.length > 0}
-    <div class="section-heading">
-      🗂️ Bộ đề
-      <span class="count-pill">{visibleCollections.length}</span>
-    </div>
-    <div class="col-grid">
-      {#each visibleCollections as col}
-        {@const colExams = Array.isArray(col.exams) ? col.exams : []}
-        <div class="col-card">
-          <div class="col-head">
-            {#if col.badge_image_url}
-              <img src={col.badge_image_url} alt="" class="col-badge-img" />
-            {:else}
-              <div class="col-badge-placeholder">🏆</div>
-            {/if}
-            <div class="col-meta">
-              <div class="col-title">{col.title}</div>
-              <div class="col-creator">by {col.creator_name ?? 'Unknown'}</div>
-            </div>
-          </div>
-
-          {#if col.description}
-            <div class="col-desc">{col.description}</div>
-          {/if}
-
-          {#if colExams.length > 0}
-            <div class="col-exams">
-              {#each colExams.slice(0, 3) as e}
-                <a href="/exams/{e.id}" class="col-exam-row">
-                  <span class="col-exam-icon">📝</span>
-                  <span class="col-exam-title">{e.title}</span>
-                  <span class="col-exam-arrow">→</span>
-                </a>
-              {/each}
-              {#if colExams.length > 3}
-                <span class="col-more">+{colExams.length - 3} đề thi khác</span>
-              {/if}
-            </div>
-          {/if}
-
-          <div class="col-footer">
-            <span>{colExams.length} đề thi</span>
-            {#if col.badge_image_url}
-              <span class="col-badge-label">🏅 Nhận huy hiệu khi hoàn thành</span>
-            {/if}
-          </div>
-        </div>
-      {/each}
-    </div>
-  {/if}
-
-  <!-- ── Exams section ─────────────────────────────────────────────────────── -->
-  {#if visibleCollections.length > 0}
-    <div class="section-heading" style="margin-top:0.5rem">
-      📋 Đề thi
-      <span class="count-pill">{exams.length}</span>
-    </div>
-  {/if}
 
   {#if exams.length === 0}
     <div class="empty">
@@ -458,7 +344,16 @@
             <div class="card-desc">{exam.description ?? 'Không có mô tả'}</div>
             <div class="card-meta">{fmtMeta(exam)}</div>
             {#if exam.creator_name}
-              <div class="card-creator">👤 {exam.creator_name}</div>
+              <div class="card-creator">
+                👤
+                {#if exam.created_by}
+                  <a href="/users/{exam.created_by}" class="creator-link" onclick={(e) => e.stopPropagation()}>
+                    {exam.creator_name}
+                  </a>
+                {:else}
+                  {exam.creator_name}
+                {/if}
+              </div>
             {/if}
             {#if exam.tags?.length}
               <div class="tags">

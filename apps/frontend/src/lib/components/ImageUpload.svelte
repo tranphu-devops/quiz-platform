@@ -53,6 +53,7 @@
   }
   .preview { max-width: 100%; max-height: 200px; border-radius: 6px; object-fit: cover; display: block; margin: 0 auto 0.5rem; }
   .preview-avatar { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; display: block; margin: 0 auto 0.5rem; }
+  .preview-avatar-lg { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; display: block; margin: 0 auto 0.75rem; box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
   .hint { font-size: 0.8rem; color: #6b7280; }
   .error { font-size: 0.8rem; color: #dc2626; }
   .btn-clear { background: #fee2e2; color: #dc2626; border: none; border-radius: 4px; padding: 0.2rem 0.5rem; font-size: 0.8rem; cursor: pointer; }

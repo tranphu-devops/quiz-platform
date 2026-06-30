@@ -17,6 +17,19 @@
   let success         = $state(false)
   let error           = $state('')
 
+  // Personal info
+  let bio           = $state('')
+  let birth_year    = $state('')
+  let gender        = $state('')
+  let interests     = $state('')
+  let facebook_url  = $state('')
+  let zalo          = $state('')
+  let tiktok_url    = $state('')
+  let youtube_url   = $state('')
+  let instagram_url = $state('')
+  let linkedin_url  = $state('')
+  let website_url   = $state('')
+
   // Teacher upgrade
   let upgradeLoading      = $state(false)
   let upgradeError        = $state('')
@@ -34,9 +47,20 @@
       ])
       if (profileRes.ok) {
         const profile = await profileRes.json()
-        full_name  = profile.full_name ?? ''
-        avatar_url = profile.avatar_url ?? ''
-        credits    = profile.credits ?? 0
+        full_name     = profile.full_name ?? ''
+        avatar_url    = profile.avatar_url ?? ''
+        credits       = profile.credits ?? 0
+        bio           = profile.bio ?? ''
+        birth_year    = profile.birth_year ? String(profile.birth_year) : ''
+        gender        = profile.gender ?? ''
+        interests     = profile.interests ?? ''
+        facebook_url  = profile.facebook_url ?? ''
+        zalo          = profile.zalo ?? ''
+        tiktok_url    = profile.tiktok_url ?? ''
+        youtube_url   = profile.youtube_url ?? ''
+        instagram_url = profile.instagram_url ?? ''
+        linkedin_url  = profile.linkedin_url ?? ''
+        website_url   = profile.website_url ?? ''
       }
       if (settingsRes.ok) {
         const s = await settingsRes.json()
@@ -49,7 +73,20 @@
   async function save() {
     error = ''; success = false; saving = true
     try {
-      const res = await userApi.updateProfile($user.id, { full_name, avatar_url })
+      const res = await userApi.updateProfile($user.id, {
+        full_name, avatar_url,
+        bio: bio || null,
+        birth_year: birth_year ? parseInt(birth_year, 10) : null,
+        gender: gender || null,
+        interests: interests || null,
+        facebook_url: facebook_url || null,
+        zalo: zalo || null,
+        tiktok_url: tiktok_url || null,
+        youtube_url: youtube_url || null,
+        instagram_url: instagram_url || null,
+        linkedin_url: linkedin_url || null,
+        website_url: website_url || null
+      })
       if (!res.ok) { const d = await res.json(); error = d.error ?? 'Lỗi cập nhật'; return }
       success = true
     } catch { error = 'Không thể kết nối server' } finally { saving = false }
@@ -78,115 +115,179 @@
 
 <PageHeader title="Hồ sơ cá nhân" subtitle="Quản lý thông tin tài khoản và cài đặt cá nhân" />
 
-    <div class="profile-grid">
+    <div class="profile-layout">
 
-      <!-- ── Profile form card ─────────────────────────────────────────── -->
-      <Card title="Thông tin cơ bản" subtitle="Cập nhật ảnh đại diện và họ tên hiển thị của bạn.">
-        {#if error}<p class="ix-error">{error}</p>{/if}
-        {#if success}<p class="ix-success">Đã lưu thành công!</p>{/if}
+      <!-- ── Cột trái: tài khoản ─────────────────────────────────────────── -->
+      <div class="profile-col">
 
-        <div class="form-stack">
-          <div class="field-group">
-            <span class="ix-label">Ảnh đại diện</span>
-            <ImageUpload bind:value={avatar_url} type="avatar" label="ảnh đại diện" />
-          </div>
+        <!-- Avatar + thông tin cơ bản -->
+        <Card title="Thông tin cơ bản">
+          {#if error}<p class="ix-error">{error}</p>{/if}
+          {#if success}<p class="ix-success">Đã lưu thành công!</p>{/if}
 
-          <Input
-            id="fname"
-            label="Họ và tên"
-            type="text"
-            bind:value={full_name}
-            placeholder="Nhập họ tên..."
-          />
-
-          <Input
-            id="email"
-            label="Email"
-            type="text"
-            value={$user?.email ?? ''}
-            disabled={true}
-          />
-
-          <div class="role-row">
-            <span class="ix-label">Vai trò</span>
-            <span class="role-badge" style={roleBadgeStyle($user?.role)}>{$user?.role ?? ''}</span>
-          </div>
-
-          <div>
-            <Button onclick={save} loading={saving} disabled={saving}>
-              Lưu thay đổi
-            </Button>
-          </div>
-        </div>
-      </Card>
-
-      <!-- ── Credits card ──────────────────────────────────────────────── -->
-      <Card title="Credits & Nâng cấp" subtitle="Số dư credit và tuỳ chọn nâng cấp tài khoản.">
-        <div class="credits-display">
-          <div class="credits-num">{credits ?? '—'}</div>
-          <div class="credits-lbl">credits hiện tại</div>
-        </div>
-
-        {#if $user?.role === 'student'}
-          {#if upgradeSuccess}
-            <div class="ix-success" style="margin-top:16px">
-              Nâng cấp thành công! Vui lòng đăng xuất và đăng nhập lại để kích hoạt role Teacher.
+          <div class="form-stack">
+            <div class="avatar-section">
+              <ImageUpload bind:value={avatar_url} type="avatar" label="ảnh đại diện" previewClass="preview-avatar-lg" />
+              <div class="avatar-meta">
+                <span class="role-badge" style={roleBadgeStyle($user?.role)}>{$user?.role ?? ''}</span>
+                <span class="avatar-email">{$user?.email ?? ''}</span>
+              </div>
             </div>
-          {:else}
-            <div class="upgrade-box">
-              <div class="upgrade-title">Nâng cấp lên Teacher</div>
-              <p class="upgrade-desc">
-                Tạo và quản lý bài thi của riêng bạn. Chi phí:
-                <strong style="color:var(--ix-cta-green-bg)">{teacherUpgradeCost} credit</strong>
-              </p>
-              {#if upgradeError}<p class="ix-error">{upgradeError}</p>{/if}
-              {#if insufficientCredits}
-                <p class="ix-note">Bạn cần thêm {teacherUpgradeCost - credits} credit để nâng cấp.</p>
-              {/if}
-              <Button
-                variant="cta"
-                onclick={() => showUpgradeConfirm = true}
-                disabled={upgradeLoading || insufficientCredits}
-                loading={upgradeLoading}
-              >
-                Mua gói Teacher ({teacherUpgradeCost} credit)
+
+            <Input
+              id="fname"
+              label="Họ và tên"
+              type="text"
+              bind:value={full_name}
+              placeholder="Nhập họ tên..."
+            />
+
+            <div>
+              <Button onclick={save} loading={saving} disabled={saving}>
+                Lưu thay đổi
               </Button>
             </div>
-          {/if}
-        {:else}
-          <p class="ix-note" style="margin-top:12px">Tài khoản <strong>{$user?.role}</strong> — không cần nâng cấp.</p>
-        {/if}
-      </Card>
+          </div>
+        </Card>
 
-      <!-- ── Badges card (student only) ───────────────────────────────── -->
-      {#if $user?.role === 'student'}
-        <Card
-          title="Huy hiệu đã đạt được"
-          subtitle={badges.length > 0 ? `${badges.length} huy hiệu` : 'Chưa có huy hiệu nào'}
-        >
-          {#if badges.length === 0}
-            <p class="badges-empty">
-              Hoàn thành tất cả đề thi trong một bộ đề để nhận huy hiệu!
-            </p>
+        <!-- Credits & nâng cấp -->
+        <Card title="Credits & Nâng cấp" subtitle="Số dư credit và tuỳ chọn nâng cấp tài khoản.">
+          <div class="credits-display">
+            <div class="credits-num">{credits ?? '—'}</div>
+            <div class="credits-lbl">credits hiện tại</div>
+          </div>
+
+          {#if $user?.role === 'student'}
+            {#if upgradeSuccess}
+              <div class="ix-success" style="margin-top:16px">
+                Nâng cấp thành công! Vui lòng đăng xuất và đăng nhập lại để kích hoạt role Teacher.
+              </div>
+            {:else}
+              <div class="upgrade-box">
+                <div class="upgrade-title">Nâng cấp lên Teacher</div>
+                <p class="upgrade-desc">
+                  Tạo và quản lý bài thi của riêng bạn. Chi phí:
+                  <strong style="color:var(--ix-cta-green-bg)">{teacherUpgradeCost} credit</strong>
+                </p>
+                {#if upgradeError}<p class="ix-error">{upgradeError}</p>{/if}
+                {#if insufficientCredits}
+                  <p class="ix-note">Bạn cần thêm {teacherUpgradeCost - credits} credit để nâng cấp.</p>
+                {/if}
+                <Button
+                  variant="cta"
+                  onclick={() => showUpgradeConfirm = true}
+                  disabled={upgradeLoading || insufficientCredits}
+                  loading={upgradeLoading}
+                >
+                  Mua gói Teacher ({teacherUpgradeCost} credit)
+                </Button>
+              </div>
+            {/if}
           {:else}
-            <div class="badges-grid">
-              {#each badges as b}
-                <div class="badge-item" title={b.collection_title}>
-                  <div class="badge-img-wrap">
-                    {#if b.badge_image_url}
-                      <img src={b.badge_image_url} alt={b.collection_title} />
-                    {:else}
-                      <div class="badge-ph">🎖️</div>
-                    {/if}
-                  </div>
-                  <div class="badge-name">{b.collection_title}</div>
-                  <div class="badge-date">{new Date(b.earned_at).toLocaleDateString('vi-VN')}</div>
-                </div>
-              {/each}
-            </div>
+            <p class="ix-note" style="margin-top:12px">Tài khoản <strong>{$user?.role}</strong> — không cần nâng cấp.</p>
           {/if}
         </Card>
-      {/if}
+
+      </div>
+
+      <!-- ── Cột phải: chi tiết ──────────────────────────────────────────── -->
+      <div class="profile-col">
+
+        <!-- Thông tin cá nhân + mạng xã hội -->
+        <Card title="Thông tin cá nhân" subtitle="Thông tin hiển thị trên trang hồ sơ công khai của bạn.">
+          <div class="form-stack">
+            <div class="field-group">
+              <label class="ix-label" for="bio">Giới thiệu bản thân</label>
+              <textarea id="bio" class="ix-textarea" rows="3" bind:value={bio} placeholder="Viết vài dòng giới thiệu về bản thân..."></textarea>
+            </div>
+
+            <div class="two-col">
+              <div class="field-group">
+                <label class="ix-label" for="birth_year">Năm sinh</label>
+                <input id="birth_year" class="ix-input" type="number" min="1940" max="2010" bind:value={birth_year} placeholder="1990" />
+              </div>
+              <div class="field-group">
+                <label class="ix-label" for="gender">Giới tính</label>
+                <select id="gender" class="ix-input ix-select" bind:value={gender}>
+                  <option value="">-- Không hiển thị --</option>
+                  <option value="male">Nam</option>
+                  <option value="female">Nữ</option>
+                  <option value="other">Khác</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label class="ix-label" for="interests">Sở thích / Lĩnh vực</label>
+              <input id="interests" class="ix-input" type="text" bind:value={interests} placeholder="Lập trình, AWS, DevOps, ..." />
+            </div>
+
+            <div class="social-section-label">Mạng xã hội</div>
+
+            <div class="social-grid">
+              <div class="field-group">
+                <label class="ix-label" for="facebook_url"><span class="social-icon">📘</span> Facebook</label>
+                <input id="facebook_url" class="ix-input" type="url" bind:value={facebook_url} placeholder="https://facebook.com/username" />
+              </div>
+              <div class="field-group">
+                <label class="ix-label" for="zalo"><span class="social-icon">💬</span> Zalo</label>
+                <input id="zalo" class="ix-input" type="text" bind:value={zalo} placeholder="0901234567" />
+              </div>
+              <div class="field-group">
+                <label class="ix-label" for="tiktok_url"><span class="social-icon">🎵</span> TikTok</label>
+                <input id="tiktok_url" class="ix-input" type="url" bind:value={tiktok_url} placeholder="https://tiktok.com/@username" />
+              </div>
+              <div class="field-group">
+                <label class="ix-label" for="youtube_url"><span class="social-icon">▶️</span> YouTube</label>
+                <input id="youtube_url" class="ix-input" type="url" bind:value={youtube_url} placeholder="https://youtube.com/@channel" />
+              </div>
+              <div class="field-group">
+                <label class="ix-label" for="instagram_url"><span class="social-icon">📸</span> Instagram</label>
+                <input id="instagram_url" class="ix-input" type="url" bind:value={instagram_url} placeholder="https://instagram.com/username" />
+              </div>
+              <div class="field-group">
+                <label class="ix-label" for="linkedin_url"><span class="social-icon">💼</span> LinkedIn</label>
+                <input id="linkedin_url" class="ix-input" type="url" bind:value={linkedin_url} placeholder="https://linkedin.com/in/username" />
+              </div>
+              <div class="field-group social-full">
+                <label class="ix-label" for="website_url"><span class="social-icon">🌐</span> Website / Blog</label>
+                <input id="website_url" class="ix-input" type="url" bind:value={website_url} placeholder="https://yoursite.com" />
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <!-- Huy hiệu (student only) -->
+        {#if $user?.role === 'student'}
+          <Card
+            title="Huy hiệu đã đạt được"
+            subtitle={badges.length > 0 ? `${badges.length} huy hiệu` : 'Chưa có huy hiệu nào'}
+          >
+            {#if badges.length === 0}
+              <p class="badges-empty">
+                Hoàn thành tất cả đề thi trong một bộ đề để nhận huy hiệu!
+              </p>
+            {:else}
+              <div class="badges-grid">
+                {#each badges as b}
+                  <div class="badge-item" title={b.collection_title}>
+                    <div class="badge-img-wrap">
+                      {#if b.badge_image_url}
+                        <img src={b.badge_image_url} alt={b.collection_title} />
+                      {:else}
+                        <div class="badge-ph">🎖️</div>
+                      {/if}
+                    </div>
+                    <div class="badge-name">{b.collection_title}</div>
+                    <div class="badge-date">{new Date(b.earned_at).toLocaleDateString('vi-VN')}</div>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+          </Card>
+        {/if}
+
+      </div>
     </div>
 
 <!-- Confirm upgrade modal -->
@@ -207,18 +308,51 @@
 {/if}
 
 <style>
-  /* ── Form layout ──────────────────────────────────────────────────────── */
-  .profile-grid {
+  /* ── Layout ────────────────────────────────────────────────────────────── */
+  .profile-layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .profile-col {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    max-width: 560px;
+  }
+
+  @media (max-width: 860px) {
+    .profile-layout {
+      grid-template-columns: 1fr;
+    }
   }
 
   .form-stack {
     display: flex;
     flex-direction: column;
     gap: 18px;
+  }
+
+  /* ── Avatar section ────────────────────────────────────────────────────── */
+  .avatar-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 4px;
+  }
+
+  .avatar-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .avatar-email {
+    font-size: 12px;
+    color: var(--ix-text-muted);
   }
 
   .field-group {
@@ -234,12 +368,6 @@
     line-height: 1;
   }
 
-  .role-row {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
   .role-badge {
     display: inline-block;
     padding: 3px 10px;
@@ -247,6 +375,81 @@
     font-size: 12px;
     font-weight: 600;
     width: fit-content;
+  }
+
+  /* ── Personal info ───────────────────────────────────────────────────── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .social-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .social-full {
+    grid-column: 1 / -1;
+  }
+
+  @media (max-width: 600px) {
+    .social-grid { grid-template-columns: 1fr; }
+    .social-full { grid-column: auto; }
+  }
+
+  .ix-textarea {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--ix-border);
+    border-radius: 8px;
+    background: var(--ix-bg-app);
+    color: var(--ix-text-primary);
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+    line-height: 1.5;
+  }
+  .ix-textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+  }
+
+  .ix-input {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--ix-border);
+    border-radius: 8px;
+    background: var(--ix-bg-app);
+    color: var(--ix-text-primary);
+    font-size: 14px;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+  }
+  .ix-input:focus {
+    outline: none;
+    border-color: var(--primary);
+  }
+  .ix-select {
+    appearance: auto;
+    cursor: pointer;
+  }
+
+  .social-section-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ix-text-muted);
+    padding-top: 4px;
+  }
+
+  .social-icon {
+    font-size: 14px;
   }
 
   /* ── Credits card ─────────────────────────────────────────────────────── */

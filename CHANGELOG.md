@@ -7,6 +7,12 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] — 2026-06-30
 
 ### Added
+- **Trang hồ sơ công khai** (`/users/[id]`): sinh viên có thể xem profile của người tạo đề thi — avatar, tên, email, giới thiệu, thông tin cá nhân và danh sách đề thi đã công bố.
+- **Thông tin cá nhân mở rộng**: người dùng có thể cập nhật giới thiệu bản thân, năm sinh, giới tính, sở thích, và links đến Facebook, Zalo, TikTok, YouTube, Instagram, LinkedIn, Website từ trang `/profile`.
+- **Creator link trên exam cards**: tên người tạo đề thi trên trang `/exams` là link dẫn đến trang profile công khai của họ.
+- **DB migration** (`migrate_user_profile.sql`): thêm các cột mới vào `quiz_users.profiles`.
+
+### Added
 - **Logo & favicon**: Logo SVG (`/static/logo.svg`) với icon document+checkmark gradient tím; favicon SVG thay thế favicon.ico; `theme-color` đổi thành `#5625d1`.
 - **Sidebar collapse**: Nút thu/mở sidebar (toggle) ở góc brand — khi thu gọn còn 56px, chỉ hiện icon; state lưu vào `localStorage('quiz-sidebar-collapsed')`.
 

@@ -121,7 +121,9 @@
     border-right: 1px solid var(--ix-border);
     display: flex;
     flex-direction: column;
-    min-height: 100%;
+    position: sticky;
+    top: 0;
+    height: 100vh;
     transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
   }
