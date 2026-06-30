@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased] — 2026-06-30
+
+### Added
+- **imgix-style UI cho Admin & Profile**: Redesign lại trang `/admin` và `/profile` theo style dashboard của imgix — nền kem off-white (`#FBFBF8`), left sidebar cố định, typography sạch, border mảnh, khoảng trắng rộng.
+- **5 base UI components** tái sử dụng (`src/lib/components/ui/`): `Sidebar`, `PageHeader`, `Card`, `Button`, `Input` — dùng chung cho cả admin lẫn profile.
+- **Design tokens `--ix-*`**: 14 CSS variables mới trong `:root` + dark mode overrides, độc lập với tokens brand purple hiện có.
+- **Sidebar responsive**: Trên mobile (< 768px) chuyển sang fixed drawer từ trái với backdrop overlay; hamburger button trong mobile topbar.
+
+### Changed
+- **Admin page**: Layout từ flat tabs → shell 2 cột (Sidebar + content). Users table style imgix (column headers uppercase muted, row hover). Collections hiển thị dạng table thay vì card grid. Settings/Credits form dùng `<Card>` + `<Input>`.
+- **Profile page**: Chia thành 3 card sections (Thông tin cơ bản, Credits & Nâng cấp, Huy hiệu). Sidebar có slot hiển thị credit balance + CTA xanh nâng cấp Teacher (student only).
+- **CLAUDE.md**: Sửa session stale threshold từ `>30 s` → `>300 s / 5 min` (khớp với `SESSION_STALE_SECS = 300` trong code). Thêm ghi chú không có test suite.
+
+---
+
 ## [Unreleased] — 2026-06-27
 
 ### Added

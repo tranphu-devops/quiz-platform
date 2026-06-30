@@ -1,33 +1,39 @@
 <script>
   import { onMount } from 'svelte'
   import { goto } from '$app/navigation'
-  import { user } from '$lib/stores/auth'
+  import { user, session, clearAuth } from '$lib/stores/auth'
   import { userApi, collectionApi } from '$lib/api'
+  import Sidebar from '$lib/components/ui/Sidebar.svelte'
+  import PageHeader from '$lib/components/ui/PageHeader.svelte'
+  import Card from '$lib/components/ui/Card.svelte'
+  import Button from '$lib/components/ui/Button.svelte'
+  import Input from '$lib/components/ui/Input.svelte'
 
   let tab = $state('users')
+  let mobileSidebarOpen = $state(false)
 
-  // Users tab
+  // ── Users tab ──────────────────────────────────────────────────────────────
   let users = $state([])
   let loading = $state(true)
   let error = $state('')
   let updating = $state({})
-  let editingCredits = $state({})   // { [userId]: newValue }
+  let editingCredits = $state({})
   let savingCredits = $state({})
 
-  // Settings tab (upload)
+  // ── Settings tab ───────────────────────────────────────────────────────────
   let settings = $state({ upload_max_size_mb: '5', upload_allowed_types: 'image/jpeg,image/png,image/webp,image/gif' })
   let settingsLoading = $state(false)
   let settingsSaving = $state(false)
   let settingsSuccess = $state(false)
   let settingsError = $state('')
 
-  // Credits tab
+  // ── Credits tab ────────────────────────────────────────────────────────────
   let creditSettings = $state({ default_credits: '20', teacher_upgrade_cost: '100', default_exam_cost: '10' })
   let creditSaving = $state(false)
   let creditSuccess = $state(false)
   let creditError = $state('')
 
-  // Collections tab
+  // ── Collections tab ────────────────────────────────────────────────────────
   let collections = $state([])
   let collectionsLoading = $state(false)
 
@@ -50,9 +56,7 @@
 
   async function toggleCollectionPublish(col) {
     const res = await collectionApi.update(col.id, { is_published: !col.is_published })
-    if (res.ok) {
-      collections = collections.map(c => c.id === col.id ? { ...c, is_published: !c.is_published } : c)
-    }
+    if (res.ok) collections = collections.map(c => c.id === col.id ? { ...c, is_published: !c.is_published } : c)
   }
 
   async function deleteCollection(id) {
@@ -67,92 +71,52 @@
       const res = await userApi.getSettings()
       if (res.ok) {
         const all = await res.json()
-        settings = {
-          upload_max_size_mb: all.upload_max_size_mb ?? '5',
-          upload_allowed_types: all.upload_allowed_types ?? 'image/jpeg,image/png,image/webp,image/gif'
-        }
-        creditSettings = {
-          default_credits: all.default_credits ?? '20',
-          teacher_upgrade_cost: all.teacher_upgrade_cost ?? '100',
-          default_exam_cost: all.default_exam_cost ?? '10'
-        }
+        settings = { upload_max_size_mb: all.upload_max_size_mb ?? '5', upload_allowed_types: all.upload_allowed_types ?? 'image/jpeg,image/png,image/webp,image/gif' }
+        creditSettings = { default_credits: all.default_credits ?? '20', teacher_upgrade_cost: all.teacher_upgrade_cost ?? '100', default_exam_cost: all.default_exam_cost ?? '10' }
       }
-    } catch {} finally {
-      settingsLoading = false
-    }
+    } catch {} finally { settingsLoading = false }
   }
 
   async function saveSettings() {
-    settingsError = ''
-    settingsSuccess = false
-    settingsSaving = true
+    settingsError = ''; settingsSuccess = false; settingsSaving = true
     try {
       const res = await userApi.updateSettings(settings)
       if (!res.ok) { const d = await res.json(); settingsError = d.error ?? 'Lỗi lưu settings'; return }
       settingsSuccess = true
-    } catch {
-      settingsError = 'Không thể kết nối server'
-    } finally {
-      settingsSaving = false
-    }
+    } catch { settingsError = 'Không thể kết nối server' } finally { settingsSaving = false }
   }
 
   async function saveCreditSettings() {
-    creditError = ''
-    creditSuccess = false
-    creditSaving = true
+    creditError = ''; creditSuccess = false; creditSaving = true
     try {
       const res = await userApi.updateSettings(creditSettings)
       if (!res.ok) { const d = await res.json(); creditError = d.error ?? 'Lỗi lưu cài đặt'; return }
       creditSuccess = true
-    } catch {
-      creditError = 'Không thể kết nối server'
-    } finally {
-      creditSaving = false
-    }
+    } catch { creditError = 'Không thể kết nối server' } finally { creditSaving = false }
   }
 
   async function loadUsers() {
-    loading = true
-    error = ''
+    loading = true; error = ''
     try {
       const res = await userApi.adminListUsers()
       if (!res.ok) { error = `Lỗi ${res.status}`; return }
       users = await res.json()
-    } catch {
-      error = 'Không thể tải danh sách người dùng'
-    } finally {
-      loading = false
-    }
+    } catch { error = 'Không thể tải danh sách người dùng' } finally { loading = false }
   }
 
   async function changeRole(id, role) {
     updating = { ...updating, [id]: true }
     try {
       const res = await userApi.adminUpdateRole(id, role)
-      if (!res.ok) {
-        const data = await res.json()
-        alert(data.error ?? 'Lỗi cập nhật role')
-        return
-      }
+      if (!res.ok) { const data = await res.json(); alert(data.error ?? 'Lỗi cập nhật role'); return }
       users = users.map(u => u.id === id ? { ...u, role } : u)
-    } catch {
-      alert('Không thể cập nhật role')
-    } finally {
-      const next = { ...updating }
-      delete next[id]
-      updating = next
+    } catch { alert('Không thể cập nhật role') } finally {
+      const next = { ...updating }; delete next[id]; updating = next
     }
   }
 
-  function startEditCredits(u) {
-    editingCredits = { ...editingCredits, [u.id]: String(u.credits ?? 0) }
-  }
-  function cancelEditCredits(id) {
-    const next = { ...editingCredits }
-    delete next[id]
-    editingCredits = next
-  }
+  function startEditCredits(u) { editingCredits = { ...editingCredits, [u.id]: String(u.credits ?? 0) } }
+  function cancelEditCredits(id) { const next = { ...editingCredits }; delete next[id]; editingCredits = next }
   async function saveUserCredits(u) {
     const val = parseInt(editingCredits[u.id], 10)
     if (isNaN(val) || val < 0) { alert('Giá trị không hợp lệ'); return }
@@ -162,292 +126,750 @@
       if (!res.ok) { const d = await res.json(); alert(d.error ?? 'Lỗi'); return }
       users = users.map(x => x.id === u.id ? { ...x, credits: val } : x)
       cancelEditCredits(u.id)
-    } catch {
-      alert('Không thể cập nhật')
-    } finally {
-      const next = { ...savingCredits }
-      delete next[u.id]
-      savingCredits = next
+    } catch { alert('Không thể cập nhật') } finally {
+      const next = { ...savingCredits }; delete next[u.id]; savingCredits = next
     }
   }
 
   function roleColor(role) {
-    if (role === 'admin') return '#dc2626'
-    if (role === 'teacher') return '#d97706'
-    if (role === 'banned') return '#6b7280'
-    return '#2563eb'
+    if (role === 'admin')   return { bg: 'rgba(220,38,38,0.1)',  text: '#dc2626' }
+    if (role === 'teacher') return { bg: 'rgba(217,119,6,0.1)',  text: '#b45309' }
+    if (role === 'banned')  return { bg: 'rgba(107,114,128,0.1)',text: '#6b7280' }
+    return { bg: 'rgba(37,99,235,0.1)', text: '#2563eb' }
   }
 
   function fmtDate(iso) {
     if (!iso) return '—'
     return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
   }
+
+  async function logout() {
+    await clearAuth()
+    goto('/login')
+  }
+
+  // ── Icon strings ───────────────────────────────────────────────────────────
+  const I = {
+    home:     `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7L8 2l6 5v7H10.5v-4h-5v4H2z"/></svg>`,
+    document: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="1.5" width="10" height="13" rx="1.5"/><line x1="5.5" y1="5.5" x2="10.5" y2="5.5"/><line x1="5.5" y1="8" x2="10.5" y2="8"/><line x1="5.5" y1="10.5" x2="8.5" y2="10.5"/></svg>`,
+    folder:   `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4a1 1 0 011-1H6l1.5 2H13a1 1 0 011 1v6.5a1 1 0 01-1 1H2.5a1 1 0 01-1-1V4z"/></svg>`,
+    users:    `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="5.5" cy="5" r="2.5"/><path d="M1 13.5c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4"/><circle cx="11.5" cy="5" r="2"/><path d="M11.5 9c2 0 3.5 1 3.5 4"/></svg>`,
+    settings: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.2 3.2l1.1 1.1M11.7 11.7l1.1 1.1M12.8 3.2l-1.1 1.1M4.3 11.7l-1.1 1.1"/></svg>`,
+    credit:   `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1.5" y="3.5" width="13" height="9" rx="1.5"/><line x1="1.5" y1="6.5" x2="14.5" y2="6.5"/><line x1="4" y1="10" x2="6.5" y2="10"/></svg>`,
+    menu:     `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="5" x2="14" y2="5"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="11" x2="14" y2="11"/></svg>`,
+    edit:     `<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 11.5l2.5-1 6.5-6.5-1.5-1.5L2.5 9 1.5 11.5z"/><path d="M8.5 2.5l2 2"/></svg>`,
+    trash:    `<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="3.5" x2="11" y2="3.5"/><path d="M4.5 3.5V2h4v1.5"/><path d="M3 3.5l.5 8h6l.5-8"/></svg>`,
+    check:    `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1.5,6 4.5,9.5 10.5,2"/></svg>`,
+    x:        `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg>`,
+    publish:  `<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 1.5L6.5 9M3.5 4.5L6.5 1.5l3 3"/><path d="M2 9.5v1.5a1 1 0 001 1h7a1 1 0 001-1V9.5"/></svg>`,
+  }
+
+  // ── Sidebar sections (reactive) ────────────────────────────────────────────
+  let sections = $derived([
+    {
+      label: 'ĐIỀU HƯỚNG',
+      items: [
+        { icon: I.home,     label: 'Dashboard', href: '/dashboard' },
+        { icon: I.document, label: 'Đề thi',    href: '/exams' },
+        { icon: I.folder,   label: 'Bộ đề',     href: '/collections' },
+      ]
+    },
+    {
+      label: 'QUẢN TRỊ',
+      items: [
+        { icon: I.users,    label: 'Người dùng',    active: tab === 'users',       onClick: () => tab = 'users' },
+        { icon: I.folder,   label: 'Bộ đề',          active: tab === 'collections', onClick: () => { tab = 'collections'; loadCollections() } },
+        { icon: I.settings, label: 'Cài đặt upload', active: tab === 'settings',    onClick: () => tab = 'settings' },
+        { icon: I.credit,   label: 'Credits',         active: tab === 'credits',     onClick: () => tab = 'credits' },
+      ]
+    }
+  ])
+
+  let userInfo = $derived({
+    name:  $session?.user?.user_metadata?.full_name ?? null,
+    email: $user?.email ?? '',
+    role:  $user?.role ?? '',
+    avatarUrl: null,
+  })
+
+  let tabTitles = { users: 'Người dùng', collections: 'Bộ đề', settings: 'Cài đặt upload', credits: 'Credits' }
+
+  let totalUsers   = $derived(users.length)
+  let totalTeacher = $derived(users.filter(u => u.role === 'teacher').length)
+  let totalStudent = $derived(users.filter(u => u.role === 'student').length)
+  let totalBanned  = $derived(users.filter(u => u.role === 'banned').length)
 </script>
 
-<style>
-  h1 { font-size: 1.5rem; margin-bottom: 1rem; }
-  .tabs { display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border); }
-  .tab-btn { padding: 0.6rem 1.2rem; border: none; background: none; cursor: pointer; font-size: 0.95rem; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -2px; }
-  .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
-  .stats { display: flex; gap: 1rem; margin-bottom: 1.5rem; }
-  .stat { background: var(--surface); padding: 1rem 1.5rem; border-radius: 8px; box-shadow: var(--shadow); border: 1px solid var(--border); }
-  .stat-value { font-size: 2rem; font-weight: 700; color: var(--primary); }
-  .stat-label { font-size: 0.85rem; color: var(--muted); }
-  .card { background: var(--surface); border-radius: 8px; box-shadow: var(--shadow); border: 1px solid var(--border); overflow: hidden; }
-  .settings-card { background: var(--surface); border-radius: 8px; padding: 1.5rem; box-shadow: var(--shadow); border: 1px solid var(--border); max-width: 520px; }
-  table { width: 100%; border-collapse: collapse; }
-  th { text-align: left; padding: 0.75rem 1rem; font-size: 0.8rem; color: var(--muted); text-transform: uppercase; border-bottom: 1px solid var(--border); background: var(--bg); }
-  td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; color: var(--text); }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: var(--primary-light); }
-  .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 99px; font-size: 0.75rem; font-weight: 600; color: white; }
-  select { padding: 0.25rem 0.5rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; cursor: pointer; background: var(--surface); color: var(--text); }
-  select:disabled { opacity: 0.5; cursor: not-allowed; }
-  .note { font-size: 0.8rem; color: var(--muted); margin-top: 1rem; }
-  .error { color: var(--danger); margin-bottom: 1rem; font-size: 0.9rem; }
-  .success { color: #16a34a; margin-bottom: 1rem; font-size: 0.9rem; }
-  .form-group { margin-bottom: 1.25rem; }
-  .form-group label { display: block; margin-bottom: 0.3rem; font-size: 0.9rem; font-weight: 500; color: var(--text); }
-  .form-group input[type=text], .form-group input[type=number] { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 6px; font-size: 1rem; box-sizing: border-box; background: var(--surface); color: var(--text); }
-  .hint { font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem; }
-  .btn { padding: 0.6rem 1.2rem; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; }
-  .btn-primary { background: var(--primary); color: white; }
-  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-  /* Collections tab */
-  .col-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
-  .col-card { background: var(--surface); border-radius: 10px; border: 1px solid var(--border); overflow: hidden; }
-  .col-card-header { padding: 1rem; display: flex; align-items: center; gap: 0.75rem; }
-  .col-badge-img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
-  .col-badge-ph { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
-  .col-title { font-weight: 700; font-size: 0.95rem; color: var(--text); }
-  .col-by { font-size: 0.75rem; color: var(--muted); margin-top: 0.1rem; }
-  .col-meta { padding: 0 1rem 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
-  .col-pill { font-size: 0.72rem; font-weight: 600; padding: 0.15rem 0.55rem; border-radius: 99px; background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
-  .col-pill.pub { background: rgba(22,163,74,0.12); color: #16a34a; border-color: rgba(22,163,74,0.3); }
-  .col-pill.badge-count { background: rgba(99,102,241,0.12); color: var(--primary); border-color: rgba(99,102,241,0.3); }
-  .col-actions { padding: 0.6rem 1rem; border-top: 1px solid var(--border); display: flex; gap: 0.5rem; }
-  .btn-xs { padding: 0.25rem 0.6rem; font-size: 0.78rem; border-radius: 5px; cursor: pointer; border: 1px solid var(--border); background: var(--bg); color: var(--text); text-decoration: none; }
-  .btn-xs:hover { border-color: var(--primary); color: var(--primary); }
-  .btn-xs.danger:hover { border-color: var(--danger); color: var(--danger); background: rgba(239,68,68,0.08); }
-  .col-stats { display: flex; gap: 1rem; margin-bottom: 1.25rem; }
-  /* credit inline edit */
-  .credit-cell { display: flex; align-items: center; gap: 0.4rem; }
-  .credit-val { font-weight: 600; color: var(--primary); min-width: 2rem; }
-  .btn-edit-credit { padding: 0.15rem 0.5rem; font-size: 0.75rem; background: var(--primary-light); color: var(--primary); border: 1px solid rgba(99,102,241,0.3); border-radius: 4px; cursor: pointer; }
-  .btn-edit-credit:hover { background: rgba(99,102,241,0.25); }
-  .credit-input { width: 70px; padding: 0.2rem 0.4rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; background: var(--surface); color: var(--text); }
-  .btn-save-credit { padding: 0.15rem 0.5rem; font-size: 0.75rem; background: #16a34a; color: white; border: none; border-radius: 4px; cursor: pointer; }
-  .btn-cancel-credit { padding: 0.15rem 0.5rem; font-size: 0.75rem; background: var(--bg); color: var(--muted); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
-</style>
-
-<h1>Quản trị</h1>
-
-<div class="tabs">
-  <button class="tab-btn" class:active={tab === 'users'} onclick={() => tab = 'users'}>Người dùng</button>
-  <button class="tab-btn" class:active={tab === 'collections'} onclick={() => { tab = 'collections'; loadCollections() }}>Bộ đề</button>
-  <button class="tab-btn" class:active={tab === 'settings'} onclick={() => tab = 'settings'}>Cài đặt upload</button>
-  <button class="tab-btn" class:active={tab === 'credits'} onclick={() => tab = 'credits'}>Credits</button>
-</div>
-
-{#if tab === 'users'}
-
-{#if error}
-  <p class="error">{error}</p>
-{:else if loading}
-  <p style="color: #6b7280">Đang tải...</p>
-{:else}
-  <div class="stats">
-    <div class="stat">
-      <div class="stat-value">{users.length}</div>
-      <div class="stat-label">Tổng người dùng</div>
-    </div>
-    <div class="stat">
-      <div class="stat-value">{users.filter(u => u.role === 'teacher').length}</div>
-      <div class="stat-label">Giáo viên</div>
-    </div>
-    <div class="stat">
-      <div class="stat-value">{users.filter(u => u.role === 'student').length}</div>
-      <div class="stat-label">Học sinh</div>
-    </div>
-    {#if users.some(u => u.role === 'banned')}
-    <div class="stat" style="border-left: 3px solid #ef4444;">
-      <div class="stat-value" style="color:#ef4444">{users.filter(u => u.role === 'banned').length}</div>
-      <div class="stat-label">Bị khoá</div>
-    </div>
-    {/if}
-  </div>
-
-  <div class="card">
-    <table>
-      <thead>
-        <tr>
-          <th>Email</th>
-          <th>Họ tên</th>
-          <th>Role</th>
-          <th>Credits</th>
-          <th>Ngày tạo</th>
-          <th>Đăng nhập gần nhất</th>
-          <th>Đổi role</th>
-        </tr>
-      </thead>
-      <tbody>
-        {#each users as u (u.id)}
-          <tr>
-            <td>{u.email}</td>
-            <td>{u.full_name ?? '—'}</td>
-            <td>
-              <span class="badge" style="background: {roleColor(u.role)}">{u.role}</span>
-            </td>
-            <td>
-              {#if editingCredits[u.id] !== undefined}
-                <div class="credit-cell">
-                  <input class="credit-input" type="number" min="0" bind:value={editingCredits[u.id]} />
-                  <button class="btn-save-credit" onclick={() => saveUserCredits(u)} disabled={savingCredits[u.id]}>✓</button>
-                  <button class="btn-cancel-credit" onclick={() => cancelEditCredits(u.id)}>✕</button>
-                </div>
-              {:else}
-                <div class="credit-cell">
-                  <span class="credit-val">{u.credits ?? '—'}</span>
-                  <button class="btn-edit-credit" onclick={() => startEditCredits(u)}>Sửa</button>
-                </div>
-              {/if}
-            </td>
-            <td>{fmtDate(u.created_at)}</td>
-            <td>{fmtDate(u.last_sign_in_at)}</td>
-            <td>
-              <select
-                value={u.role}
-                disabled={updating[u.id]}
-                onchange={(e) => changeRole(u.id, e.target.value)}
-              >
-                <option value="student">student</option>
-                <option value="teacher">teacher</option>
-                <option value="admin">admin</option>
-                <option value="banned">🚫 banned</option>
-              </select>
-            </td>
-          </tr>
-        {/each}
-      </tbody>
-    </table>
-  </div>
-
-  <p class="note">* Role mới có hiệu lực khi người dùng đăng nhập lại.</p>
+<!-- Mobile sidebar overlay -->
+{#if mobileSidebarOpen}
+  <div
+    class="ix-overlay"
+    role="presentation"
+    onclick={() => mobileSidebarOpen = false}
+    onkeydown={() => mobileSidebarOpen = false}
+  ></div>
 {/if}
 
-{/if}
+<div class="admin-shell">
+  <Sidebar
+    {sections}
+    {userInfo}
+    onLogout={logout}
+    mobileOpen={mobileSidebarOpen}
+    onMobileClose={() => mobileSidebarOpen = false}
+  />
 
-{#if tab === 'collections'}
-  {#if collectionsLoading}
-    <p style="color:#6b7280">Đang tải...</p>
-  {:else if collections.length === 0}
-    <p style="color:#6b7280">Chưa có bộ đề nào.</p>
-  {:else}
-    <div class="col-stats">
-      <div class="stat">
-        <div class="stat-value">{collections.length}</div>
-        <div class="stat-label">Tổng bộ đề</div>
-      </div>
-      <div class="stat">
-        <div class="stat-value">{collections.filter(c => c.is_published).length}</div>
-        <div class="stat-label">Đã xuất bản</div>
-      </div>
-      <div class="stat">
-        <div class="stat-value">{collections.reduce((s, c) => s + (c.badge_count ?? 0), 0)}</div>
-        <div class="stat-label">Huy hiệu đã trao</div>
-      </div>
+  <div class="admin-content">
+    <!-- Mobile top bar -->
+    <div class="mobile-topbar">
+      <button
+        class="mobile-menu-btn"
+        onclick={() => mobileSidebarOpen = true}
+        aria-label="Mở menu điều hướng"
+      >
+        {@html I.menu}
+      </button>
+      <span class="mobile-title">{tabTitles[tab]}</span>
     </div>
-    <div class="col-grid">
-      {#each collections as col}
-        <div class="col-card">
-          <div class="col-card-header">
-            {#if col.badge_image_url}
-              <img src={col.badge_image_url} alt="" class="col-badge-img" />
-            {:else}
-              <div class="col-badge-ph">🎖️</div>
-            {/if}
-            <div>
-              <div class="col-title">{col.title}</div>
-              <div class="col-by">Teacher ID: {col.created_by.slice(0,8)}…</div>
+
+    <PageHeader title={tabTitles[tab]} />
+
+    <!-- ── USERS TAB ───────────────────────────────────────────────────── -->
+    {#if tab === 'users'}
+      {#if error}
+        <p class="ix-error">{error}</p>
+      {:else if loading}
+        <p class="ix-loading">Đang tải...</p>
+      {:else}
+        <!-- Stats row -->
+        <div class="stats-row">
+          <div class="stat-item">
+            <span class="stat-num">{totalUsers}</span>
+            <span class="stat-lbl">Tổng người dùng</span>
+          </div>
+          <div class="stat-sep"></div>
+          <div class="stat-item">
+            <span class="stat-num">{totalTeacher}</span>
+            <span class="stat-lbl">Giáo viên</span>
+          </div>
+          <div class="stat-sep"></div>
+          <div class="stat-item">
+            <span class="stat-num">{totalStudent}</span>
+            <span class="stat-lbl">Học sinh</span>
+          </div>
+          {#if totalBanned > 0}
+            <div class="stat-sep"></div>
+            <div class="stat-item">
+              <span class="stat-num" style="color: var(--danger)">{totalBanned}</span>
+              <span class="stat-lbl">Bị khoá</span>
             </div>
-          </div>
-          <div class="col-meta">
-            <span class="col-pill">{col.exams?.length ?? 0} đề thi</span>
-            <span class="col-pill {col.is_published ? 'pub' : ''}">{col.is_published ? '● Xuất bản' : '○ Nháp'}</span>
-            <span class="col-pill badge-count">🏅 {col.badge_count ?? 0} huy hiệu</span>
-          </div>
-          {#if col.description}
-            <div style="padding: 0 1rem 0.6rem; font-size:0.8rem; color:#6b7280">{col.description}</div>
           {/if}
-          <div class="col-actions">
-            <a href="/collections/{col.id}/edit" class="btn-xs">✏️ Sửa</a>
-            <button class="btn-xs" onclick={() => toggleCollectionPublish(col)}>
-              {col.is_published ? '⬇ Gỡ xuất bản' : '🚀 Xuất bản'}
-            </button>
-            <button class="btn-xs danger" onclick={() => deleteCollection(col.id)}>🗑</button>
+        </div>
+
+        <!-- Users table -->
+        <Card noPad={true}>
+          <div class="ix-table-wrap">
+            <table class="ix-table">
+              <thead>
+                <tr>
+                  <th>EMAIL</th>
+                  <th>HỌ TÊN</th>
+                  <th>VAI TRÒ</th>
+                  <th>CREDITS</th>
+                  <th>NGÀY TẠO</th>
+                  <th>ĐĂNG NHẬP</th>
+                  <th>ĐỔI ROLE</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each users as u (u.id)}
+                  {@const rc = roleColor(u.role)}
+                  <tr>
+                    <td class="td-email">{u.email}</td>
+                    <td class="td-name">{u.full_name ?? '—'}</td>
+                    <td>
+                      <span class="role-pill" style="background:{rc.bg};color:{rc.text}">{u.role}</span>
+                    </td>
+                    <td>
+                      {#if editingCredits[u.id] !== undefined}
+                        <div class="credit-edit">
+                          <input
+                            class="credit-input"
+                            type="number"
+                            min="0"
+                            bind:value={editingCredits[u.id]}
+                            aria-label="Số credits mới"
+                          />
+                          <button
+                            class="icon-btn icon-btn--green"
+                            onclick={() => saveUserCredits(u)}
+                            disabled={savingCredits[u.id]}
+                            aria-label="Lưu"
+                          >{@html I.check}</button>
+                          <button
+                            class="icon-btn"
+                            onclick={() => cancelEditCredits(u.id)}
+                            aria-label="Hủy"
+                          >{@html I.x}</button>
+                        </div>
+                      {:else}
+                        <div class="credit-view">
+                          <span class="credit-val">{u.credits ?? '—'}</span>
+                          <button
+                            class="icon-btn"
+                            onclick={() => startEditCredits(u)}
+                            aria-label="Sửa credits"
+                          >{@html I.edit}</button>
+                        </div>
+                      {/if}
+                    </td>
+                    <td class="td-date">{fmtDate(u.created_at)}</td>
+                    <td class="td-date">{fmtDate(u.last_sign_in_at)}</td>
+                    <td>
+                      <select
+                        class="role-select"
+                        value={u.role}
+                        disabled={updating[u.id]}
+                        onchange={(e) => changeRole(u.id, e.target.value)}
+                        aria-label="Đổi role cho {u.email}"
+                      >
+                        <option value="student">student</option>
+                        <option value="teacher">teacher</option>
+                        <option value="admin">admin</option>
+                        <option value="banned">banned</option>
+                      </select>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+        <p class="ix-note">* Role mới có hiệu lực khi người dùng đăng nhập lại.</p>
+      {/if}
+    {/if}
+
+    <!-- ── COLLECTIONS TAB ─────────────────────────────────────────────── -->
+    {#if tab === 'collections'}
+      {#if collectionsLoading}
+        <p class="ix-loading">Đang tải...</p>
+      {:else if collections.length === 0}
+        <p class="ix-loading">Chưa có bộ đề nào.</p>
+      {:else}
+        <!-- Stats row -->
+        <div class="stats-row" style="margin-bottom:20px">
+          <div class="stat-item">
+            <span class="stat-num">{collections.length}</span>
+            <span class="stat-lbl">Tổng bộ đề</span>
+          </div>
+          <div class="stat-sep"></div>
+          <div class="stat-item">
+            <span class="stat-num">{collections.filter(c => c.is_published).length}</span>
+            <span class="stat-lbl">Đã xuất bản</span>
+          </div>
+          <div class="stat-sep"></div>
+          <div class="stat-item">
+            <span class="stat-num">{collections.reduce((s,c) => s + (c.badge_count ?? 0), 0)}</span>
+            <span class="stat-lbl">Huy hiệu đã trao</span>
           </div>
         </div>
-      {/each}
-    </div>
-  {/if}
-{/if}
 
-{#if tab === 'settings'}
-<div class="settings-card">
-  {#if settingsError}<p class="error">{settingsError}</p>{/if}
-  {#if settingsSuccess}<p class="success">Đã lưu cài đặt!</p>{/if}
+        <Card noPad={true}>
+          <div class="ix-table-wrap">
+            <table class="ix-table">
+              <thead>
+                <tr>
+                  <th>BỘ ĐỀ</th>
+                  <th>ĐỀ THI</th>
+                  <th>HUY HIỆU</th>
+                  <th>TRẠNG THÁI</th>
+                  <th>THAO TÁC</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each collections as col}
+                  <tr>
+                    <td>
+                      <div class="col-title-cell">
+                        <div class="col-avatar">
+                          {#if col.badge_image_url}
+                            <img src={col.badge_image_url} alt="" />
+                          {:else}
+                            🎖️
+                          {/if}
+                        </div>
+                        <div>
+                          <div class="col-name">{col.title}</div>
+                          {#if col.description}
+                            <div class="col-desc">{col.description}</div>
+                          {/if}
+                        </div>
+                      </div>
+                    </td>
+                    <td class="td-num">{col.exams?.length ?? 0}</td>
+                    <td class="td-num">{col.badge_count ?? 0}</td>
+                    <td>
+                      <span class="status-pill" class:published={col.is_published}>
+                        {col.is_published ? 'Xuất bản' : 'Nháp'}
+                      </span>
+                    </td>
+                    <td>
+                      <div class="row-actions">
+                        <a href="/collections/{col.id}/edit" class="action-btn" aria-label="Sửa bộ đề">
+                          {@html I.edit} Sửa
+                        </a>
+                        <button
+                          class="action-btn"
+                          onclick={() => toggleCollectionPublish(col)}
+                          aria-label="{col.is_published ? 'Gỡ xuất bản' : 'Xuất bản'} bộ đề"
+                        >
+                          {@html I.publish}
+                          {col.is_published ? 'Gỡ' : 'Xuất bản'}
+                        </button>
+                        <button
+                          class="action-btn action-btn--danger"
+                          onclick={() => deleteCollection(col.id)}
+                          aria-label="Xoá bộ đề"
+                        >
+                          {@html I.trash}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      {/if}
+    {/if}
 
-  {#if settingsLoading}
-    <p style="color:#6b7280">Đang tải...</p>
-  {:else}
-    <div class="form-group">
-      <label for="max_size">Dung lượng tối đa (MB)</label>
-      <input id="max_size" type="number" bind:value={settings.upload_max_size_mb} min="1" max="50" step="1" style="width:120px" />
-      <p class="hint">Áp dụng cho tất cả loại ảnh upload</p>
-    </div>
+    <!-- ── SETTINGS TAB ────────────────────────────────────────────────── -->
+    {#if tab === 'settings'}
+      <div class="settings-wrap">
+        <Card title="Cài đặt upload" subtitle="Giới hạn kích thước và định dạng file ảnh người dùng có thể upload.">
+          {#if settingsLoading}
+            <p class="ix-loading">Đang tải...</p>
+          {:else}
+            {#if settingsError}<p class="ix-error">{settingsError}</p>{/if}
+            {#if settingsSuccess}<p class="ix-success">Đã lưu cài đặt!</p>{/if}
 
-    <div class="form-group">
-      <label for="allowed_types">Loại file cho phép (MIME types, cách nhau bằng dấu phẩy)</label>
-      <input id="allowed_types" type="text" bind:value={settings.upload_allowed_types} placeholder="image/jpeg,image/png,image/webp,image/gif" />
-      <p class="hint">Ví dụ: image/jpeg,image/png,image/webp,image/gif</p>
-    </div>
+            <div class="form-stack">
+              <Input
+                id="max_size"
+                label="Dung lượng tối đa (MB)"
+                type="number"
+                bind:value={settings.upload_max_size_mb}
+                min="1"
+                max="50"
+                step="1"
+                hint="Áp dụng cho tất cả loại ảnh upload"
+                style="width:120px"
+              />
+              <Input
+                id="allowed_types"
+                label="Loại file cho phép (MIME types, cách nhau bằng dấu phẩy)"
+                type="text"
+                bind:value={settings.upload_allowed_types}
+                placeholder="image/jpeg,image/png,image/webp,image/gif"
+                hint="Ví dụ: image/jpeg,image/png,image/webp,image/gif"
+              />
+              <div>
+                <Button onclick={saveSettings} loading={settingsSaving} disabled={settingsSaving}>
+                  Lưu cài đặt
+                </Button>
+              </div>
+            </div>
+          {/if}
+        </Card>
+      </div>
+    {/if}
 
-    <button class="btn btn-primary" onclick={saveSettings} disabled={settingsSaving}>
-      {settingsSaving ? 'Đang lưu...' : 'Lưu cài đặt'}
-    </button>
-  {/if}
+    <!-- ── CREDITS TAB ─────────────────────────────────────────────────── -->
+    {#if tab === 'credits'}
+      <div class="settings-wrap">
+        <Card title="Cấu hình Credits" subtitle="Điều chỉnh số credits mặc định và chi phí nâng cấp tài khoản.">
+          {#if settingsLoading}
+            <p class="ix-loading">Đang tải...</p>
+          {:else}
+            {#if creditError}<p class="ix-error">{creditError}</p>{/if}
+            {#if creditSuccess}<p class="ix-success">Đã lưu cài đặt credit!</p>{/if}
+
+            <div class="form-stack">
+              <Input
+                id="default_credits"
+                label="Credit mặc định cho user mới"
+                type="number"
+                bind:value={creditSettings.default_credits}
+                min="0"
+                step="1"
+                hint="Số credit được cấp khi tạo tài khoản mới"
+                style="width:120px"
+              />
+              <Input
+                id="teacher_upgrade_cost"
+                label="Credit để nâng cấp lên Teacher"
+                type="number"
+                bind:value={creditSettings.teacher_upgrade_cost}
+                min="0"
+                step="1"
+                hint="Student cần số credit này để mua gói Teacher"
+                style="width:120px"
+              />
+              <Input
+                id="default_exam_cost"
+                label="Credit mặc định mỗi bài thi"
+                type="number"
+                bind:value={creditSettings.default_exam_cost}
+                min="0"
+                step="1"
+                hint="Áp dụng khi giáo viên không cài đặt giá riêng"
+                style="width:120px"
+              />
+              <div>
+                <Button onclick={saveCreditSettings} loading={creditSaving} disabled={creditSaving}>
+                  Lưu cài đặt
+                </Button>
+              </div>
+            </div>
+          {/if}
+        </Card>
+      </div>
+    {/if}
+  </div>
 </div>
-{/if}
 
-{#if tab === 'credits'}
-<div class="settings-card">
-  {#if creditError}<p class="error">{creditError}</p>{/if}
-  {#if creditSuccess}<p class="success">Đã lưu cài đặt credit!</p>{/if}
+<style>
+  /* ── Shell layout ─────────────────────────────────────────────────────── */
+  .admin-shell {
+    display: flex;
+    margin: -2rem -1.5rem;
+    min-height: calc(100vh - 60px);
+    background: var(--ix-bg-app);
+  }
 
-  {#if settingsLoading}
-    <p style="color:#6b7280">Đang tải...</p>
-  {:else}
-    <div class="form-group">
-      <label for="default_credits">Credit mặc định cho user mới</label>
-      <input id="default_credits" type="number" bind:value={creditSettings.default_credits} min="0" step="1" style="width:120px" />
-      <p class="hint">Số credit được cấp khi tạo tài khoản mới</p>
-    </div>
+  .admin-content {
+    flex: 1;
+    min-width: 0;
+    padding: 32px 40px;
+    overflow: auto;
+  }
 
-    <div class="form-group">
-      <label for="teacher_upgrade_cost">Credit để nâng cấp lên Teacher</label>
-      <input id="teacher_upgrade_cost" type="number" bind:value={creditSettings.teacher_upgrade_cost} min="0" step="1" style="width:120px" />
-      <p class="hint">Student cần số credit này để mua gói Teacher</p>
-    </div>
+  /* ── Mobile overlay ───────────────────────────────────────────────────── */
+  :global(.ix-overlay) {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 199;
+    backdrop-filter: blur(2px);
+  }
 
-    <div class="form-group">
-      <label for="default_exam_cost">Credit mặc định mỗi bài thi</label>
-      <input id="default_exam_cost" type="number" bind:value={creditSettings.default_exam_cost} min="0" step="1" style="width:120px" />
-      <p class="hint">Áp dụng khi giáo viên không cài đặt giá riêng cho bài thi</p>
-    </div>
+  /* ── Mobile topbar ────────────────────────────────────────────────────── */
+  .mobile-topbar {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
 
-    <button class="btn btn-primary" onclick={saveCreditSettings} disabled={creditSaving}>
-      {creditSaving ? 'Đang lưu...' : 'Lưu cài đặt'}
-    </button>
-  {/if}
-</div>
-{/if}
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--ix-border);
+    border-radius: 8px;
+    background: var(--ix-bg-surface);
+    color: var(--ix-text-secondary);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .mobile-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--ix-text-primary);
+  }
+
+  /* ── Stats row ────────────────────────────────────────────────────────── */
+  .stats-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: var(--ix-bg-surface);
+    border: 1px solid var(--ix-border);
+    border-radius: 12px;
+    padding: 16px 24px;
+    margin-bottom: 20px;
+    box-shadow: var(--ix-shadow-card);
+    flex-wrap: wrap;
+    gap: 0;
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0 20px;
+  }
+
+  .stat-item:first-child { padding-left: 0; }
+  .stat-item:last-child  { padding-right: 0; }
+
+  .stat-num {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--ix-text-primary);
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
+  .stat-lbl {
+    font-size: 12px;
+    color: var(--ix-text-muted);
+    margin-top: 2px;
+  }
+
+  .stat-sep {
+    width: 1px;
+    height: 36px;
+    background: var(--ix-border);
+    flex-shrink: 0;
+  }
+
+  /* ── Table ────────────────────────────────────────────────────────────── */
+  .ix-table-wrap {
+    overflow-x: auto;
+  }
+
+  .ix-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .ix-table th {
+    padding: 10px 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ix-text-muted);
+    text-align: left;
+    border-bottom: 1px solid var(--ix-border);
+    background: var(--ix-bg-surface);
+    white-space: nowrap;
+  }
+
+  .ix-table td {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--ix-border);
+    font-size: 14px;
+    color: var(--ix-text-primary);
+    vertical-align: middle;
+  }
+
+  .ix-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .ix-table tbody tr:hover td {
+    background: var(--ix-bg-hover);
+  }
+
+  .td-email { font-size: 13px; color: var(--ix-text-secondary); }
+  .td-name  { font-weight: 500; }
+  .td-date  { font-size: 13px; color: var(--ix-text-muted); white-space: nowrap; }
+  .td-num   { font-weight: 600; color: var(--ix-text-primary); }
+
+  /* Role pill */
+  .role-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  /* Role select */
+  .role-select {
+    padding: 5px 8px;
+    border: 1px solid var(--ix-border);
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    background: var(--ix-bg-surface);
+    color: var(--ix-text-primary);
+    outline: none;
+  }
+
+  .role-select:focus { border-color: var(--ix-text-primary); box-shadow: 0 0 0 3px var(--ix-focus-ring); }
+  .role-select:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Credit inline edit */
+  .credit-view, .credit-edit {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .credit-val {
+    font-weight: 600;
+    color: var(--ix-text-primary);
+    min-width: 28px;
+  }
+
+  .credit-input {
+    width: 72px;
+    padding: 4px 8px;
+    border: 1px solid var(--ix-border);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    background: var(--ix-bg-surface);
+    color: var(--ix-text-primary);
+    outline: none;
+  }
+
+  .credit-input:focus { border-color: var(--ix-text-primary); }
+
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: 1px solid var(--ix-border);
+    background: var(--ix-bg-surface);
+    color: var(--ix-text-muted);
+    cursor: pointer;
+    transition: all 0.1s;
+    flex-shrink: 0;
+    padding: 0;
+  }
+
+  .icon-btn:hover { background: var(--ix-bg-hover); color: var(--ix-text-primary); border-color: var(--ix-text-primary); }
+  .icon-btn--green { border-color: #16a34a; color: #16a34a; background: rgba(22,163,74,0.08); }
+  .icon-btn--green:hover { background: #16a34a; color: white; }
+
+  /* ── Collections ──────────────────────────────────────────────────────── */
+  .col-title-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .col-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--ix-bg-hover);
+    border: 1px solid var(--ix-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  .col-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
+
+  .col-name { font-weight: 600; font-size: 14px; color: var(--ix-text-primary); }
+  .col-desc { font-size: 12px; color: var(--ix-text-muted); margin-top: 1px; }
+
+  .status-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--ix-bg-hover);
+    color: var(--ix-text-muted);
+  }
+
+  .status-pill.published {
+    background: rgba(22, 163, 74, 0.1);
+    color: #16a34a;
+  }
+
+  .row-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: inherit;
+    border: 1px solid var(--ix-border);
+    background: var(--ix-bg-surface);
+    color: var(--ix-text-secondary);
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.1s;
+    line-height: 1;
+  }
+
+  .action-btn:hover { background: var(--ix-bg-hover); color: var(--ix-text-primary); border-color: var(--ix-text-primary); }
+  .action-btn--danger:hover { border-color: var(--danger); color: var(--danger); background: rgba(239,68,68,0.06); }
+
+  /* ── Settings / Credits forms ─────────────────────────────────────────── */
+  .settings-wrap {
+    max-width: 560px;
+  }
+
+  .form-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ── Feedback ─────────────────────────────────────────────────────────── */
+  .ix-error   { color: var(--danger); font-size: 14px; margin-bottom: 16px; }
+  .ix-success { color: #16a34a; font-size: 14px; margin-bottom: 16px; }
+  .ix-loading { font-size: 14px; color: var(--ix-text-muted); }
+  .ix-note    { font-size: 12px; color: var(--ix-text-muted); margin-top: 12px; }
+
+  /* ── Mobile ───────────────────────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .admin-shell {
+      margin: -1.25rem -1rem;
+      flex-direction: column;
+    }
+
+    .admin-content {
+      padding: 20px 16px;
+    }
+
+    .mobile-topbar {
+      display: flex;
+    }
+
+    .stats-row {
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .stat-sep {
+      display: none;
+    }
+
+    .stat-item {
+      padding: 0;
+    }
+
+    .ix-table th, .ix-table td {
+      padding: 10px 12px;
+    }
+  }
+</style>

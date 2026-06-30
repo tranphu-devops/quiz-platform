@@ -59,6 +59,9 @@ sudo bash deploy.sh --update  # pull latest, rebuild, rolling restart
 sudo bash deploy.sh --set-admin  # promote ADMIN_EMAIL to admin role without full redeploy
 ```
 
+### Tests
+There is no test suite in this repo. Verification is done by running the app and exercising the feature manually.
+
 ### Workspace (pnpm)
 The repo uses a pnpm workspace (`pnpm-workspace.yaml`). Top-level `package.json` declares `"workspaces": ["apps/*"]`. Use npm inside each service for Dockerfiles.
 
@@ -278,7 +281,7 @@ Three GitHub Actions workflows:
 - **Public settings:** `GET /api/users/public/settings` — exposes `teacher_upgrade_cost`, `default_credits`, `default_exam_cost` without auth.
 - **Teacher upgrade:** `POST /api/users/upgrade-to-teacher` — deducts credits, updates `auth.users.raw_user_meta_data` directly. User must log out and back in for new role to take effect.
 - **Session credit flag:** Take page stores `credit_deducted: true` in localStorage session to avoid double-charging on page refresh.
-- **Single-device exam session:** `POST /submissions/start` generates a UUID `session_id` and stores it as `exam_session_id`. Each `PUT /submissions/:id/progress` (heartbeat + answer save) and `POST /submissions/:id/submit` must pass this UUID in the `X-Session-Id` header. If the header doesn't match the stored `exam_session_id`, the server returns HTTP 409 — preventing a second tab or device from taking over the session. If `session_last_active` is stale (>30 s), the new session may claim the submission. `GET /submissions/active?exam_id=` returns any existing `in_progress` submission for the user+exam pair.
+- **Single-device exam session:** `POST /submissions/start` generates a UUID `session_id` and stores it as `exam_session_id`. Each `PUT /submissions/:id/progress` (heartbeat + answer save) and `POST /submissions/:id/submit` must pass this UUID in the `X-Session-Id` header. If the header doesn't match the stored `exam_session_id`, the server returns HTTP 409 — preventing a second tab or device from taking over the session. If `session_last_active` is stale (>300 s / 5 min — `SESSION_STALE_SECS` constant), the new session may claim the submission. `GET /submissions/active?exam_id=` returns any existing `in_progress` submission for the user+exam pair.
 - **Scheduled publish:** `exams.scheduled_at` — if set to a future datetime and `is_published = true`, the exam is visible to students but locked. The frontend shows a live countdown (1 s interval via `setInterval`). Server blocks `POST /submissions/start` with HTTP 423 if `scheduled_at > NOW()`. Create/edit forms have a 3-way publish mode selector: draft / now / scheduled. `PUT /exams/:id` uses a `(has_scheduled_at, scheduled_at_val)` param pair so `null` can clear the field.
 
 ## Design System

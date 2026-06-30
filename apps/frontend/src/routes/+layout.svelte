@@ -88,6 +88,22 @@
     --shadow-hover:   0 12px 36px rgba(86,37,209,0.18);
     --nav-bg:         rgba(255,255,255,0.92);
     --sidebar-bg:     #ffffff;
+
+    /* ── imgix-style tokens ──────────────────────────────────────────────── */
+    --ix-bg-app:          #FBFBF8;
+    --ix-bg-surface:      #FFFFFF;
+    --ix-bg-sidebar:      #FBFBF8;
+    --ix-bg-hover:        #F1F1ED;
+    --ix-text-primary:    #18181B;
+    --ix-text-secondary:  #52525B;
+    --ix-text-muted:      #9CA3AF;
+    --ix-border:          #EAEAE5;
+    --ix-btn-black-bg:    #18181B;
+    --ix-btn-black-fg:    #FFFFFF;
+    --ix-cta-green-bg:    #3F9A6E;
+    --ix-cta-green-fg:    #FFFFFF;
+    --ix-focus-ring:      rgba(24,24,27,0.15);
+    --ix-shadow-card:     0 1px 2px rgba(0,0,0,0.04);
   }
 
   :global([data-theme="dark"]) {
@@ -101,6 +117,21 @@
     --shadow-hover:   0 12px 36px rgba(0,0,0,0.55);
     --nav-bg:         rgba(32,35,49,0.94);
     --sidebar-bg:     #2d2b42;
+
+    /* imgix dark overrides */
+    --ix-bg-app:          #1C1C1F;
+    --ix-bg-surface:      #28282D;
+    --ix-bg-sidebar:      #1C1C1F;
+    --ix-bg-hover:        #323237;
+    --ix-text-primary:    #F4F4F5;
+    --ix-text-secondary:  #A1A1AA;
+    --ix-text-muted:      #71717A;
+    --ix-border:          #3F3F46;
+    --ix-btn-black-bg:    #E4E4E7;
+    --ix-btn-black-fg:    #18181B;
+    --ix-cta-green-bg:    #2D7A55;
+    --ix-cta-green-fg:    #FFFFFF;
+    --ix-focus-ring:      rgba(244,244,245,0.15);
   }
 
   /* ── Global dark mode corrections ─────────────────────────────────────────── */
