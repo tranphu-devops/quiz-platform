@@ -20,10 +20,9 @@
 
 <style>
   .login-wrap {
-    min-height: calc(100vh - 60px);
+    min-height: 100vh;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    margin: -2rem -1.5rem;
   }
 
   /* Left panel */
@@ -116,10 +115,10 @@
 
   /* Mobile */
   @media (max-width: 768px) {
-    .login-wrap { grid-template-columns: 1fr; margin: -1.25rem -1rem; }
+    .login-wrap { grid-template-columns: 1fr; }
     .panel-left { display: none; }
     .panel-right {
-      min-height: calc(100vh - 60px);
+      min-height: 100vh;
       background: linear-gradient(145deg, #4f46e5 0%, #6366f1 40%, #8b5cf6 100%);
       padding: 2rem 1rem;
     }

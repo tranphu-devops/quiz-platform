@@ -1,16 +1,14 @@
 <script>
   import { onMount } from 'svelte'
   import { goto } from '$app/navigation'
-  import { user, session, clearAuth } from '$lib/stores/auth'
+  import { user } from '$lib/stores/auth'
   import { userApi, collectionApi } from '$lib/api'
-  import Sidebar from '$lib/components/ui/Sidebar.svelte'
   import PageHeader from '$lib/components/ui/PageHeader.svelte'
   import Card from '$lib/components/ui/Card.svelte'
   import Button from '$lib/components/ui/Button.svelte'
   import Input from '$lib/components/ui/Input.svelte'
 
   let tab = $state('users')
-  let mobileSidebarOpen = $state(false)
 
   // ── Users tab ──────────────────────────────────────────────────────────────
   let users = $state([])
@@ -143,20 +141,8 @@
     return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
   }
 
-  async function logout() {
-    await clearAuth()
-    goto('/login')
-  }
-
   // ── Icon strings ───────────────────────────────────────────────────────────
   const I = {
-    home:     `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7L8 2l6 5v7H10.5v-4h-5v4H2z"/></svg>`,
-    document: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="1.5" width="10" height="13" rx="1.5"/><line x1="5.5" y1="5.5" x2="10.5" y2="5.5"/><line x1="5.5" y1="8" x2="10.5" y2="8"/><line x1="5.5" y1="10.5" x2="8.5" y2="10.5"/></svg>`,
-    folder:   `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4a1 1 0 011-1H6l1.5 2H13a1 1 0 011 1v6.5a1 1 0 01-1 1H2.5a1 1 0 01-1-1V4z"/></svg>`,
-    users:    `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="5.5" cy="5" r="2.5"/><path d="M1 13.5c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4"/><circle cx="11.5" cy="5" r="2"/><path d="M11.5 9c2 0 3.5 1 3.5 4"/></svg>`,
-    settings: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.2 3.2l1.1 1.1M11.7 11.7l1.1 1.1M12.8 3.2l-1.1 1.1M4.3 11.7l-1.1 1.1"/></svg>`,
-    credit:   `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1.5" y="3.5" width="13" height="9" rx="1.5"/><line x1="1.5" y1="6.5" x2="14.5" y2="6.5"/><line x1="4" y1="10" x2="6.5" y2="10"/></svg>`,
-    menu:     `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="5" x2="14" y2="5"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="11" x2="14" y2="11"/></svg>`,
     edit:     `<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 11.5l2.5-1 6.5-6.5-1.5-1.5L2.5 9 1.5 11.5z"/><path d="M8.5 2.5l2 2"/></svg>`,
     trash:    `<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="3.5" x2="11" y2="3.5"/><path d="M4.5 3.5V2h4v1.5"/><path d="M3 3.5l.5 8h6l.5-8"/></svg>`,
     check:    `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1.5,6 4.5,9.5 10.5,2"/></svg>`,
@@ -164,75 +150,22 @@
     publish:  `<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 1.5L6.5 9M3.5 4.5L6.5 1.5l3 3"/><path d="M2 9.5v1.5a1 1 0 001 1h7a1 1 0 001-1V9.5"/></svg>`,
   }
 
-  // ── Sidebar sections (reactive) ────────────────────────────────────────────
-  let sections = $derived([
-    {
-      label: 'ĐIỀU HƯỚNG',
-      items: [
-        { icon: I.home,     label: 'Dashboard', href: '/dashboard' },
-        { icon: I.document, label: 'Đề thi',    href: '/exams' },
-        { icon: I.folder,   label: 'Bộ đề',     href: '/collections' },
-      ]
-    },
-    {
-      label: 'QUẢN TRỊ',
-      items: [
-        { icon: I.users,    label: 'Người dùng',    active: tab === 'users',       onClick: () => tab = 'users' },
-        { icon: I.folder,   label: 'Bộ đề',          active: tab === 'collections', onClick: () => { tab = 'collections'; loadCollections() } },
-        { icon: I.settings, label: 'Cài đặt upload', active: tab === 'settings',    onClick: () => tab = 'settings' },
-        { icon: I.credit,   label: 'Credits',         active: tab === 'credits',     onClick: () => tab = 'credits' },
-      ]
-    }
-  ])
-
-  let userInfo = $derived({
-    name:  $session?.user?.user_metadata?.full_name ?? null,
-    email: $user?.email ?? '',
-    role:  $user?.role ?? '',
-    avatarUrl: null,
-  })
-
-  let tabTitles = { users: 'Người dùng', collections: 'Bộ đề', settings: 'Cài đặt upload', credits: 'Credits' }
-
   let totalUsers   = $derived(users.length)
   let totalTeacher = $derived(users.filter(u => u.role === 'teacher').length)
   let totalStudent = $derived(users.filter(u => u.role === 'student').length)
   let totalBanned  = $derived(users.filter(u => u.role === 'banned').length)
 </script>
 
-<!-- Mobile sidebar overlay -->
-{#if mobileSidebarOpen}
-  <div
-    class="ix-overlay"
-    role="presentation"
-    onclick={() => mobileSidebarOpen = false}
-    onkeydown={() => mobileSidebarOpen = false}
-  ></div>
-{/if}
+<PageHeader title="Quản trị" />
 
-<div class="admin-shell">
-  <Sidebar
-    {sections}
-    {userInfo}
-    onLogout={logout}
-    mobileOpen={mobileSidebarOpen}
-    onMobileClose={() => mobileSidebarOpen = false}
-  />
+<div class="tab-nav">
+  <button class="tab-btn" class:active={tab === 'users'}       onclick={() => tab = 'users'}>Người dùng</button>
+  <button class="tab-btn" class:active={tab === 'collections'} onclick={() => { tab = 'collections'; loadCollections() }}>Bộ đề</button>
+  <button class="tab-btn" class:active={tab === 'settings'}    onclick={() => tab = 'settings'}>Cài đặt upload</button>
+  <button class="tab-btn" class:active={tab === 'credits'}     onclick={() => tab = 'credits'}>Credits</button>
+</div>
 
-  <div class="admin-content">
-    <!-- Mobile top bar -->
-    <div class="mobile-topbar">
-      <button
-        class="mobile-menu-btn"
-        onclick={() => mobileSidebarOpen = true}
-        aria-label="Mở menu điều hướng"
-      >
-        {@html I.menu}
-      </button>
-      <span class="mobile-title">{tabTitles[tab]}</span>
-    </div>
-
-    <PageHeader title={tabTitles[tab]} />
+<div class="admin-content">
 
     <!-- ── USERS TAB ───────────────────────────────────────────────────── -->
     {#if tab === 'users'}
@@ -536,61 +469,42 @@
         </Card>
       </div>
     {/if}
-  </div>
 </div>
 
 <style>
-  /* ── Shell layout ─────────────────────────────────────────────────────── */
-  .admin-shell {
+  /* ── Tab navigation ───────────────────────────────────────────────────── */
+  .tab-nav {
     display: flex;
-    margin: -2rem -1.5rem;
-    min-height: calc(100vh - 60px);
-    background: var(--ix-bg-app);
+    border-bottom: 1px solid var(--ix-border);
+    margin-bottom: 24px;
+    gap: 0;
+    overflow-x: auto;
   }
 
-  .admin-content {
-    flex: 1;
-    min-width: 0;
-    padding: 32px 40px;
-    overflow: auto;
-  }
-
-  /* ── Mobile overlay ───────────────────────────────────────────────────── */
-  :global(.ix-overlay) {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.35);
-    z-index: 199;
-    backdrop-filter: blur(2px);
-  }
-
-  /* ── Mobile topbar ────────────────────────────────────────────────────── */
-  .mobile-topbar {
-    display: none;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 20px;
-  }
-
-  .mobile-menu-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border: 1px solid var(--ix-border);
-    border-radius: 8px;
-    background: var(--ix-bg-surface);
-    color: var(--ix-text-secondary);
+  .tab-btn {
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ix-text-muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
     cursor: pointer;
+    transition: color 0.1s;
+    font-family: inherit;
+    white-space: nowrap;
     flex-shrink: 0;
   }
 
-  .mobile-title {
-    font-size: 1rem;
-    font-weight: 600;
+  .tab-btn:hover { color: var(--ix-text-primary); }
+  .tab-btn.active {
     color: var(--ix-text-primary);
+    border-bottom-color: var(--ix-text-primary);
+    font-weight: 600;
   }
+
+  .admin-content { /* spacing wrapper for tab content */ }
 
   /* ── Stats row ────────────────────────────────────────────────────────── */
   .stats-row {
@@ -842,19 +756,6 @@
 
   /* ── Mobile ───────────────────────────────────────────────────────────── */
   @media (max-width: 768px) {
-    .admin-shell {
-      margin: -1.25rem -1rem;
-      flex-direction: column;
-    }
-
-    .admin-content {
-      padding: 20px 16px;
-    }
-
-    .mobile-topbar {
-      display: flex;
-    }
-
     .stats-row {
       gap: 12px;
       flex-wrap: wrap;

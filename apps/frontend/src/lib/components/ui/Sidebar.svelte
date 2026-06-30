@@ -266,7 +266,7 @@
   @media (max-width: 768px) {
     .ix-sidebar {
       position: fixed;
-      top: 60px;
+      top: var(--mobile-bar-h, 56px);
       left: -220px;
       bottom: 0;
       z-index: 200;

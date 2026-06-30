@@ -310,7 +310,7 @@
 <style>
   /* ── Top bar ─────────────────────────────────────────────────────────────────*/
   .top-bar {
-    position: sticky; top: 60px; z-index: 30;
+    position: sticky; top: 0; z-index: 30;
     background: rgba(255,255,255,0.95);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border);
@@ -558,7 +558,7 @@
 
   /* ── Mobile ───────────────────────────────────────────────────────────────────*/
   @media (max-width: 720px) {
-    .top-bar { margin: -1.25rem -1rem 1.25rem; top: 60px; }
+    .top-bar { margin: -1.25rem -1rem 1.25rem; top: var(--mobile-bar-h, 56px); }
     .layout { grid-template-columns: 1fr; }
     .sidebar { position: static; }
     .q-grid { grid-template-columns: repeat(8, 1fr); overflow-x: auto; }

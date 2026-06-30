@@ -7,15 +7,19 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] — 2026-06-30
 
 ### Added
-- **imgix-style UI cho Admin & Profile**: Redesign lại trang `/admin` và `/profile` theo style dashboard của imgix — nền kem off-white (`#FBFBF8`), left sidebar cố định, typography sạch, border mảnh, khoảng trắng rộng.
-- **5 base UI components** tái sử dụng (`src/lib/components/ui/`): `Sidebar`, `PageHeader`, `Card`, `Button`, `Input` — dùng chung cho cả admin lẫn profile.
-- **Design tokens `--ix-*`**: 14 CSS variables mới trong `:root` + dark mode overrides, độc lập với tokens brand purple hiện có.
-- **Sidebar responsive**: Trên mobile (< 768px) chuyển sang fixed drawer từ trái với backdrop overlay; hamburger button trong mobile topbar.
+- **imgix-style UI toàn bộ app**: Áp dụng design system imgix (nền `#FBFBF8`, sidebar trái cố định 200px, typography sạch, border mảnh) cho tất cả trang có auth.
+- **Global sidebar**: Sidebar điều hướng cố định bên trái trên mọi trang authenticated — thay thế hoàn toàn top navbar. Bao gồm nav sections theo role, theme toggle, user info row + logout.
+- **5 base UI components** tái sử dụng (`src/lib/components/ui/`): `Sidebar`, `PageHeader`, `Card`, `Button`, `Input`.
+- **Design tokens `--ix-*`**: 14 CSS variables trong `:root` + dark mode overrides; `--mobile-bar-h: 56px` cho sticky elements.
 
 ### Changed
-- **Admin page**: Layout từ flat tabs → shell 2 cột (Sidebar + content). Users table style imgix (column headers uppercase muted, row hover). Collections hiển thị dạng table thay vì card grid. Settings/Credits form dùng `<Card>` + `<Input>`.
-- **Profile page**: Chia thành 3 card sections (Thông tin cơ bản, Credits & Nâng cấp, Huy hiệu). Sidebar có slot hiển thị credit balance + CTA xanh nâng cấp Teacher (student only).
-- **CLAUDE.md**: Sửa session stale threshold từ `>30 s` → `>300 s / 5 min` (khớp với `SESSION_STALE_SECS = 300` trong code). Thêm ghi chú không có test suite.
+- **Top navbar đã bị xoá**: Không còn thanh nav nằm ngang ở trên cùng. Điều hướng toàn bộ qua sidebar trái.
+- **Full-width layout**: `<main>` không còn `max-width: 1100px`, nội dung giờ chiếm toàn bộ vùng còn lại sau sidebar.
+- **Admin page**: Sidebar điều hướng tabs đã chuyển thành horizontal tab nav (Người dùng / Bộ đề / Cài đặt upload / Credits) trong content area.
+- **Profile page**: Loại bỏ sidebar nội bộ; nội dung cards hiển thị trực tiếp trong global layout.
+- **Login page**: Đã bỏ negative margin trick và `calc(100vh - 60px)` do không còn top navbar.
+- **Take exam page**: `.top-bar` sticky sửa từ `top: 60px` → `top: 0` (desktop) / `top: var(--mobile-bar-h)` (mobile).
+- **CLAUDE.md**: Sửa session stale threshold từ `>30 s` → `>300 s / 5 min` (khớp với `SESSION_STALE_SECS = 300` trong code).
 
 ---
 

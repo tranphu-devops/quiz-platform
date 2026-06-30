@@ -1,10 +1,9 @@
 <script>
   import { onMount } from 'svelte'
   import { goto } from '$app/navigation'
-  import { user, session, clearAuth } from '$lib/stores/auth'
+  import { user } from '$lib/stores/auth'
   import { userApi, badgeApi } from '$lib/api'
   import ImageUpload from '$lib/components/ImageUpload.svelte'
-  import Sidebar from '$lib/components/ui/Sidebar.svelte'
   import PageHeader from '$lib/components/ui/PageHeader.svelte'
   import Card from '$lib/components/ui/Card.svelte'
   import Button from '$lib/components/ui/Button.svelte'
@@ -17,7 +16,6 @@
   let saving          = $state(false)
   let success         = $state(false)
   let error           = $state('')
-  let mobileSidebarOpen = $state(false)
 
   // Teacher upgrade
   let upgradeLoading      = $state(false)
@@ -68,48 +66,6 @@
     } catch { upgradeError = 'Không thể kết nối server' } finally { upgradeLoading = false }
   }
 
-  async function logout() {
-    await clearAuth()
-    goto('/login')
-  }
-
-  // ── Icon strings ───────────────────────────────────────────────────────────
-  const I = {
-    home:     `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7L8 2l6 5v7H10.5v-4h-5v4H2z"/></svg>`,
-    document: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="1.5" width="10" height="13" rx="1.5"/><line x1="5.5" y1="5.5" x2="10.5" y2="5.5"/><line x1="5.5" y1="8" x2="10.5" y2="8"/><line x1="5.5" y1="10.5" x2="8.5" y2="10.5"/></svg>`,
-    folder:   `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4a1 1 0 011-1H6l1.5 2H13a1 1 0 011 1v6.5a1 1 0 01-1 1H2.5a1 1 0 01-1-1V4z"/></svg>`,
-    person:   `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="5.5" r="3"/><path d="M2 14c0-3.3 2.7-5 6-5s6 1.7 6 5"/></svg>`,
-    shield:   `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5L2 4.5v3.5c0 3.5 2.5 6 6 7 3.5-1 6-3.5 6-7V4.5z"/></svg>`,
-    credit:   `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1.5" y="3.5" width="13" height="9" rx="1.5"/><line x1="1.5" y1="6.5" x2="14.5" y2="6.5"/><line x1="4" y1="10" x2="6.5" y2="10"/></svg>`,
-    menu:     `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="5" x2="14" y2="5"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="11" x2="14" y2="11"/></svg>`,
-  }
-
-  // ── Sidebar sections ───────────────────────────────────────────────────────
-  let sections = $derived([
-    {
-      label: 'ĐIỀU HƯỚNG',
-      items: [
-        { icon: I.home,     label: 'Dashboard', href: '/dashboard' },
-        { icon: I.document, label: 'Đề thi',    href: '/exams' },
-        ...($user?.role !== 'student' ? [{ icon: I.folder, label: 'Bộ đề', href: '/collections' }] : []),
-        ...($user?.role === 'admin'   ? [{ icon: I.shield, label: 'Quản trị', href: '/admin' }]    : []),
-      ]
-    },
-    {
-      label: 'TÀI KHOẢN',
-      items: [
-        { icon: I.person, label: 'Hồ sơ', active: true },
-      ]
-    }
-  ])
-
-  let userInfo = $derived({
-    name:  $session?.user?.user_metadata?.full_name ?? null,
-    email: $user?.email ?? '',
-    role:  $user?.role ?? '',
-    avatarUrl: avatar_url || null,
-  })
-
   let insufficientCredits = $derived(credits !== null && credits < teacherUpgradeCost)
 
   function roleBadgeStyle(role) {
@@ -120,52 +76,7 @@
   }
 </script>
 
-<!-- Mobile sidebar overlay -->
-{#if mobileSidebarOpen}
-  <div
-    class="ix-overlay"
-    role="presentation"
-    onclick={() => mobileSidebarOpen = false}
-    onkeydown={() => mobileSidebarOpen = false}
-  ></div>
-{/if}
-
-<div class="profile-shell">
-  <Sidebar
-    {sections}
-    {userInfo}
-    onLogout={logout}
-    mobileOpen={mobileSidebarOpen}
-    onMobileClose={() => mobileSidebarOpen = false}
-  >
-    <!-- Credits display in sidebar -->
-    {#if credits !== null}
-      <div class="sidebar-credits">
-        <div class="sidebar-credits-num">{@html I.credit} {credits}</div>
-        <div class="sidebar-credits-lbl">credits</div>
-        {#if $user?.role === 'student' && !upgradeSuccess}
-          <Button variant="cta" size="sm" onclick={() => showUpgradeConfirm = true} disabled={upgradeLoading || insufficientCredits}>
-            Nâng cấp Teacher
-          </Button>
-        {/if}
-      </div>
-    {/if}
-  </Sidebar>
-
-  <div class="profile-content">
-    <!-- Mobile topbar -->
-    <div class="mobile-topbar">
-      <button
-        class="mobile-menu-btn"
-        onclick={() => mobileSidebarOpen = true}
-        aria-label="Mở menu điều hướng"
-      >
-        {@html I.menu}
-      </button>
-      <span class="mobile-title">Hồ sơ cá nhân</span>
-    </div>
-
-    <PageHeader title="Hồ sơ cá nhân" subtitle="Quản lý thông tin tài khoản và cài đặt cá nhân" />
+<PageHeader title="Hồ sơ cá nhân" subtitle="Quản lý thông tin tài khoản và cài đặt cá nhân" />
 
     <div class="profile-grid">
 
@@ -277,8 +188,6 @@
         </Card>
       {/if}
     </div>
-  </div>
-</div>
 
 <!-- Confirm upgrade modal -->
 {#if showUpgradeConfirm}
@@ -298,80 +207,6 @@
 {/if}
 
 <style>
-  /* ── Shell layout ─────────────────────────────────────────────────────── */
-  .profile-shell {
-    display: flex;
-    margin: -2rem -1.5rem;
-    min-height: calc(100vh - 60px);
-    background: var(--ix-bg-app);
-  }
-
-  .profile-content {
-    flex: 1;
-    min-width: 0;
-    padding: 32px 40px;
-    overflow: auto;
-  }
-
-  /* ── Shared overlay ───────────────────────────────────────────────────── */
-  :global(.ix-overlay) {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.35);
-    z-index: 199;
-    backdrop-filter: blur(2px);
-  }
-
-  /* ── Mobile topbar ────────────────────────────────────────────────────── */
-  .mobile-topbar {
-    display: none;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 20px;
-  }
-
-  .mobile-menu-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border: 1px solid var(--ix-border);
-    border-radius: 8px;
-    background: var(--ix-bg-surface);
-    color: var(--ix-text-secondary);
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-
-  .mobile-title {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--ix-text-primary);
-  }
-
-  /* ── Sidebar credits block ────────────────────────────────────────────── */
-  .sidebar-credits {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .sidebar-credits-num {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--ix-text-primary);
-  }
-
-  .sidebar-credits-lbl {
-    font-size: 12px;
-    color: var(--ix-text-muted);
-    margin-top: -4px;
-  }
-
   /* ── Form layout ──────────────────────────────────────────────────────── */
   .profile-grid {
     display: flex;
@@ -573,19 +408,4 @@
     justify-content: flex-end;
   }
 
-  /* ── Mobile ───────────────────────────────────────────────────────────── */
-  @media (max-width: 768px) {
-    .profile-shell {
-      margin: -1.25rem -1rem;
-      flex-direction: column;
-    }
-
-    .profile-content {
-      padding: 20px 16px;
-    }
-
-    .mobile-topbar {
-      display: flex;
-    }
-  }
 </style>
