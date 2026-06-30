@@ -3,23 +3,45 @@
     sections = [],
     userInfo = null,
     onLogout = () => {},
+    onToggleCollapse = () => {},
+    collapsed = false,
     mobileOpen = false,
     onMobileClose = () => {},
     children,
   } = $props()
+
+  const chevronLeft = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2L4 7l5 5"/></svg>`
+  const chevronRight = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2l5 5-5 5"/></svg>`
 </script>
 
 <aside
   class="ix-sidebar"
   class:mobile-open={mobileOpen}
+  class:collapsed
   aria-label="Điều hướng"
 >
-  <a href="/" class="ix-brand">QuizPlatform</a>
+  <!-- Brand + collapse toggle -->
+  <div class="ix-brand-row">
+    <a href="/" class="ix-brand" title="QuizPlatform">
+      <img src="/favicon.svg" alt="logo" class="ix-brand-icon" />
+      {#if !collapsed}<span class="ix-brand-text">QuizPlatform</span>{/if}
+    </a>
+    <button
+      class="ix-collapse-btn"
+      onclick={onToggleCollapse}
+      aria-label={collapsed ? 'Mở sidebar' : 'Thu sidebar'}
+      title={collapsed ? 'Mở rộng' : 'Thu gọn'}
+    >
+      {@html collapsed ? chevronRight : chevronLeft}
+    </button>
+  </div>
 
   <nav class="ix-nav">
     {#each sections as section}
-      {#if section.label}
+      {#if section.label && !collapsed}
         <div class="ix-section-label">{section.label}</div>
+      {:else if section.label && collapsed}
+        <div class="ix-section-divider"></div>
       {/if}
       {#each section.items as item}
         {#if item.href}
@@ -28,49 +50,53 @@
             class="ix-nav-item"
             class:active={item.active}
             aria-current={item.active ? 'page' : undefined}
+            title={collapsed ? item.label : undefined}
             onclick={onMobileClose}
           >
             {#if item.icon}
               <span class="ix-nav-icon" aria-hidden="true">{@html item.icon}</span>
             {/if}
-            <span>{item.label}</span>
+            {#if !collapsed}<span>{item.label}</span>{/if}
           </a>
         {:else}
           <button
             class="ix-nav-item"
             class:active={item.active}
+            title={collapsed ? item.label : undefined}
             onclick={() => { item.onClick?.(); onMobileClose() }}
             aria-pressed={item.active}
           >
             {#if item.icon}
               <span class="ix-nav-icon" aria-hidden="true">{@html item.icon}</span>
             {/if}
-            <span>{item.label}</span>
+            {#if !collapsed}<span>{item.label}</span>{/if}
           </button>
         {/if}
       {/each}
     {/each}
   </nav>
 
-  {#if children}
+  {#if children && !collapsed}
     <div class="ix-sidebar-extra">
       {@render children()}
     </div>
   {/if}
 
   {#if userInfo}
-    <div class="ix-sidebar-user">
-      <div class="ix-user-avatar" aria-hidden="true">
+    <div class="ix-sidebar-user" class:collapsed>
+      <div class="ix-user-avatar" aria-hidden="true" title={collapsed ? (userInfo.name || userInfo.email) : undefined}>
         {#if userInfo.avatarUrl}
           <img src={userInfo.avatarUrl} alt="" />
         {:else}
           {(userInfo.name || userInfo.email || '?').charAt(0).toUpperCase()}
         {/if}
       </div>
-      <div class="ix-user-meta">
-        <div class="ix-user-name">{userInfo.name || userInfo.email}</div>
-        <div class="ix-user-role">{userInfo.role}</div>
-      </div>
+      {#if !collapsed}
+        <div class="ix-user-meta">
+          <div class="ix-user-name">{userInfo.name || userInfo.email}</div>
+          <div class="ix-user-role">{userInfo.role}</div>
+        </div>
+      {/if}
       <button
         class="ix-logout-btn"
         onclick={onLogout}
@@ -96,24 +122,76 @@
     display: flex;
     flex-direction: column;
     min-height: 100%;
+    transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
   }
 
+  .ix-sidebar.collapsed { width: 56px; }
+
+  /* ── Brand row ─────────────────────────────────────────────────────── */
+  .ix-brand-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--ix-border);
+    flex-shrink: 0;
+    min-height: 52px;
+    padding: 0 6px 0 12px;
+    gap: 4px;
+  }
+
+  .collapsed .ix-brand-row { padding: 0 6px; justify-content: center; }
+
   .ix-brand {
-    display: block;
-    padding: 18px 16px 14px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
     font-size: 0.875rem;
     font-weight: 700;
     letter-spacing: -0.02em;
     color: var(--ix-text-primary);
     text-decoration: none;
-    border-bottom: 1px solid var(--ix-border);
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .collapsed .ix-brand { flex: 0; }
+
+  .ix-brand-icon {
+    width: 22px;
+    height: 22px;
     flex-shrink: 0;
   }
 
+  .ix-brand-text {
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .ix-collapse-btn {
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    border: 1px solid var(--ix-border);
+    border-radius: 6px;
+    background: var(--ix-bg-surface);
+    cursor: pointer;
+    color: var(--ix-text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.1s, color 0.1s;
+    padding: 0;
+  }
+  .ix-collapse-btn:hover { background: var(--ix-bg-hover); color: var(--ix-text-primary); }
+
+  /* ── Nav ─────────────────────────────────────────────────────────── */
   .ix-nav {
     flex: 1;
     padding: 8px;
     overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     gap: 1px;
@@ -127,6 +205,14 @@
     color: var(--ix-text-muted);
     padding: 12px 12px 4px;
     margin-top: 4px;
+    white-space: nowrap;
+  }
+
+  .ix-section-divider {
+    height: 1px;
+    background: var(--ix-border);
+    margin: 8px 4px 4px;
+    flex-shrink: 0;
   }
 
   .ix-nav-item {
@@ -147,6 +233,14 @@
     transition: background 0.1s, color 0.1s;
     line-height: 1.4;
     font-family: inherit;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .collapsed .ix-nav-item {
+    justify-content: center;
+    padding: 9px;
+    gap: 0;
   }
 
   .ix-nav-item:hover {
@@ -181,12 +275,14 @@
     color: var(--ix-text-primary);
   }
 
+  /* ── Extra slot ──────────────────────────────────────────────────── */
   .ix-sidebar-extra {
     padding: 12px;
     border-top: 1px solid var(--ix-border);
     flex-shrink: 0;
   }
 
+  /* ── User row ────────────────────────────────────────────────────── */
   .ix-sidebar-user {
     display: flex;
     align-items: center;
@@ -194,6 +290,12 @@
     padding: 10px 10px 10px 12px;
     border-top: 1px solid var(--ix-border);
     flex-shrink: 0;
+  }
+
+  .ix-sidebar-user.collapsed {
+    flex-direction: column;
+    padding: 8px 6px;
+    gap: 4px;
   }
 
   .ix-user-avatar {
@@ -262,7 +364,7 @@
     outline-offset: 1px;
   }
 
-  /* ── Mobile ───────────────────────────────────────────────────────── */
+  /* ── Mobile ──────────────────────────────────────────────────────── */
   @media (max-width: 768px) {
     .ix-sidebar {
       position: fixed;
@@ -270,7 +372,7 @@
       left: -220px;
       bottom: 0;
       z-index: 200;
-      width: 200px;
+      width: 200px !important; /* always full on mobile */
       min-height: auto;
       transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       box-shadow: none;
@@ -280,5 +382,7 @@
       left: 0;
       box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
     }
+
+    .ix-collapse-btn { display: none; }
   }
 </style>

@@ -345,7 +345,13 @@
               </div>
             {:else}—{/if}
           </td>
-          <td style="font-size:0.83rem">{exam.is_published ? '<span style="color:#15803d">✓ Xuất bản</span>' : '<span style="color:var(--muted)">Nháp</span>'}</td>
+          <td style="font-size:0.83rem">
+            {#if exam.is_published}
+              <span style="color:#15803d">✓ Xuất bản</span>
+            {:else}
+              <span style="color:var(--muted)">Nháp</span>
+            {/if}
+          </td>
           <td style="display:flex;gap:0.4rem">
             <a href="/exams/{exam.id}" class="btn btn-indigo">Xem</a>
             <a href="/exams/{exam.id}/edit" class="btn btn-gray">Sửa</a>

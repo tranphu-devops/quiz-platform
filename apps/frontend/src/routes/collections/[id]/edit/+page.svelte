@@ -5,6 +5,7 @@
   import { user } from '$lib/stores/auth'
   import { examApi, collectionApi } from '$lib/api'
   import BadgePicker from '$lib/components/BadgePicker.svelte'
+  import PageHeader from '$lib/components/ui/PageHeader.svelte'
 
   let title = $state('')
   let description = $state('')
@@ -77,9 +78,8 @@
 </script>
 
 <style>
-  .page-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
-  .back-btn { color: var(--muted); text-decoration: none; font-size: 0.9rem; padding: 0.3rem 0.6rem; border-radius: 6px; }
-  .back-btn:hover { background: var(--bg); color: var(--primary); }
+  .back-btn { display: inline-flex; align-items: center; gap: 4px; color: var(--ix-text-secondary); text-decoration: none; font-size: 13px; padding: 4px 8px; border-radius: 6px; margin-bottom: 8px; }
+  .back-btn:hover { background: var(--ix-bg-hover); color: var(--ix-text-primary); }
   h1 { font-size: 1.4rem; font-weight: 800; }
   .layout { display: grid; grid-template-columns: 1fr 360px; gap: 1.5rem; align-items: start; }
   @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } }
@@ -110,10 +110,8 @@
   .btn-save:disabled { opacity: 0.55; cursor: default; transform: none; }
 </style>
 
-<div class="page-header">
-  <a href="/collections" class="back-btn">← Quay lại</a>
-  <h1>Sửa bộ đề</h1>
-</div>
+<a href="/collections" class="back-btn">← Quay lại</a>
+<PageHeader title="Sửa bộ đề" />
 
 {#if loading}
   <p style="color:var(--muted)">Đang tải...</p>

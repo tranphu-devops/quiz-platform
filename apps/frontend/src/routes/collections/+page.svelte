@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation'
   import { user } from '$lib/stores/auth'
   import { collectionApi } from '$lib/api'
+  import PageHeader from '$lib/components/ui/PageHeader.svelte'
 
   let collections = $state([])
   let loading = $state(true)
@@ -37,16 +38,14 @@
 </script>
 
 <style>
-  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.75rem; }
-  h1 { font-size: 1.5rem; font-weight: 800; }
   .btn-create {
-    display: inline-flex; align-items: center; gap: 0.4rem;
-    padding: 0.6rem 1.2rem; background: linear-gradient(135deg, var(--primary), var(--accent));
-    color: #fff; border: none; border-radius: var(--radius-btn);
-    font-size: 0.9rem; font-weight: 700; cursor: pointer; text-decoration: none;
-    box-shadow: 0 4px 14px rgba(99,102,241,0.3); transition: all 0.15s;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 16px; background: var(--ix-btn-black-bg);
+    color: var(--ix-btn-black-fg); border: none; border-radius: 8px;
+    font-size: 14px; font-weight: 500; cursor: pointer; text-decoration: none;
+    font-family: inherit; transition: opacity 0.1s;
   }
-  .btn-create:hover { box-shadow: 0 6px 20px rgba(99,102,241,0.45); transform: translateY(-1px); }
+  .btn-create:hover { opacity: 0.82; }
 
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
   .card {
@@ -94,10 +93,9 @@
   .empty h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
 </style>
 
-<div class="header">
-  <h1>Bộ đề ({collections.length})</h1>
+<PageHeader title="Bộ đề ({collections.length})">
   <a href="/collections/create" class="btn-create">+ Tạo bộ đề mới</a>
-</div>
+</PageHeader>
 
 {#if loading}
   <p style="color:var(--muted)">Đang tải...</p>

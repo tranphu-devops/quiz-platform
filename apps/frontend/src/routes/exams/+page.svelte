@@ -3,6 +3,7 @@
   import { user } from '$lib/stores/auth'
   import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
+  import PageHeader from '$lib/components/ui/PageHeader.svelte'
 
   let now = $state(Date.now())
   onMount(() => {
@@ -125,27 +126,18 @@
 </script>
 
 <style>
-  .page-header {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;
-  }
-  .page-title {
-    font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em;
-    background: linear-gradient(135deg, var(--primary), var(--accent));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
   .btn-create {
-    display: flex; align-items: center; gap: 0.4rem;
-    background: linear-gradient(135deg, var(--primary), var(--accent));
-    color: white; padding: 0.6rem 1.25rem;
-    border: none; border-radius: var(--radius-btn);
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--ix-btn-black-bg);
+    color: var(--ix-btn-black-fg);
+    padding: 9px 16px;
+    border: none; border-radius: 8px;
     cursor: pointer; text-decoration: none;
-    font-size: 0.9rem; font-weight: 700;
-    box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+    font-size: 14px; font-weight: 500;
+    font-family: inherit;
     transition: all 0.2s;
   }
-  .btn-create:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99,102,241,0.45); }
+  .btn-create:hover { opacity: 0.82; }
 
   /* Section heading */
   .section-heading {
@@ -332,14 +324,11 @@
   .error { color: var(--danger); }
 </style>
 
-<div class="page-header">
-  <h1 class="page-title">Đề thi</h1>
+<PageHeader title="Đề thi">
   {#if $user && $user.role !== 'student'}
-    <a href="/exams/create" class="btn-create">
-      <span>＋</span> Tạo đề thi
-    </a>
+    <a href="/exams/create" class="btn-create">+ Tạo đề thi</a>
   {/if}
-</div>
+</PageHeader>
 
 {#if loading}
   <div class="loading-grid">

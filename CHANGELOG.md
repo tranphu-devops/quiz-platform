@@ -7,6 +7,21 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] — 2026-06-30
 
 ### Added
+- **Logo & favicon**: Logo SVG (`/static/logo.svg`) với icon document+checkmark gradient tím; favicon SVG thay thế favicon.ico; `theme-color` đổi thành `#5625d1`.
+- **Sidebar collapse**: Nút thu/mở sidebar (toggle) ở góc brand — khi thu gọn còn 56px, chỉ hiện icon; state lưu vào `localStorage('quiz-sidebar-collapsed')`.
+
+### Changed
+- **Page headers thống nhất**: Tất cả trang dùng component `PageHeader` (ix-style, dark text, không gradient) — bao gồm `/exams`, `/collections`, collections create/edit. Button "Tạo" chuyển sang style `ix-btn--primary` (đen).
+- **Sidebar brand**: Dùng logo icon SVG kèm text thay vì plain text.
+
+### Fixed
+- **Dashboard status column**: Cột "Trạng thái" render raw HTML string thay vì Svelte conditional — đã sửa thành `{#if}` block.
+
+---
+
+## [Unreleased] — 2026-06-30 (sidebar + imgix)
+
+### Added
 - **imgix-style UI toàn bộ app**: Áp dụng design system imgix (nền `#FBFBF8`, sidebar trái cố định 200px, typography sạch, border mảnh) cho tất cả trang có auth.
 - **Global sidebar**: Sidebar điều hướng cố định bên trái trên mọi trang authenticated — thay thế hoàn toàn top navbar. Bao gồm nav sections theo role, theme toggle, user info row + logout.
 - **5 base UI components** tái sử dụng (`src/lib/components/ui/`): `Sidebar`, `PageHeader`, `Card`, `Button`, `Input`.

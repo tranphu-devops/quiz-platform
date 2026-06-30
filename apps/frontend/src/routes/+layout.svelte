@@ -9,13 +9,20 @@
   let { children } = $props()
 
   let mobileSidebarOpen = $state(false)
+  let sidebarCollapsed = $state(false)
   let avatarUrl = $state(null)
   let theme = $state('light')
 
   onMount(() => {
     theme = localStorage.getItem('quiz-theme') || 'light'
     document.documentElement.dataset.theme = theme
+    sidebarCollapsed = localStorage.getItem('quiz-sidebar-collapsed') === 'true'
   })
+
+  function toggleSidebar() {
+    sidebarCollapsed = !sidebarCollapsed
+    localStorage.setItem('quiz-sidebar-collapsed', String(sidebarCollapsed))
+  }
 
   function toggleTheme() {
     const next = theme === 'light' ? 'dark' : 'light'
@@ -391,6 +398,8 @@
       {sections}
       {userInfo}
       onLogout={logout}
+      collapsed={sidebarCollapsed}
+      onToggleCollapse={toggleSidebar}
       mobileOpen={mobileSidebarOpen}
       onMobileClose={() => mobileSidebarOpen = false}
     >
