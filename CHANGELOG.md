@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased] — 2026-07-01
+
+### Changed
+- **Dark mode contrast**: Màu brand `--primary`/`--accent` giờ có override riêng cho dark mode (`#c084fc`/`#e879f9` thay vì tái sử dụng `#5625d1` của light mode) — chữ/link/icon nhấn mạnh trên nền tối giờ đạt ~6:1 contrast thay vì ~1.9:1. Light mode không đổi.
+- **Sidebar to hơn**: Rộng từ 200px lên 232px; logo icon 22px → 32px, chữ "QuizPlatform" 0.875rem → 1.15rem.
+- **Avatar trang profile to hơn**: 120px → 168px, bo góc vuông (`border-radius: 24px`) thay vì hình tròn.
+
 ## [Unreleased] — 2026-06-30
 
 ### Added

@@ -45,6 +45,7 @@ docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/po
 docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_scheduled_exam.sql
 docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_submission_progress.sql
 docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_exam_session.sql
+docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_user_profile.sql
 ```
 
 ### Regenerate badge SVGs
@@ -185,6 +186,8 @@ Components in `src/lib/components/`:
 - `MarkdownEditor.svelte` — markdown editor for question explanations
 - `BadgePicker.svelte` — grid of 50 preset badge SVGs + custom upload tab; `bind:value` for badge URL. Preset metadata from `src/lib/badge-presets.json`.
 
+`src/lib/components/ui/` — shared design-system primitives used across all pages: `Button.svelte`, `Card.svelte`, `Input.svelte`, `PageHeader.svelte` (unifies page title/breadcrumb/actions header), `Sidebar.svelte` (permanent left nav, collapsible, replaces the old top navbar — collapse state persisted to localStorage).
+
 Preset badges: 50 SVG files in `apps/frontend/static/badges/badge-01.svg…badge-50.svg`. Regenerate with `node scripts/generate-badges.js`.
 
 Routes:
@@ -195,7 +198,8 @@ Routes:
 /auth/callback           → PKCE OAuth handler (GoTrue redirects here after Google login)
 /auth-callback           → implicit-flow fallback handler
 /dashboard               → role-based home
-/profile                 → edit avatar + full_name; student shows earned badges
+/profile                 → edit own profile: avatar + full_name + extended personal fields (bio, birth_year, gender, interests, social links); student shows earned badges
+/users/[id]              → public profile page (read-only) for any user — shows bio/social links + exams they've created (published only, unless viewer is the creator/admin)
 /exams                   → Udemy-style grid; cover image or gradient placeholder
 /exams/create            → create exam with cover image + per-question images
 /exams/[id]              → exam detail / start
@@ -207,6 +211,11 @@ Routes:
 /collections/[id]/edit   → edit collection (teacher)
 /admin                   → tabs: Users (role management) · Upload settings (max size, MIME types)
 ```
+
+### Public user profile
+- `GET /api/users/public/profile/:userId` — unauthenticated; returns public profile fields (`full_name, avatar_url, role, bio, birth_year, gender, interests` + social URLs) for any user, used by `/users/[id]`.
+- `GET /api/exams/exams?creator_id=<id>` — lists exams by a given creator; anonymous/other-role viewers get published exams only, the creator (or admin) also sees their own drafts.
+- Extended personal fields live on `quiz_users.profiles`: `bio, birth_year, gender, interests, facebook_url, zalo, tiktok_url, youtube_url, instagram_url, linkedin_url, website_url` (see `infra/postgres/migrate_user_profile.sql`).
 
 ### Collections & Badges
 
@@ -226,7 +235,7 @@ Badge check is **fire-and-forget** (non-blocking): submission returns immediatel
 Never manually create tables in `quiz_auth` — GoTrue manages that schema.
 
 Schema summary:
-- `quiz_users.profiles` — `id, full_name, avatar_url, role, credits, updated_at`
+- `quiz_users.profiles` — `id, full_name, avatar_url, role, credits, updated_at`, plus extended personal fields: `bio, birth_year, gender, interests, facebook_url, zalo, tiktok_url, youtube_url, instagram_url, linkedin_url, website_url`
 - `quiz_users.admin_settings` — `key, value` (upload validation + credit config)
 - `quiz_exams.exams` — includes `cover_image_url`, `tags TEXT[]`, `show_explanation`, `allow_retake`, `credit_cost`, `cooldown_minutes` (int, minutes between retakes), `max_attempts` (int nullable, null = unlimited), `scheduled_at` (timestamptz nullable, when null or in the past the exam is open; when in the future the exam is visible but locked), `passing_score` (float nullable, percentage threshold for "pass"; used by badge-award logic)
 - `quiz_exams.questions` — includes `image_url`, `question_type` (`single`|`multiple`), `correct_answer` (comma-separated keys for multiple)
@@ -288,11 +297,12 @@ Three GitHub Actions workflows:
 
 Xem chi tiết đầy đủ tại `DESIGN.md`. Tóm tắt nhanh:
 
-- **Brand gradient**: `linear-gradient(135deg, #5625d1, #6d29d3)` — monochromatic deep purple, dùng thống nhất trên cả landing page và quiz app (Udemy-inspired)
+- **Brand gradient**: `linear-gradient(135deg, #5625d1, #6d29d3)` — monochromatic deep purple, dùng thống nhất trên cả landing page và quiz app (Udemy-inspired). Landing page (light-only) always uses these exact values.
 - **CSS tokens** (quiz app — `+layout.svelte` `:root`):
-  - `--primary: #5625d1` · `--accent: #6d29d3` · `--primary-light: #ede6ff`
-  - Light: `--bg: #f8f7ff` · `--surface: #ffffff` · `--text: #2b2a3f` · `--border: #d0d2e1`
+  - Light (default): `--primary: #5625d1` · `--accent: #6d29d3` · `--primary-light: #ede6ff`
+  - `--bg: #f8f7ff` · `--surface: #ffffff` · `--text: #2b2a3f` · `--border: #d0d2e1`
   - Dark (`[data-theme="dark"]`): `--bg: #202331` · `--surface: #2d2b42` · `--text: #f1f5f9` · `--border: #3d4055`
+  - Dark brand override: `--primary: #c084fc` · `--primary-dark: #a855f7` · `--accent: #e879f9` · `--primary-light: rgba(192,132,252,0.18)` — the light-mode purple (`#5625d1`) only has ~1.9:1 contrast against dark surfaces, so dark mode uses lighter purple/fuchsia tones (~6:1) instead of reusing the light-mode brand hex.
 - **Typography**: Inter (body/UI), JetBrains Mono (code). Google Fonts import.
 - **Border radius**: `--radius-card: 16px` · `--radius-btn: 10px` · inputs 8px
 - **Shadows**: `0 4px 20px rgba(86,37,209,0.08)` default · `0 12px 36px rgba(86,37,209,0.18)` hover

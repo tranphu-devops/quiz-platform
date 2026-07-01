@@ -161,7 +161,12 @@
     --border:         #3d4055;
     --text:           #f1f5f9;
     --muted:          #94a3b8;
-    --primary-light:  rgba(86,37,209,0.18);
+    /* Lighter than the light-mode brand purple (#5625d1) — that value has only ~1.9:1
+       contrast against these dark backgrounds. purple-400/500/fuchsia-400 read at ~6:1. */
+    --primary:        #c084fc;
+    --primary-dark:   #a855f7;
+    --accent:         #e879f9;
+    --primary-light:  rgba(192,132,252,0.18);
     --shadow:         0 4px 20px rgba(0,0,0,0.4);
     --shadow-hover:   0 12px 36px rgba(0,0,0,0.55);
 

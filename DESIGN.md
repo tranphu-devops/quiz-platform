@@ -8,11 +8,20 @@ description: >
 version: alpha
 
 colors:
-  # Brand
+  # Brand — light mode (default)
   primary:       "#5625d1"
   primary-dark:  "#4318b0"
   primary-light: "#ede6ff"
   accent:        "#6d29d3"
+
+  # Brand — dark mode override (applied via [data-theme="dark"])
+  # The light-mode primary (#5625d1) only reaches ~1.9:1 contrast against
+  # bg-dark/surface-dark — too low to read. Lighter purple/fuchsia tones
+  # restore ~6:1 contrast while keeping the same hue family.
+  primary-dark-theme:  "#c084fc"
+  primary-dark-hover:  "#a855f7"
+  accent-dark-theme:   "#e879f9"
+  primary-light-dark:  "rgba(192,132,252,0.18)"
 
   # Semantic
   success:  "#22c55e"
@@ -202,7 +211,7 @@ Màu chính là cặp **Deep Purple `#5625d1` → Purple `#6d29d3`** (Udemy-insp
 - **info** `#38bdf8` — neutral info chips, countdown badge
 
 ### Light/dark surfaces
-Dark mode chỉ thay thế surface và text tokens; brand colors không đổi. Không tạo riêng màu brand cho dark.
+Dark mode thay thế surface và text tokens **và** brand tokens (`primary`/`primary-dark`/`accent`/`primary-light`). Light-mode brand purple (`#5625d1`) chỉ đạt ~1.9:1 contrast trên nền tối — không đạt AA. Dark mode dùng tông tím-hồng sáng hơn (`#c084fc` / `#a855f7` / `#e879f9`, ~6:1 contrast) thay vì giữ nguyên hex của light mode. Landing page (light-only) và mọi thứ trên nền sáng vẫn dùng brand gradient gốc không đổi.
 
 ## Typography
 
@@ -280,11 +289,11 @@ Role badges và labels dùng 15% opacity background của màu tương ứng:
 **Do:**
 - Dùng brand gradient đồng nhất trên cả landing page và quiz app — không dùng plain `#4318b0` solid cho brand text hay logo.
 - Dùng `{primary-light}` làm hover/active background — không dùng opacity trực tiếp trên primary.
-- Giữ dark mode bằng cách swap surface/text tokens — không tạo thêm màu brand riêng cho dark.
+- Dark mode: dùng `--primary`/`--primary-dark`/`--accent` đã được override sáng hơn (`#c084fc`/`#a855f7`/`#e879f9`) để đảm bảo contrast — không tự ý đổi ngược lại `#5625d1` cho dark.
 - Radius `16px` cho cards, `10px` cho buttons, `8px` cho inputs — không mix tuỳ tiện.
 
 **Don't:**
-- Đừng dùng màu `#6366f1` (indigo cũ) hay `#1d4ed8` (blue-700 cũ) làm brand primary — đã thống nhất về `#5625d1` (Udemy-style deep purple).
-- Đừng hard-code hex màu trong component styles; luôn dùng CSS custom properties `var(--primary)`, v.v.
+- Đừng dùng màu `#6366f1` (indigo cũ) hay `#1d4ed8` (blue-700 cũ) làm brand primary — đã thống nhất về `#5625d1` (Udemy-style deep purple) cho light mode.
+- Đừng hard-code hex màu trong component styles; luôn dùng CSS custom properties `var(--primary)`, v.v. — token này tự đổi giá trị theo `data-theme`.
 - Đừng tạo shadow nặng (`blur > 40px`) cho card thường — chỉ dùng cho modal/overlay.
 - Đừng dùng `font-weight: 400` cho button text — min là `600`.

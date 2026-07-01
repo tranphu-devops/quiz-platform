@@ -115,7 +115,7 @@
 
 <style>
   .ix-sidebar {
-    width: 200px;
+    width: 232px;
     flex-shrink: 0;
     background: var(--ix-bg-sidebar);
     border-right: 1px solid var(--ix-border);
@@ -137,9 +137,9 @@
     justify-content: space-between;
     border-bottom: 1px solid var(--ix-border);
     flex-shrink: 0;
-    min-height: 52px;
-    padding: 0 6px 0 12px;
-    gap: 4px;
+    min-height: 60px;
+    padding: 0 8px 0 14px;
+    gap: 6px;
   }
 
   .collapsed .ix-brand-row { padding: 0 6px; justify-content: center; }
@@ -147,8 +147,8 @@
   .ix-brand {
     display: flex;
     align-items: center;
-    gap: 7px;
-    font-size: 0.875rem;
+    gap: 9px;
+    font-size: 1.15rem;
     font-weight: 700;
     letter-spacing: -0.02em;
     color: var(--ix-text-primary);
@@ -161,8 +161,8 @@
   .collapsed .ix-brand { flex: 0; }
 
   .ix-brand-icon {
-    width: 22px;
-    height: 22px;
+    width: 32px;
+    height: 32px;
     flex-shrink: 0;
   }
 
@@ -371,10 +371,10 @@
     .ix-sidebar {
       position: fixed;
       top: var(--mobile-bar-h, 56px);
-      left: -220px;
+      left: -232px;
       bottom: 0;
       z-index: 200;
-      width: 200px !important; /* always full on mobile */
+      width: 232px !important; /* always full on mobile */
       min-height: auto;
       transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       box-shadow: none;
