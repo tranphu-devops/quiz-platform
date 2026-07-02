@@ -19,6 +19,9 @@
   let timer = null
   let currentIdx = $state(0)
   let showConfirm = $state(false)
+  // Scratch notes per question — kept in memory across next/back only.
+  // Intentionally NOT persisted (lost on refresh); purely a thinking aid.
+  let notes = $state({})
   let _examId = null
 
   // Set after a successful start — used for progress saves and submit
@@ -404,6 +407,20 @@
   .opt-key { font-weight: 700; color: var(--primary); min-width: 1.1rem; flex-shrink: 0; }
 
   /* ── Nav row ──────────────────────────────────────────────────────────────────*/
+  .note-block { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px dashed var(--border); }
+  .note-label {
+    display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap;
+    font-size: 0.82rem; font-weight: 700; color: var(--text); margin-bottom: 0.4rem;
+  }
+  .note-hint { font-size: 0.72rem; font-weight: 500; color: var(--muted); }
+  .note-area {
+    width: 100%; box-sizing: border-box; resize: vertical;
+    background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.55rem 0.7rem; font: inherit; font-size: 0.85rem;
+  }
+  .note-area:focus { outline: none; border-color: var(--primary); }
+
   .nav-row {
     display: flex; justify-content: space-between; align-items: center;
     margin-top: 1.25rem; gap: 0.75rem;
@@ -714,6 +731,21 @@
         </li>
         {/each}
       </ul>
+
+      <div class="note-block">
+        <label class="note-label" for="note-{currentQ.id}">
+          📝 Ghi chú nháp
+          <span class="note-hint">chỉ hỗ trợ khi làm bài · sẽ mất khi tải lại trang (F5), không được lưu</span>
+        </label>
+        <textarea
+          id="note-{currentQ.id}"
+          class="note-area"
+          rows="2"
+          placeholder="Ghi chú suy nghĩ của bạn cho câu này..."
+          value={notes[currentQ.id] ?? ''}
+          oninput={(e) => (notes = { ...notes, [currentQ.id]: e.target.value })}
+        ></textarea>
+      </div>
     </div>
     {/if}
 

@@ -19,7 +19,7 @@ docker compose up --build
 Access at http://localhost (via Nginx on port 80).
 
 `docker-compose.override.yml` is applied automatically in dev — it volume-mounts each service's `src/` for hot reload (`node --watch`) and exposes ports directly:
-- nginx: 80, frontend: 4000, gotrue: 9999, user: 4002, exam: 4003, submission: 4004, postgres: 5432
+- nginx: 80, frontend: 4000, gotrue: 9999, user: 4002, exam: 4003, submission: 4004, interaction: 4005, postgres: 5432
 
 ### Individual service dev (outside Docker)
 ```bash
@@ -46,6 +46,7 @@ docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/po
 docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_submission_progress.sql
 docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_exam_session.sql
 docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_user_profile.sql
+docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_interactions.sql
 ```
 
 ### Regenerate badge SVGs
@@ -83,6 +84,7 @@ TAG=latest                    # Docker image tag; used by docker-compose
 USER_DATABASE_URL=postgres://postgres:<pw>@postgres:5432/quizdb?search_path=quiz_users
 EXAM_DATABASE_URL=postgres://postgres:<pw>@postgres:5432/quizdb?search_path=quiz_exams
 SUBMISSION_DATABASE_URL=postgres://postgres:<pw>@postgres:5432/quizdb?search_path=quiz_submissions
+INTERACTION_DATABASE_URL=postgres://postgres:<pw>@postgres:5432/quizdb?search_path=quiz_interactions
 
 # AWS / Lightsail Object Storage (for image uploads)
 AWS_ACCESS_KEY_ID=
@@ -99,6 +101,7 @@ GHCR_ORG=tranphu-devops      # GHCR org prefix for docker-compose image names
 PUBLIC_EXAM_URL=
 PUBLIC_SUBMISSION_URL=
 PUBLIC_USER_URL=
+PUBLIC_INTERACTION_URL=
 ```
 
 ## Architecture
@@ -112,6 +115,7 @@ Browser → Nginx :80
   /api/users/       → user-service:3002
   /api/exams/       → exam-service:3003     (Nginx blocks /api/exams/exams/internal/ and /api/exams/collections/internal/ — these map to the exam-service's /exams/internal/ and /collections/internal/ paths after proxy stripping)
   /api/submissions/ → submission-service:3004
+  /api/interactions/ → interaction-service:3005  (comments / likes / reports)
   /                 → frontend:3000
 ```
 
@@ -177,7 +181,7 @@ Fully client-rendered SPA (`export const ssr = false` in `+layout.js`). Auth per
 Key files:
 - `src/lib/auth.js` — GoTrueClient, URL = `window.location.origin + '/auth'`
 - `src/lib/stores/auth.js` — `session`, `user`, `token` Svelte stores via `onAuthStateChange`
-- `src/lib/api.js` — `examApi`, `submissionApi`, `userApi`, `collectionApi`, `badgeApi`, `uploadApi`; all read `token` store for Bearer header
+- `src/lib/api.js` — `examApi`, `submissionApi`, `userApi`, `collectionApi`, `badgeApi`, `uploadApi`, `commentApi`, `likeApi`, `reportApi`; all read `token` store for Bearer header
 
 `uploadApi.upload(file, type, oldUrl?)` sends `multipart/form-data` with no `Content-Type` header (let browser set the boundary).
 
@@ -229,6 +233,21 @@ Routes:
 
 Badge check is **fire-and-forget** (non-blocking): submission returns immediately, badge award happens async in the background.
 
+### Interactions — comment / like / report (`apps/interaction-service`, port 3005)
+A separate microservice (schema `quiz_interactions`) for social/feedback features. Same Fastify layout as the other backends. Reads **cross-schema** in the shared DB for simple checks (join author name from `quiz_users.profiles`, verify a completed submission in `quiz_submissions.submissions`, look up `quiz_exams.exams.created_by`) rather than internal HTTP calls — following the same precedent as the auth middleware's ban check.
+
+- `auth.js` exports both `verifyAuth` (strict) and `optionalAuth` (lenient — sets `req.user` if a valid token is present, else continues anonymously). Public reads use `optionalAuth` so they can report the caller's like state.
+- **Comments** — any authenticated user may create; author + admin may edit/delete (teacher does **not** moderate comments on their own exams). Listing is **paginated 10/page**.
+  - `GET /exams/:examId/comments?page=` (public) · `POST /exams/:examId/comments` · `PATCH|DELETE /comments/:id`
+- **Likes** — **students only** may like; count is public. `POST /exams/:examId/like` toggles.
+- **Summary** — `GET /exams/:examId/summary` → `{ like_count, comment_count, liked }` for the exam detail hero.
+- **Reports** — only a user with a **completed** submission (`status IN ('completed','timed_out')`) for the exam may file one; `category` ∈ `question_wrong|answer_wrong|image_issue|other` + `description`. `exam_owner_id` is denormalized from `exams.created_by` at creation for fast inbox filtering.
+  - `POST /exams/:examId/reports` · `GET /reports/mine` (reporter's own history) · `GET /reports/inbox` (teacher: own exams / admin: all) · `GET /reports/inbox/count` (open-count badge) · `PATCH /reports/:id` (owner/admin responds → `status='resolved'`)
+- Frontend: `commentApi`, `likeApi`, `reportApi` in `api.js`. Like heart + comments live on `/exams/[id]`; the report modal on `/exams/[id]/result`; report history ("my reports") and the teacher/admin inbox+response live on `/profile`.
+
+### Exam notes (frontend-only, not persisted)
+On `/exams/[id]/take`, each question has a scratch-note textarea. Notes are held in a per-tab Svelte `$state` object keyed by question id, kept across next/back navigation, but **intentionally not sent to any server** — they are lost on refresh (F5). A helper line under the textarea states this. There is no notes table or endpoint.
+
 ### Database schemas
 `infra/postgres/init.sql` is idempotent (`IF NOT EXISTS` + `ALTER TABLE … ADD COLUMN IF NOT EXISTS`). It runs once at container creation. For running databases use `infra/postgres/migrate_image_upload.sql`.
 
@@ -243,8 +262,11 @@ Schema summary:
 - `quiz_exams.collection_exams` — `(collection_id, exam_id, position)` many-to-many
 - `quiz_submissions.submissions` — `answers JSONB`, `results_detail JSONB`, `percentage FLOAT`, `status VARCHAR(20)` (`in_progress`|`completed`|`timed_out`, DEFAULT `completed`), `started_at TIMESTAMPTZ`, `expires_at TIMESTAMPTZ`, `exam_session_id UUID` (UUID assigned per active browser tab to enforce single-device rule), `session_last_active TIMESTAMPTZ` (updated on every progress heartbeat; used to detect stale sessions)
 - `quiz_submissions.student_badges` — `(user_id, collection_id)` unique; `earned_at`
+- `quiz_interactions.comments` — `id, exam_id, user_id, content, created_at, updated_at`
+- `quiz_interactions.likes` — `(exam_id, user_id)` PK; `created_at`
+- `quiz_interactions.reports` — `id, exam_id, exam_owner_id, reporter_id, category, description, status` (`open`|`resolved`), `response, responded_by, responded_at, created_at`
 
-Seed files in `infra/postgres/`: `seed.sql` (sample data), `seed_aws_saa.sql` (AWS SAA exam with 45 questions).
+Seed files in `infra/postgres/`: `seed.sql` (sample data), `seed_aws_saa.sql` (AWS SAA exam with 45 questions), `seed_exam_01.sql`.
 
 ### API response encryption
 Active only when `NODE_ENV=production` AND `API_ENCRYPTION_KEY` is set. Transparent in dev.
@@ -269,7 +291,7 @@ Environment: `DATABASE_URL` (same as `SUBMISSION_DATABASE_URL`), `EXAM_SERVICE_U
 
 ### CI/CD
 Three GitHub Actions workflows:
-- `build-push.yml` — triggered on push to `main`; builds multi-platform (amd64 + arm64) Docker images to GHCR. Matrix: `auth-service` (legacy, built but not deployed), `user-service`, `exam-service`, `submission-service`, `grader-service`, `frontend`.
+- `build-push.yml` — triggered on push to `main`; builds multi-platform (amd64 + arm64) Docker images to GHCR. Matrix: `auth-service` (legacy, built but not deployed), `user-service`, `exam-service`, `submission-service`, `interaction-service`, `grader-service`, `frontend`.
 - `deploy.yml` — triggered after `build-push.yml` succeeds; SSHs into the production server and runs `deploy.sh --update`.
 - `cleanup-images.yml` — runs weekly (Sunday 00:00 ICT); deletes GHCR image versions beyond the 5 most recent, keeping all semver-tagged releases.
 
@@ -292,6 +314,8 @@ Three GitHub Actions workflows:
 - **Session credit flag:** Take page stores `credit_deducted: true` in localStorage session to avoid double-charging on page refresh.
 - **Single-device exam session:** `POST /submissions/start` generates a UUID `session_id` and stores it as `exam_session_id`. Each `PUT /submissions/:id/progress` (heartbeat + answer save) and `POST /submissions/:id/submit` must pass this UUID in the `X-Session-Id` header. If the header doesn't match the stored `exam_session_id`, the server returns HTTP 409 — preventing a second tab or device from taking over the session. If `session_last_active` is stale (>300 s / 5 min — `SESSION_STALE_SECS` constant), the new session may claim the submission. `GET /submissions/active?exam_id=` returns any existing `in_progress` submission for the user+exam pair.
 - **Scheduled publish:** `exams.scheduled_at` — if set to a future datetime and `is_published = true`, the exam is visible to students but locked. The frontend shows a live countdown (1 s interval via `setInterval`). Server blocks `POST /submissions/start` with HTTP 423 if `scheduled_at > NOW()`. Create/edit forms have a 3-way publish mode selector: draft / now / scheduled. `PUT /exams/:id` uses a `(has_scheduled_at, scheduled_at_val)` param pair so `null` can clear the field.
+- **Interactions gating:** Comments — any authenticated user. Likes — **students only** (server rejects others with 403). Reports — only after a completed submission (server verifies via cross-schema query, 403 otherwise). Comment moderation is **author + admin only** (teachers can't moderate comments on their own exams). Report responses are **owner + admin** and flip `status` to `resolved`.
+- **Exam notes are not persisted:** the take-page note textareas are in-memory only (Svelte `$state`), never sent to a server; don't add a notes table/endpoint — losing them on refresh is intended behavior.
 
 ## Design System
 

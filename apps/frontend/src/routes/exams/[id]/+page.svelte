@@ -1,5 +1,5 @@
 <script>
-  import { examApi, submissionApi, userApi } from '$lib/api'
+  import { examApi, submissionApi, userApi, commentApi, likeApi } from '$lib/api'
   import { user } from '$lib/stores/auth'
   import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
@@ -78,7 +78,114 @@
     } finally {
       loading = false
     }
+
+    // Likes + comments load for everyone (independent of role/errors above)
+    await Promise.all([loadSummary(id), loadComments(id, 1)])
   })
+
+  // ── Likes + comments ──────────────────────────────────────────────────────
+  let likeCount = $state(0)
+  let liked = $state(false)
+  let commentCount = $state(0)
+  let likeBusy = $state(false)
+
+  let comments = $state([])
+  let commentPage = $state(1)
+  let commentTotalPages = $state(1)
+  let commentsLoading = $state(false)
+  let newComment = $state('')
+  let postingComment = $state(false)
+  let editingId = $state(null)
+  let editContent = $state('')
+
+  const isStudent = $derived($user?.role === 'student')
+
+  async function loadSummary(id) {
+    try {
+      const res = await commentApi.summary(id)
+      if (res.ok) {
+        const s = await res.json()
+        likeCount = s.like_count
+        liked = s.liked
+        commentCount = s.comment_count
+      }
+    } catch {}
+  }
+
+  async function loadComments(id, p = 1) {
+    commentsLoading = true
+    try {
+      const res = await commentApi.list(id, p)
+      if (res.ok) {
+        const data = await res.json()
+        comments = data.comments
+        commentPage = data.page
+        commentTotalPages = data.total_pages
+        commentCount = data.total
+      }
+    } catch {} finally {
+      commentsLoading = false
+    }
+  }
+
+  async function toggleLike() {
+    if (!isStudent || likeBusy) return
+    likeBusy = true
+    try {
+      const res = await likeApi.toggle(exam.id)
+      if (res.ok) {
+        const d = await res.json()
+        liked = d.liked
+        likeCount = d.like_count
+      }
+    } finally {
+      likeBusy = false
+    }
+  }
+
+  async function postComment() {
+    const content = newComment.trim()
+    if (!content || postingComment) return
+    postingComment = true
+    try {
+      const res = await commentApi.create(exam.id, content)
+      if (res.ok) {
+        newComment = ''
+        await loadComments(exam.id, 1)
+      }
+    } finally {
+      postingComment = false
+    }
+  }
+
+  function startEdit(c) {
+    editingId = c.id
+    editContent = c.content
+  }
+
+  async function saveEdit(c) {
+    const content = editContent.trim()
+    if (!content) return
+    const res = await commentApi.update(c.id, content)
+    if (res.ok) {
+      editingId = null
+      await loadComments(exam.id, commentPage)
+    }
+  }
+
+  async function deleteComment(c) {
+    const res = await commentApi.remove(c.id)
+    if (res.ok) {
+      // If last item on a page beyond the first, step back a page
+      const targetPage = comments.length === 1 && commentPage > 1 ? commentPage - 1 : commentPage
+      await loadComments(exam.id, targetPage)
+      await loadSummary(exam.id)
+    }
+  }
+
+  function canModerate(c) {
+    return c.user_id === $user?.id || $user?.role === 'admin'
+  }
 
   async function togglePublish() {
     publishing = true
@@ -144,6 +251,67 @@
     border: 1px solid rgba(255,255,255,0.2); border-radius: 99px;
     padding: 0.15rem 0.6rem; font-size: 0.78rem;
   }
+  .hero-social { display: flex; align-items: center; gap: 0.75rem; margin-top: 1rem; }
+  .like-btn {
+    display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer;
+    background: rgba(255,255,255,0.15); color: #fff; font-weight: 700;
+    border: 1px solid rgba(255,255,255,0.25); border-radius: 99px;
+    padding: 0.35rem 0.85rem; font-size: 0.85rem; transition: background 0.15s, transform 0.1s;
+  }
+  .like-btn:hover:not(:disabled) { background: rgba(255,255,255,0.28); }
+  .like-btn:active:not(:disabled) { transform: scale(0.94); }
+  .like-btn.liked { background: rgba(244,63,94,0.25); border-color: rgba(244,63,94,0.5); }
+  .like-btn.readonly { cursor: default; }
+  .like-btn:disabled { opacity: 0.85; }
+  .like-heart { font-size: 1rem; line-height: 1; }
+  .hero-social-stat {
+    color: rgba(255,255,255,0.9); font-size: 0.85rem; font-weight: 600;
+    text-decoration: none;
+  }
+  .hero-social-stat:hover { color: #fff; text-decoration: underline; }
+
+  /* ── Comments ────────────────────────────────────────────────────────────────*/
+  .comments-wrap {
+    margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border);
+    max-width: 760px;
+  }
+  .comment-composer { margin-bottom: 1.5rem; }
+  .comment-composer textarea, .comment-body textarea {
+    width: 100%; box-sizing: border-box; resize: vertical;
+    background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 0.7rem 0.85rem; font: inherit; font-size: 0.9rem;
+  }
+  .comment-composer textarea:focus, .comment-body textarea:focus {
+    outline: none; border-color: var(--primary);
+  }
+  .composer-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+  .comment-list { display: flex; flex-direction: column; gap: 1.1rem; }
+  .comment-item { display: flex; gap: 0.75rem; }
+  .comment-avatar {
+    flex: 0 0 40px; width: 40px; height: 40px; border-radius: 50%;
+    overflow: hidden; background: linear-gradient(135deg, var(--primary), var(--accent));
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700;
+  }
+  .comment-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .comment-body { flex: 1; min-width: 0; }
+  .comment-meta { display: flex; align-items: baseline; gap: 0.6rem; margin-bottom: 0.2rem; }
+  .comment-author { font-weight: 700; font-size: 0.9rem; color: var(--text); }
+  .comment-date { font-size: 0.75rem; color: var(--muted); }
+  .comment-content { font-size: 0.9rem; line-height: 1.5; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+  .comment-tools { display: flex; gap: 0.75rem; margin-top: 0.35rem; }
+  .comment-tools button {
+    background: none; border: none; padding: 0; cursor: pointer;
+    font-size: 0.78rem; color: var(--muted); font-weight: 600;
+  }
+  .comment-tools button:hover { color: var(--primary); }
+  .comment-tools button.danger:hover { color: var(--danger); }
+  .comment-pager {
+    display: flex; align-items: center; justify-content: center; gap: 1rem;
+    margin-top: 1.5rem; font-size: 0.85rem; color: var(--muted);
+  }
+  .comment-pager button:disabled { opacity: 0.4; cursor: not-allowed; }
 
   /* ── Two-column layout ────────────────────────────────────────────────────────*/
   .layout {
@@ -354,6 +522,20 @@
         {#each exam.tags as t}<span class="hero-tag">{t}</span>{/each}
       </div>
     {/if}
+    <div class="hero-social">
+      <button
+        class="like-btn"
+        class:liked
+        class:readonly={!isStudent}
+        onclick={toggleLike}
+        disabled={likeBusy || !isStudent}
+        title={isStudent ? (liked ? 'Bỏ thích' : 'Thích đề thi này') : 'Chỉ học viên mới có thể thích'}
+      >
+        <span class="like-heart">{liked ? '❤️' : '🤍'}</span>
+        <span>{likeCount}</span>
+      </button>
+      <a href="#comments" class="hero-social-stat">💬 {commentCount} bình luận</a>
+    </div>
   </div>
 </div>
 
@@ -632,5 +814,85 @@
     </div>
   </div>
 
+</div>
+
+<!-- ── Comments ─────────────────────────────────────────────────────────────── -->
+<div class="comments-wrap" id="comments">
+  <div class="section-title">Bình luận ({commentCount})</div>
+
+  {#if $user}
+    <div class="comment-composer">
+      <textarea
+        bind:value={newComment}
+        placeholder="Chia sẻ suy nghĩ của bạn về đề thi này..."
+        rows="3"
+        maxlength="2000"
+      ></textarea>
+      <div class="composer-actions">
+        <button class="btn-primary" onclick={postComment} disabled={postingComment || !newComment.trim()}>
+          {postingComment ? 'Đang gửi...' : 'Gửi bình luận'}
+        </button>
+      </div>
+    </div>
+  {/if}
+
+  {#if commentsLoading}
+    <p style="color:var(--muted); padding:1rem 0">Đang tải bình luận...</p>
+  {:else if comments.length === 0}
+    <p style="color:var(--muted); padding:1rem 0">Chưa có bình luận nào. Hãy là người đầu tiên!</p>
+  {:else}
+    <div class="comment-list">
+      {#each comments as c (c.id)}
+        <div class="comment-item">
+          <div class="comment-avatar">
+            {#if c.avatar_url}
+              <img src={c.avatar_url} alt="" />
+            {:else}
+              <span>{(c.full_name ?? '?').charAt(0).toUpperCase()}</span>
+            {/if}
+          </div>
+          <div class="comment-body">
+            <div class="comment-meta">
+              <span class="comment-author">{c.full_name ?? 'Người dùng'}</span>
+              <span class="comment-date">{fmtDate(c.created_at)}{c.updated_at !== c.created_at ? ' (đã sửa)' : ''}</span>
+            </div>
+            {#if editingId === c.id}
+              <textarea bind:value={editContent} rows="3" maxlength="2000"></textarea>
+              <div class="composer-actions">
+                <button class="btn-primary" onclick={() => saveEdit(c)}>Lưu</button>
+                <button class="btn-ghost" onclick={() => (editingId = null)}>Huỷ</button>
+              </div>
+            {:else}
+              <div class="comment-content">{c.content}</div>
+              {#if canModerate(c)}
+                <div class="comment-tools">
+                  {#if c.user_id === $user?.id}
+                    <button onclick={() => startEdit(c)}>Sửa</button>
+                  {/if}
+                  <button class="danger" onclick={() => deleteComment(c)}>Xoá</button>
+                </div>
+              {/if}
+            {/if}
+          </div>
+        </div>
+      {/each}
+    </div>
+
+    {#if commentTotalPages > 1}
+      <div class="comment-pager">
+        <button
+          class="btn-ghost"
+          disabled={commentPage <= 1}
+          onclick={() => loadComments(exam.id, commentPage - 1)}
+        >← Trước</button>
+        <span>Trang {commentPage} / {commentTotalPages}</span>
+        <button
+          class="btn-ghost"
+          disabled={commentPage >= commentTotalPages}
+          onclick={() => loadComments(exam.id, commentPage + 1)}
+        >Sau →</button>
+      </div>
+    {/if}
+  {/if}
 </div>
 {/if}

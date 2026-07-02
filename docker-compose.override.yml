@@ -29,6 +29,14 @@ services:
     volumes:
       - ./apps/submission-service/src:/app/src
 
+  interaction-service:
+    build:
+      context: ./apps/interaction-service
+    ports:
+      - "4005:3005"
+    volumes:
+      - ./apps/interaction-service/src:/app/src
+
   grader-service:
     build:
       context: ./apps/grader-service

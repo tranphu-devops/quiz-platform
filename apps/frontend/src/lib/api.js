@@ -5,6 +5,7 @@ import { getClientPubKey, decryptIfNeeded } from '$lib/crypto'
 const EXAM_URL = import.meta.env.PUBLIC_EXAM_URL ?? '/api/exams'
 const SUB_URL = import.meta.env.PUBLIC_SUBMISSION_URL ?? '/api/submissions'
 const USER_URL = import.meta.env.PUBLIC_USER_URL ?? '/api/users'
+const INTERACTION_URL = import.meta.env.PUBLIC_INTERACTION_URL ?? '/api/interactions'
 
 function authHeaders(json = true) {
   const t = get(token)
@@ -167,6 +168,54 @@ export const collectionApi = {
 
 export const badgeApi = {
   list: (userId) => apiFetch(`${USER_URL}/badges/${userId}`, { headers: authHeaders(false) })
+}
+
+export const commentApi = {
+  // aggregate like/comment counts + caller's like state
+  summary: (examId) =>
+    apiFetch(`${INTERACTION_URL}/exams/${examId}/summary`, { headers: authHeaders(false) }),
+  list: (examId, page = 1) =>
+    apiFetch(`${INTERACTION_URL}/exams/${examId}/comments?page=${page}`, { headers: authHeaders(false) }),
+  create: (examId, content) =>
+    apiFetch(`${INTERACTION_URL}/exams/${examId}/comments`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ content })
+    }),
+  update: (id, content) =>
+    apiFetch(`${INTERACTION_URL}/comments/${id}`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: JSON.stringify({ content })
+    }),
+  remove: (id) =>
+    apiFetch(`${INTERACTION_URL}/comments/${id}`, { method: 'DELETE', headers: authHeaders(false) })
+}
+
+export const likeApi = {
+  toggle: (examId) =>
+    apiFetch(`${INTERACTION_URL}/exams/${examId}/like`, { method: 'POST', headers: authHeaders(false) })
+}
+
+export const reportApi = {
+  create: (examId, category, description) =>
+    apiFetch(`${INTERACTION_URL}/exams/${examId}/reports`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ category, description })
+    }),
+  mine: () => apiFetch(`${INTERACTION_URL}/reports/mine`, { headers: authHeaders(false) }),
+  inbox: (status = null) => {
+    const qs = status ? `?status=${status}` : ''
+    return apiFetch(`${INTERACTION_URL}/reports/inbox${qs}`, { headers: authHeaders(false) })
+  },
+  inboxCount: () => apiFetch(`${INTERACTION_URL}/reports/inbox/count`, { headers: authHeaders(false) }),
+  respond: (id, response, status = 'resolved') =>
+    apiFetch(`${INTERACTION_URL}/reports/${id}`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: JSON.stringify({ response, status })
+    })
 }
 
 export const uploadApi = {
