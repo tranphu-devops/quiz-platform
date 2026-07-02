@@ -423,14 +423,9 @@ else
   echo -e "${BOLD}Tuỳ chọn bổ sung (Enter để bỏ qua):${NC}"
   echo ""
 
-  # ── Migration (cho DB cũ đang upgrade) ──────────────────────────────────────
-  read -rp "  Chạy migrate_image_upload.sql? (chỉ cần nếu DB cũ chưa có cột image) (y/N): " DO_MIGRATE
-  if [[ "$DO_MIGRATE" =~ ^[Yy]$ ]]; then
-    docker compose -f "$COMPOSE_FILE" exec -T postgres \
-      psql -U postgres -d quizdb -f /dev/stdin \
-      < "$APP_DIR/infra/postgres/migrate_image_upload.sql" \
-      && log "Migration applied" || warn "Migration failed — xem lại logs"
-  fi
+  # NOTE: Schema migrations run automatically via the one-shot `migrate` service
+  # on every `docker compose up` (see infra/postgres/run-migrations.sh) — no manual
+  # migration step needed here anymore.
 
   # ── Sample seed data ─────────────────────────────────────────────────────────
   read -rp "  Seed dữ liệu mẫu (seed.sql)? (y/N): " DO_SEED

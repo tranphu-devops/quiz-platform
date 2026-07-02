@@ -41,6 +41,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   user-service:
@@ -62,6 +64,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   exam-service:
@@ -77,6 +81,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   submission-service:
@@ -94,6 +100,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   interaction-service:
@@ -108,6 +116,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   grader-service:
@@ -121,6 +131,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       exam-service:
         condition: service_started
     restart: unless-stopped
@@ -141,13 +153,31 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d quizdb"]
       interval: 5s
       timeout: 5s
       retries: 5
     restart: unless-stopped
+
+  # One-shot schema migrator: applies infra/postgres/migrations/*.sql in order,
+  # tracked in public.schema_migrations, then exits. All app services wait for
+  # this to complete successfully, so the schema is always up to date on boot.
+  migrate:
+    image: postgres:16-alpine
+    environment:
+      PGHOST: postgres
+      PGUSER: postgres
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: quizdb
+    volumes:
+      - ./infra/postgres/migrations:/migrations:ro
+      - ./infra/postgres/run-migrations.sh:/run-migrations.sh:ro
+    command: ["sh", "/run-migrations.sh"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
 
 volumes:
   postgres_data:
