@@ -36,18 +36,16 @@ npm run build    # vite build → build/
 npm start        # node build (production)
 ```
 
-### Migrate an existing running database
-```bash
-docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_image_upload.sql
-docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_credits.sql
-docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_collections.sql
-docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_security.sql
-docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_scheduled_exam.sql
-docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_submission_progress.sql
-docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_exam_session.sql
-docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_user_profile.sql
-docker compose exec postgres psql -U postgres -d quizdb -f /dev/stdin < infra/postgres/migrate_interactions.sql
-```
+### Database migrations (automatic)
+Schema is managed by **ordered, idempotent migration files** in `infra/postgres/migrations/` (`NNNN_name.sql`). They are applied automatically by the one-shot **`migrate`** service in `docker-compose.yml` on every `docker compose up` — every app service `depends_on` it with `condition: service_completed_successfully`, so the schema is always current before services start. No manual `psql` step is needed (locally or on deploy).
+
+- Runner: `infra/postgres/run-migrations.sh` (POSIX sh + psql). Tracks applied files in `public.schema_migrations`; each file runs in a single transaction; already-applied files are skipped.
+- **To add a schema change:** drop a new `infra/postgres/migrations/NNNN_name.sql` file (next number). Write it idempotently (`CREATE … IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `INSERT … ON CONFLICT DO NOTHING`) so re-runs on partially-migrated DBs are safe. Then `docker compose up -d` (dev) or `deploy.sh --update` (prod) applies it.
+- Force a run / inspect state against a running DB:
+  ```bash
+  docker compose run --rm migrate
+  docker compose exec postgres psql -U postgres -d quizdb -c "SELECT * FROM public.schema_migrations;"
+  ```
 
 ### Regenerate badge SVGs
 ```bash
@@ -219,7 +217,7 @@ Routes:
 ### Public user profile
 - `GET /api/users/public/profile/:userId` — unauthenticated; returns public profile fields (`full_name, avatar_url, role, bio, birth_year, gender, interests` + social URLs) for any user, used by `/users/[id]`.
 - `GET /api/exams/exams?creator_id=<id>` — lists exams by a given creator; anonymous/other-role viewers get published exams only, the creator (or admin) also sees their own drafts.
-- Extended personal fields live on `quiz_users.profiles`: `bio, birth_year, gender, interests, facebook_url, zalo, tiktok_url, youtube_url, instagram_url, linkedin_url, website_url` (see `infra/postgres/migrate_user_profile.sql`).
+- Extended personal fields live on `quiz_users.profiles`: `bio, birth_year, gender, interests, facebook_url, zalo, tiktok_url, youtube_url, instagram_url, linkedin_url, website_url` (see `infra/postgres/migrations/0009_user_profile.sql`).
 
 ### Collections & Badges
 
@@ -246,12 +244,12 @@ A separate microservice (schema `quiz_interactions`) for social/feedback feature
 - Frontend: `commentApi`, `likeApi`, `reportApi` in `api.js`. Like heart + comments live on `/exams/[id]`; the report modal on `/exams/[id]/result`; report history ("my reports") and the teacher/admin inbox+response live on `/profile`.
 
 ### Exam notes (frontend-only, not persisted)
-On `/exams/[id]/take`, each question has a scratch-note textarea. Notes are held in a per-tab Svelte `$state` object keyed by question id, kept across next/back navigation, but **intentionally not sent to any server** — they are lost on refresh (F5). A helper line under the textarea states this. There is no notes table or endpoint.
+On `/exams/[id]/take` there is a **single scratch note for the whole exam session** (one `note` string in per-tab Svelte `$state`), shared across all questions and unchanged when navigating between them. It lives in a floating widget (`.note-widget`) anchored bottom-right, **hidden by default**, toggled by a FAB (the FAB shows a dot when the note is non-empty). The note is **intentionally not sent to any server** — lost on refresh (F5); a helper line states this. There is no notes table or endpoint.
 
 ### Database schemas
-`infra/postgres/init.sql` is idempotent (`IF NOT EXISTS` + `ALTER TABLE … ADD COLUMN IF NOT EXISTS`). It runs once at container creation. For running databases use `infra/postgres/migrate_image_upload.sql`.
+Schema is defined by the ordered migration files in `infra/postgres/migrations/` (see **Database migrations** above), all idempotent (`IF NOT EXISTS` + `ALTER TABLE … ADD COLUMN IF NOT EXISTS`) and applied automatically by the `migrate` service. `0001_init.sql` is the base; later files (`0002_image_upload` … `0010_interactions`) add columns/tables incrementally.
 
-Never manually create tables in `quiz_auth` — GoTrue manages that schema.
+Never manually create tables in `auth` / `quiz_auth` — GoTrue manages that schema (the `auth` schema is created by `0001_init.sql` so it exists before GoTrue starts).
 
 Schema summary:
 - `quiz_users.profiles` — `id, full_name, avatar_url, role, credits, updated_at`, plus extended personal fields: `bio, birth_year, gender, interests, facebook_url, zalo, tiktok_url, youtube_url, instagram_url, linkedin_url, website_url`

@@ -19,9 +19,11 @@
   let timer = null
   let currentIdx = $state(0)
   let showConfirm = $state(false)
-  // Scratch notes per question — kept in memory across next/back only.
-  // Intentionally NOT persisted (lost on refresh); purely a thinking aid.
-  let notes = $state({})
+  // One scratch note for the whole exam session — shared across all questions,
+  // unchanged when navigating between them. Kept in memory only (not persisted;
+  // lost on refresh). Hidden by default, toggled via a floating button.
+  let note = $state('')
+  let showNote = $state(false)
   let _examId = null
 
   // Set after a successful start — used for progress saves and submit
@@ -407,19 +409,45 @@
   .opt-key { font-weight: 700; color: var(--primary); min-width: 1.1rem; flex-shrink: 0; }
 
   /* ── Nav row ──────────────────────────────────────────────────────────────────*/
-  .note-block { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px dashed var(--border); }
-  .note-label {
-    display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap;
-    font-size: 0.82rem; font-weight: 700; color: var(--text); margin-bottom: 0.4rem;
+  /* ── Floating scratch-note widget ─────────────────────────────────────────────*/
+  .note-widget {
+    position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 50;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 0.6rem;
   }
-  .note-hint { font-size: 0.72rem; font-weight: 500; color: var(--muted); }
-  .note-area {
-    width: 100%; box-sizing: border-box; resize: vertical;
+  .note-fab {
+    display: inline-flex; align-items: center; gap: 0.35rem; position: relative;
+    background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff;
+    border: none; border-radius: 99px; cursor: pointer;
+    padding: 0.65rem 1.1rem; font-size: 0.9rem; font-weight: 700;
+    box-shadow: 0 6px 20px rgba(86,37,209,0.35); transition: transform 0.12s, box-shadow 0.15s;
+  }
+  .note-fab:hover { transform: translateY(-1px); box-shadow: 0 10px 28px rgba(86,37,209,0.45); }
+  .note-fab.active { background: var(--surface); color: var(--text); border: 1px solid var(--border); box-shadow: var(--shadow); }
+  .note-fab-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #fbbf24;
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.6);
+  }
+  .note-panel {
+    width: min(340px, calc(100vw - 2.5rem));
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; box-shadow: 0 16px 44px rgba(0,0,0,0.22);
+    padding: 0.9rem; display: flex; flex-direction: column; gap: 0.55rem;
+  }
+  .note-panel-head { display: flex; align-items: center; justify-content: space-between; }
+  .note-panel-title { font-size: 0.85rem; font-weight: 700; color: var(--text); }
+  .note-panel-close {
+    background: none; border: none; cursor: pointer; color: var(--muted);
+    font-size: 0.95rem; line-height: 1; padding: 0.15rem 0.3rem; border-radius: 6px;
+  }
+  .note-panel-close:hover { color: var(--text); background: var(--bg); }
+  .note-panel-area {
+    width: 100%; box-sizing: border-box; resize: vertical; min-height: 140px;
     background: var(--bg); color: var(--text);
     border: 1px solid var(--border); border-radius: 8px;
-    padding: 0.55rem 0.7rem; font: inherit; font-size: 0.85rem;
+    padding: 0.6rem 0.7rem; font: inherit; font-size: 0.88rem; line-height: 1.5;
   }
-  .note-area:focus { outline: none; border-color: var(--primary); }
+  .note-panel-area:focus { outline: none; border-color: var(--primary); }
+  .note-panel-hint { font-size: 0.72rem; color: var(--muted); margin: 0; }
 
   .nav-row {
     display: flex; justify-content: space-between; align-items: center;
@@ -731,21 +759,6 @@
         </li>
         {/each}
       </ul>
-
-      <div class="note-block">
-        <label class="note-label" for="note-{currentQ.id}">
-          📝 Ghi chú nháp
-          <span class="note-hint">chỉ hỗ trợ khi làm bài · sẽ mất khi tải lại trang (F5), không được lưu</span>
-        </label>
-        <textarea
-          id="note-{currentQ.id}"
-          class="note-area"
-          rows="2"
-          placeholder="Ghi chú suy nghĩ của bạn cho câu này..."
-          value={notes[currentQ.id] ?? ''}
-          oninput={(e) => (notes = { ...notes, [currentQ.id]: e.target.value })}
-        ></textarea>
-      </div>
     </div>
     {/if}
 
@@ -778,6 +791,27 @@
       </button>
     </div>
   </div>
+</div>
+
+<!-- Floating scratch note: one note for the whole exam, hidden by default -->
+<div class="note-widget">
+  {#if showNote}
+    <div class="note-panel">
+      <div class="note-panel-head">
+        <span class="note-panel-title">📝 Ghi chú nháp</span>
+        <button class="note-panel-close" onclick={() => (showNote = false)} aria-label="Ẩn ghi chú">✕</button>
+      </div>
+      <textarea
+        class="note-panel-area"
+        bind:value={note}
+        placeholder="Ghi chú dùng chung cho cả bài thi — giữ nguyên khi bạn chuyển câu..."
+      ></textarea>
+      <p class="note-panel-hint">Chỉ hỗ trợ khi làm bài · sẽ mất khi tải lại trang (F5), không được lưu.</p>
+    </div>
+  {/if}
+  <button class="note-fab {showNote ? 'active' : ''}" onclick={() => (showNote = !showNote)}>
+    {#if showNote}✕ Ẩn ghi chú{:else}📝 Ghi chú{#if note.trim()}<span class="note-fab-dot"></span>{/if}{/if}
+  </button>
 </div>
 {/if}
 

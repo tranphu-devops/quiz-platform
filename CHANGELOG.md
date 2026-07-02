@@ -11,8 +11,12 @@ All notable changes to this project will be documented in this file.
   - **Bình luận**: mọi người dùng đã đăng nhập có thể bình luận trên trang chi tiết đề thi; hiển thị tối đa 10 bình luận mỗi trang (có phân trang). Tác giả sửa/xoá bình luận của mình, admin xoá bất kỳ.
   - **Thích (❤️)**: chỉ học viên (student) mới thích được đề thi; số lượt thích hiển thị cho tất cả mọi người.
   - **Báo lỗi đề thi**: người đã hoàn thành bài thi có thể báo lỗi (chọn loại: câu hỏi sai / đáp án sai / hình ảnh lỗi / khác + mô tả). Giáo viên/admin xem và phản hồi trong trang cá nhân (kèm badge số báo lỗi chưa xử lý); người báo lỗi theo dõi được trạng thái xử lý ("Báo lỗi của tôi") ngay trong trang cá nhân.
-- **Ghi chú nháp khi làm bài**: mỗi câu hỏi có ô ghi chú riêng, giữ lại khi chuyển câu tới/lui trong lúc thi. Ghi chú chỉ nằm trong bộ nhớ tạm — **không được lưu** và sẽ mất khi tải lại trang (F5); có dòng nhắc rõ điều này.
-- **DB migration** (`migrate_interactions.sql`): thêm schema `quiz_interactions` với các bảng `comments`, `likes`, `reports`.
+- **Ghi chú nháp khi làm bài**: một ô ghi chú **dùng chung cho cả bài thi**, giữ nguyên nội dung khi chuyển câu tới/lui. Đóng gói trong widget nổi (góc dưới phải), **mặc định ẩn**, bấm nút mới hiện để tránh rối. Ghi chú chỉ nằm trong bộ nhớ tạm — **không được lưu** và sẽ mất khi tải lại trang (F5); có dòng nhắc rõ điều này.
+- **Hệ thống migration tự động (code-based)**: schema DB giờ được quản lý bằng các file migration đánh số thứ tự trong `infra/postgres/migrations/` (`NNNN_name.sql`), chạy **tự động** qua service `migrate` (one-shot) mỗi lần `docker compose up` — mọi service `depends_on` migrate hoàn tất mới khởi động. Không còn phải chạy `psql` migrate thủ công (cả local lẫn khi deploy). Trạng thái theo dõi ở bảng `public.schema_migrations`; mỗi file chạy trong 1 transaction, đã chạy thì bỏ qua.
+
+### Changed
+- **Gộp schema về một nguồn**: `init.sql` + toàn bộ `migrate_*.sql` được chuyển thành `infra/postgres/migrations/0001_init.sql … 0010_interactions.sql`. Trước đây `init.sql` thiếu nhiều cột/bảng (credits, collections, badges, session...) nên fresh install thực chất phải chạy tay các migrate file — nay một lệnh `up` là đủ schema đầy đủ.
+- **`deploy.sh`**: bỏ bước hỏi chạy migrate thủ công ở Phase 10 (migration tự chạy qua service `migrate`).
 
 ## [Unreleased] — 2026-07-01
 
