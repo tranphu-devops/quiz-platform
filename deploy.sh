@@ -304,6 +304,7 @@ POSTGRES_PASSWORD=${PG_PASS}
 USER_DATABASE_URL=postgres://postgres:${PG_PASS}@postgres:5432/quizdb?search_path=quiz_users
 EXAM_DATABASE_URL=postgres://postgres:${PG_PASS}@postgres:5432/quizdb?search_path=quiz_exams
 SUBMISSION_DATABASE_URL=postgres://postgres:${PG_PASS}@postgres:5432/quizdb?search_path=quiz_submissions
+INTERACTION_DATABASE_URL=postgres://postgres:${PG_PASS}@postgres:5432/quizdb?search_path=quiz_interactions
 
 # Auth
 JWT_SECRET=${JWT_SECRET}
@@ -386,7 +387,7 @@ hr
 info "Phase 9: Health check + Nginx restart"
 hr
 
-SERVICES=("user-service" "exam-service" "submission-service")
+SERVICES=("user-service" "exam-service" "submission-service" "interaction-service")
 
 sleep 8  # give Postgres + services time to initialize
 

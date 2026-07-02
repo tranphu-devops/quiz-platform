@@ -1,5 +1,5 @@
 <script>
-  import { submissionApi, examApi } from '$lib/api'
+  import { submissionApi, examApi, reportApi } from '$lib/api'
   import { user } from '$lib/stores/auth'
   import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
@@ -10,6 +10,41 @@
   let exam = $state(null)
   let loading = $state(true)
   let error = $state('')
+
+  // ── Report a problem ──────────────────────────────────────────────────────
+  const REPORT_CATEGORIES = [
+    { value: 'question_wrong', label: 'Câu hỏi sai / khó hiểu' },
+    { value: 'answer_wrong',   label: 'Đáp án sai' },
+    { value: 'image_issue',    label: 'Hình ảnh lỗi / thiếu' },
+    { value: 'other',          label: 'Khác' }
+  ]
+  let showReport = $state(false)
+  let reportCategory = $state('question_wrong')
+  let reportDescription = $state('')
+  let reportSubmitting = $state(false)
+  let reportDone = $state(false)
+  let reportError = $state('')
+
+  async function submitReport() {
+    const desc = reportDescription.trim()
+    if (!desc || reportSubmitting) return
+    reportSubmitting = true
+    reportError = ''
+    try {
+      const res = await reportApi.create(submission.exam_id, reportCategory, desc)
+      if (res.ok) {
+        reportDone = true
+        reportDescription = ''
+      } else {
+        const err = await res.json().catch(() => ({}))
+        reportError = err.error ?? 'Không gửi được báo cáo'
+      }
+    } catch {
+      reportError = 'Không thể kết nối server'
+    } finally {
+      reportSubmitting = false
+    }
+  }
 
   onMount(async () => {
     if (!$user) { goto('/login'); return }
@@ -129,6 +164,41 @@
   }
   .btn-retry:hover { box-shadow: 0 6px 20px rgba(239,68,68,0.4); }
 
+  /* ── Report a problem ─────────────────────────────────────────────────────────*/
+  .report-link {
+    display: block; margin: 1rem auto 0; background: none; border: none;
+    color: var(--muted); font-size: 0.82rem; font-weight: 600; cursor: pointer;
+    text-decoration: underline; text-underline-offset: 2px;
+  }
+  .report-link:hover { color: var(--danger); }
+  .report-backdrop {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(20,18,45,0.55); backdrop-filter: blur(2px);
+    display: flex; align-items: center; justify-content: center; padding: 1rem;
+  }
+  .report-modal {
+    background: var(--surface); border-radius: var(--radius-card);
+    border: 1px solid var(--border); box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    padding: 1.75rem; width: 100%; max-width: 460px; text-align: left;
+  }
+  .report-modal h3 { font-size: 1.15rem; font-weight: 800; color: var(--text); margin-bottom: 0.25rem; }
+  .report-sub { font-size: 0.85rem; color: var(--muted); margin-bottom: 1.25rem; }
+  .report-field { display: block; margin-bottom: 1rem; }
+  .report-field span { display: block; font-size: 0.8rem; font-weight: 700; color: var(--text); margin-bottom: 0.35rem; }
+  .report-field select, .report-field textarea {
+    width: 100%; box-sizing: border-box; resize: vertical;
+    background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.6rem 0.75rem; font: inherit; font-size: 0.9rem;
+  }
+  .report-field select:focus, .report-field textarea:focus { outline: none; border-color: var(--primary); }
+  .report-err { color: var(--danger); font-size: 0.85rem; margin-bottom: 0.75rem; }
+  .report-actions { display: flex; justify-content: flex-end; gap: 0.6rem; }
+  .report-success { text-align: center; }
+  .report-success-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+  .report-success h3 { margin-bottom: 0.4rem; }
+  .report-success p { font-size: 0.88rem; color: var(--muted); margin-bottom: 1.25rem; line-height: 1.5; }
+
   /* ── Review section ───────────────────────────────────────────────────────────*/
   .review-header {
     font-size: 1.2rem; font-weight: 800; margin-bottom: 1.25rem;
@@ -233,7 +303,57 @@
       <a href="/exams/{submission.exam_id}/take" class="btn-retry">Làm lại</a>
     {/if}
   </div>
+
+  <button class="report-link" onclick={() => { showReport = true; reportDone = false; reportError = '' }}>
+    ⚠ Báo lỗi đề thi này
+  </button>
 </div>
+
+{#if showReport}
+<div class="report-backdrop" onclick={() => (showReport = false)}>
+  <div class="report-modal" onclick={(e) => e.stopPropagation()}>
+    {#if reportDone}
+      <div class="report-success">
+        <div class="report-success-icon">✅</div>
+        <h3>Đã gửi báo cáo</h3>
+        <p>Cảm ơn bạn! Giáo viên sẽ xem xét. Bạn có thể theo dõi trạng thái trong trang cá nhân.</p>
+        <button class="btn-primary" onclick={() => (showReport = false)}>Đóng</button>
+      </div>
+    {:else}
+      <h3>Báo lỗi đề thi</h3>
+      <p class="report-sub">Giúp chúng tôi cải thiện chất lượng đề thi.</p>
+
+      <label class="report-field">
+        <span>Loại vấn đề</span>
+        <select bind:value={reportCategory}>
+          {#each REPORT_CATEGORIES as c}
+            <option value={c.value}>{c.label}</option>
+          {/each}
+        </select>
+      </label>
+
+      <label class="report-field">
+        <span>Mô tả chi tiết</span>
+        <textarea
+          bind:value={reportDescription}
+          rows="4"
+          maxlength="4000"
+          placeholder="Mô tả cụ thể vấn đề bạn gặp phải (câu nào, sai chỗ nào...)"
+        ></textarea>
+      </label>
+
+      {#if reportError}<p class="report-err">{reportError}</p>{/if}
+
+      <div class="report-actions">
+        <button class="btn-outline" onclick={() => (showReport = false)}>Huỷ</button>
+        <button class="btn-primary" onclick={submitReport} disabled={reportSubmitting || !reportDescription.trim()}>
+          {reportSubmitting ? 'Đang gửi...' : 'Gửi báo cáo'}
+        </button>
+      </div>
+    {/if}
+  </div>
+</div>
+{/if}
 
 {#if hasPassed && submission.results_detail?.show_explanation && submission.results_detail?.questions?.length}
 <h2 class="review-header">Xem lại bài làm</h2>

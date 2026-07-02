@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import { goto } from '$app/navigation'
   import { user } from '$lib/stores/auth'
-  import { userApi, badgeApi } from '$lib/api'
+  import { userApi, badgeApi, reportApi } from '$lib/api'
   import ImageUpload from '$lib/components/ImageUpload.svelte'
   import PageHeader from '$lib/components/ui/PageHeader.svelte'
   import Card from '$lib/components/ui/Card.svelte'
@@ -31,6 +31,19 @@
   let website_url   = $state('')
 
   // Teacher upgrade
+  // Reports: my filed reports + (teacher/admin) inbox
+  let myReports    = $state([])
+  let inboxReports = $state([])
+  let respondingId = $state(null)
+  let respondText  = $state('')
+  const REPORT_CAT_LABEL = {
+    question_wrong: 'Câu hỏi sai',
+    answer_wrong:   'Đáp án sai',
+    image_issue:    'Hình ảnh lỗi',
+    other:          'Khác'
+  }
+  const isStaff = $derived($user?.role === 'teacher' || $user?.role === 'admin')
+
   let upgradeLoading      = $state(false)
   let upgradeError        = $state('')
   let upgradeSuccess      = $state(false)
@@ -68,7 +81,38 @@
       }
       if (badgeRes.ok) badges = await badgeRes.json()
     } catch {}
+
+    // Reports (independent of the profile fetch above)
+    try {
+      const mineRes = await reportApi.mine()
+      if (mineRes.ok) myReports = (await mineRes.json()).reports ?? []
+    } catch {}
+    if ($user.role === 'teacher' || $user.role === 'admin') {
+      try {
+        const inboxRes = await reportApi.inbox()
+        if (inboxRes.ok) inboxReports = (await inboxRes.json()).reports ?? []
+      } catch {}
+    }
   })
+
+  function startRespond(r) {
+    respondingId = r.id
+    respondText = r.response ?? ''
+  }
+
+  async function submitRespond(r) {
+    const text = respondText.trim()
+    if (!text) return
+    const res = await reportApi.respond(r.id, text, 'resolved')
+    if (res.ok) {
+      const updated = await res.json()
+      inboxReports = inboxReports.map(x => x.id === r.id ? { ...x, ...updated } : x)
+      respondingId = null
+      respondText = ''
+    }
+  }
+
+  const openInboxCount = $derived(inboxReports.filter(r => r.status === 'open').length)
 
   async function save() {
     error = ''; success = false; saving = true
@@ -284,6 +328,72 @@
                 {/each}
               </div>
             {/if}
+          </Card>
+        {/if}
+
+        <!-- Teacher/admin: report inbox -->
+        {#if isStaff}
+          <Card
+            title="Báo lỗi cần xử lý"
+            subtitle={openInboxCount > 0 ? `${openInboxCount} báo lỗi chưa xử lý` : 'Không có báo lỗi mới'}
+          >
+            {#if inboxReports.length === 0}
+              <p class="reports-empty">Chưa có báo lỗi nào về đề thi của bạn.</p>
+            {:else}
+              <div class="reports-list">
+                {#each inboxReports as r (r.id)}
+                  <div class="report-row {r.status}">
+                    <div class="report-row-head">
+                      <span class="report-cat">{REPORT_CAT_LABEL[r.category] ?? r.category}</span>
+                      <span class="report-status {r.status}">
+                        {r.status === 'open' ? '⏳ Chưa xử lý' : '✅ Đã xử lý'}
+                      </span>
+                    </div>
+                    <div class="report-exam">Đề: <strong>{r.exam_title ?? '—'}</strong> · bởi {r.reporter_name ?? 'Người dùng'}</div>
+                    <div class="report-desc">{r.description}</div>
+                    {#if r.response}
+                      <div class="report-response"><strong>Phản hồi:</strong> {r.response}</div>
+                    {/if}
+                    {#if respondingId === r.id}
+                      <textarea class="report-textarea" bind:value={respondText} rows="3" placeholder="Nhập phản hồi..."></textarea>
+                      <div class="report-row-actions">
+                        <Button variant="secondary" onclick={() => (respondingId = null)}>Huỷ</Button>
+                        <Button variant="primary" onclick={() => submitRespond(r)}>Gửi phản hồi</Button>
+                      </div>
+                    {:else}
+                      <div class="report-row-actions">
+                        <Button variant="secondary" onclick={() => startRespond(r)}>
+                          {r.status === 'open' ? 'Trả lời' : 'Sửa phản hồi'}
+                        </Button>
+                      </div>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+            {/if}
+          </Card>
+        {/if}
+
+        <!-- My filed reports (tracking) -->
+        {#if myReports.length > 0}
+          <Card title="Báo lỗi của tôi" subtitle="Theo dõi trạng thái xử lý">
+            <div class="reports-list">
+              {#each myReports as r (r.id)}
+                <div class="report-row {r.status}">
+                  <div class="report-row-head">
+                    <span class="report-cat">{REPORT_CAT_LABEL[r.category] ?? r.category}</span>
+                    <span class="report-status {r.status}">
+                      {r.status === 'open' ? '⏳ Đang chờ' : '✅ Đã trả lời'}
+                    </span>
+                  </div>
+                  <div class="report-exam">Đề: <strong>{r.exam_title ?? '—'}</strong></div>
+                  <div class="report-desc">{r.description}</div>
+                  {#if r.response}
+                    <div class="report-response"><strong>Phản hồi từ giáo viên:</strong> {r.response}</div>
+                  {/if}
+                </div>
+              {/each}
+            </div>
           </Card>
         {/if}
 
@@ -509,6 +619,36 @@
     grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
     gap: 12px;
   }
+
+  /* ── Reports ──────────────────────────────────────────────────────────────*/
+  .reports-empty { font-size: 13px; color: var(--ix-text-muted); margin: 0; }
+  .reports-list { display: flex; flex-direction: column; gap: 12px; }
+  .report-row {
+    border: 1px solid var(--ix-border); border-radius: 10px;
+    padding: 12px 14px; background: var(--ix-bg-app);
+  }
+  .report-row.open { border-left: 3px solid var(--danger); }
+  .report-row.resolved { border-left: 3px solid #16a34a; }
+  .report-row-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .report-cat { font-size: 12px; font-weight: 700; color: var(--ix-text-primary); }
+  .report-status { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+  .report-status.open { background: rgba(239,68,68,0.12); color: var(--danger); }
+  .report-status.resolved { background: rgba(22,163,74,0.14); color: #16a34a; }
+  .report-exam { font-size: 12px; color: var(--ix-text-secondary); margin-bottom: 6px; }
+  .report-desc { font-size: 13px; color: var(--ix-text-primary); line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  .report-response {
+    margin-top: 8px; padding: 8px 10px; border-radius: 8px;
+    background: var(--ix-bg-surface); border: 1px solid var(--ix-border);
+    font-size: 12.5px; color: var(--ix-text-secondary); line-height: 1.5;
+  }
+  .report-textarea {
+    width: 100%; box-sizing: border-box; resize: vertical; margin-top: 8px;
+    background: var(--ix-bg-surface); color: var(--ix-text-primary);
+    border: 1px solid var(--ix-border); border-radius: 8px;
+    padding: 8px 10px; font: inherit; font-size: 13px;
+  }
+  .report-textarea:focus { outline: none; border-color: var(--primary); }
+  .report-row-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
 
   .badge-item {
     display: flex;
