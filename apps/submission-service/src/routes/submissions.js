@@ -374,46 +374,11 @@ export default async function submissionRoutes(fastify) {
     }
   })
 
-  // POST /submissions — legacy endpoint, kept for backward compatibility
-  fastify.post('/submissions', async (req, reply) => {
-    if (req.ability.cannot('create', 'Submission')) {
-      return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
-    }
-
-    const { exam_id, answers } = req.body ?? {}
-    if (!exam_id || !answers) {
-      return reply.status(400).send({ error: 'exam_id and answers required', statusCode: 400 })
-    }
-
-    try {
-      const examRes = await fetch(
-        `${process.env.EXAM_SERVICE_URL}/exams/internal/${exam_id}`,
-        { headers: { 'x-internal-key': process.env.INTERNAL_API_KEY } }
-      )
-      if (!examRes.ok) {
-        return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
-      }
-      const exam = await examRes.json()
-
-      const { score, total_points, percentage, results_detail } = buildGradeResult(exam, answers)
-
-      const result = await pool.query(
-        `INSERT INTO submissions (exam_id, user_id, answers, score, total_points, percentage, results_detail, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 'completed')
-         RETURNING id, exam_id, user_id, score, total_points, percentage, submitted_at`,
-        [exam_id, req.user.id, JSON.stringify(answers), score, total_points, percentage, JSON.stringify(results_detail)]
-      )
-      const submission = result.rows[0]
-
-      const passed = exam.passing_score == null || percentage >= exam.passing_score
-      if (passed) awardBadgesIfEarned(req.user.id, exam_id, fastify.log).catch(() => {})
-
-      return reply.status(201).send(submission)
-    } catch (err) {
-      fastify.log.error(err)
-      return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
-    }
-  })
+  // NOTE: The legacy `POST /submissions` endpoint (grade-and-insert in one shot)
+  // was removed — it bypassed credit deduction, max_attempts, cooldown and
+  // scheduling gates. All grading now goes through the start → submit flow:
+  // `POST /submissions/start` (deducts credit, creates in_progress) then
+  // `POST /submissions/:id/submit` (grades that row).
 
   // GET /submissions/active?exam_id=
   // Returns the caller's current in_progress submission for an exam (if not expired).
