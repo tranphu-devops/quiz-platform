@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation'
   import { user } from '$lib/stores/auth'
   import { userApi, examApi } from '$lib/api'
+  import { htmlToText } from '$lib/sanitizeHtml'
 
   let profile   = $state(null)
   let exams     = $state([])
@@ -159,8 +160,8 @@
             </div>
             <div class="exam-body">
               <div class="exam-title">{exam.title}</div>
-              {#if exam.description}
-                <p class="exam-desc">{exam.description}</p>
+              {#if htmlToText(exam.description)}
+                <p class="exam-desc">{htmlToText(exam.description)}</p>
               {/if}
               <div class="exam-meta">
                 <span>{exam.time_limit} phút</span>

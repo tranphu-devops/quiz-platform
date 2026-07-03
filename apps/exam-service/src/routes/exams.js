@@ -147,8 +147,12 @@ export default async function examRoutes(fastify) {
       )
       const question_count = countResult.rows[0].n
 
+      // Preview (student detail page): a single random sample question.
+      // Full (teacher/take): all questions in authored order.
       const questionsResult = await pool.query(
-        `SELECT * FROM questions WHERE exam_id = $1 ORDER BY order_index${isPreview ? ' LIMIT 3' : ''}`,
+        isPreview
+          ? `SELECT * FROM questions WHERE exam_id = $1 ORDER BY RANDOM() LIMIT 1`
+          : `SELECT * FROM questions WHERE exam_id = $1 ORDER BY order_index`,
         [id]
       )
 

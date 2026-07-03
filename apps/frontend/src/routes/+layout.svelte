@@ -235,6 +235,38 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  /* ── Date / time inputs (consistent, themed) ───────────────────────────────── */
+  :global(input[type="datetime-local"]),
+  :global(input[type="date"]),
+  :global(input[type="time"]) {
+    font-family: inherit; font-size: 0.9rem;
+    color: var(--text); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.5rem 0.7rem; line-height: 1.3;
+    color-scheme: light;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  :global(input[type="datetime-local"]:focus),
+  :global(input[type="date"]:focus),
+  :global(input[type="time"]:focus) {
+    outline: none; border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+  }
+  :global(input[type="datetime-local"]::-webkit-calendar-picker-indicator),
+  :global(input[type="date"]::-webkit-calendar-picker-indicator),
+  :global(input[type="time"]::-webkit-calendar-picker-indicator) {
+    cursor: pointer; opacity: 0.65; border-radius: 4px; padding: 2px;
+  }
+  :global(input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover),
+  :global(input[type="date"]::-webkit-calendar-picker-indicator:hover),
+  :global(input[type="time"]::-webkit-calendar-picker-indicator:hover) {
+    opacity: 1; background: var(--primary-light);
+  }
+  /* Dark mode: let the native picker + spinners render dark to match the app */
+  :global([data-theme="dark"] input[type="datetime-local"]),
+  :global([data-theme="dark"] input[type="date"]),
+  :global([data-theme="dark"] input[type="time"]) { color-scheme: dark; }
+
   /* ── App shell (authenticated) ─────────────────────────────────────────────── */
   .app-shell {
     display: flex;

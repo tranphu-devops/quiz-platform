@@ -1,5 +1,6 @@
 <script>
   import { examApi, submissionApi } from '$lib/api'
+  import { htmlToText } from '$lib/sanitizeHtml'
   import { user } from '$lib/stores/auth'
   import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
@@ -423,7 +424,7 @@
 
           <div class="card-body">
             <div class="card-title">{exam.title}</div>
-            <div class="card-desc">{exam.description ?? 'Không có mô tả'}</div>
+            <div class="card-desc">{htmlToText(exam.description) || 'Không có mô tả'}</div>
             <div class="card-meta">{fmtMeta(exam)}</div>
             {#if exam.creator_name}
               <div class="card-creator">
