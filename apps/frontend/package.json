@@ -9,6 +9,7 @@
     "start": "node build"
   },
   "dependencies": {
+    "@sentry/sveltekit": "^10.63.0",
     "@supabase/auth-js": "^2.65.1",
     "@sveltejs/adapter-node": "5.5.4",
     "@sveltejs/kit": "^2.5.28",

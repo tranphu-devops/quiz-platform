@@ -3,7 +3,11 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install
 COPY . .
-RUN npm run build
+# Sentry source-map upload: token passed as a BuildKit secret (not baked into
+# any layer). Absent secret → plugin just skips the upload, build still succeeds.
+RUN --mount=type=secret,id=sentry_auth_token \
+    SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token 2>/dev/null || true)" \
+    npm run build
 
 FROM node:24-alpine
 WORKDIR /app
