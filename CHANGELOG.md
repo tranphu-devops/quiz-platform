@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased] — 2026-07-03
+
+### Added
+- **Lọc & sắp xếp đề thi ở trang danh sách (`/exams`)**: thêm thanh chip lọc theo **tag** (bấm tag để lọc, "Tất cả" để bỏ lọc; tag xếp theo tần suất xuất hiện) và dropdown **sắp xếp** — "Mới nhất" (mặc định) hoặc "Phổ biến nhất" (ưu tiên theo lượt thích + bình luận + lượt thi). Lọc/sắp xếp chạy phía client trên dữ liệu đã tải.
+- **Hiển thị lượt thích/bình luận trên thẻ đề thi**: mỗi thẻ ở `/exams` giờ hiện số ❤️ và 💬 (khi > 0) để người dùng cảm nhận mức độ tương tác trước khi chọn đề. Số liệu lấy từ `quiz_interactions` qua subquery cross-schema trong endpoint `GET /exams` (một truy vấn, không N+1).
+
 ## [Unreleased] — 2026-07-02
 
 ### Added

@@ -73,7 +73,9 @@ export default async function examRoutes(fastify) {
           COALESCE(p.full_name, au.email, 'Unknown') AS creator_name,
           p.avatar_url AS creator_avatar,
           COUNT(DISTINCT CASE WHEN (sp.role IS NULL OR sp.role != 'banned') THEN s.id END)::int AS submission_count,
-          COUNT(DISTINCT CASE WHEN (sp.role IS NULL OR sp.role != 'banned') AND (e.passing_score IS NULL OR s.percentage >= e.passing_score) THEN s.id END)::int AS pass_count
+          COUNT(DISTINCT CASE WHEN (sp.role IS NULL OR sp.role != 'banned') AND (e.passing_score IS NULL OR s.percentage >= e.passing_score) THEN s.id END)::int AS pass_count,
+          (SELECT COUNT(*)::int FROM quiz_interactions.likes li WHERE li.exam_id = e.id) AS like_count,
+          (SELECT COUNT(*)::int FROM quiz_interactions.comments co WHERE co.exam_id = e.id) AS comment_count
         FROM exams e
         LEFT JOIN quiz_users.profiles p ON p.id = e.created_by
         LEFT JOIN auth.users au ON au.id = e.created_by
@@ -86,7 +88,9 @@ export default async function examRoutes(fastify) {
           COALESCE(p.full_name, au.email, 'Unknown') AS creator_name,
           p.avatar_url AS creator_avatar,
           COUNT(DISTINCT CASE WHEN (sp.role IS NULL OR sp.role != 'banned') THEN s.id END)::int AS submission_count,
-          COUNT(DISTINCT CASE WHEN (sp.role IS NULL OR sp.role != 'banned') AND (e.passing_score IS NULL OR s.percentage >= e.passing_score) THEN s.id END)::int AS pass_count
+          COUNT(DISTINCT CASE WHEN (sp.role IS NULL OR sp.role != 'banned') AND (e.passing_score IS NULL OR s.percentage >= e.passing_score) THEN s.id END)::int AS pass_count,
+          (SELECT COUNT(*)::int FROM quiz_interactions.likes li WHERE li.exam_id = e.id) AS like_count,
+          (SELECT COUNT(*)::int FROM quiz_interactions.comments co WHERE co.exam_id = e.id) AS comment_count
         FROM exams e
         LEFT JOIN quiz_users.profiles p ON p.id = e.created_by
         LEFT JOIN auth.users au ON au.id = e.created_by
