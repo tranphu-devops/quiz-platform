@@ -71,7 +71,7 @@ Required in `.env` (see `.env.example`):
 ```
 POSTGRES_PASSWORD=
 JWT_SECRET=                   # min 32 chars; shared by GoTrue and all backend services
-INTERNAL_API_KEY=             # min 32 chars; submission-service → exam-service
+INTERNAL_API_KEY=             # min 32 chars; submission-service → exam-service, and grader-service → exam-service (via EXAM_SERVICE_URL)
 SITE_URL=http://localhost      # public URL of the app; used by GoTrue for OAuth redirects
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
@@ -146,7 +146,7 @@ Role rules:
 In routes: `req.ability.cannot('action', subject('Type', plainObject))`. Always import `subject` from `@casl/ability` for condition-based checks.
 
 ### Backend services (Fastify + Node.js 24)
-All three services share the same layout:
+There are four HTTP backends (user, exam, submission, interaction) — plus `grader-service` (a non-HTTP cron worker, see below). All four HTTP services share the same layout:
 ```
 src/
   index.js           # Fastify setup, /health, plugin registration
