@@ -60,7 +60,6 @@
     try {
       localStorage.setItem(sessionKey(id), JSON.stringify({
         answers, timeLeft, savedAt: Date.now(),
-        credit_deducted: true,
         submission_id: submissionId,
         expires_at: expiresAt,
         session_id: sessionId  // persisted so same browser can reclaim on reload
@@ -186,7 +185,12 @@
         }
       }
 
-      if (!saved?.credit_deducted && $user.role === 'student') {
+      // No server-side in_progress submission was resumed above → this is a fresh
+      // attempt. Always route students through the confirm dialog → /start so credit
+      // is charged. /start is idempotent: if an in_progress row still exists it
+      // resumes without charging again (credit_cost: 0). Never trust a localStorage
+      // flag to skip the charge — that was the credit-leak path.
+      if ($user.role === 'student') {
         const profileRes = await userApi.getProfile($user.id).catch(() => null)
         if (profileRes?.ok) {
           const p = await profileRes.json()
@@ -284,23 +288,24 @@
   }
 
   async function submitExam() {
-    showConfirm = false; clearInterval(timer); clearInterval(heartbeatTimer); submitting = true
+    showConfirm = false
+    // No active submission means the credit/start gate never ran — never grade for free.
+    if (!submissionId) {
+      error = 'Phiên làm bài không hợp lệ. Vui lòng bắt đầu lại đề thi.'
+      return
+    }
+    clearInterval(timer); clearInterval(heartbeatTimer); submitting = true
     try {
-      let res
-      if (submissionId) {
-        res = await submissionApi.submitById(submissionId, answers, sessionId)
-        if (res.status === 409) {
-          const d = await res.json().catch(() => ({}))
-          if (d.reason === 'session_conflict') {
-            sessionConflict = true; submitting = false; return
-          }
-          // Batch grader already graded it — redirect to result
-          clearSession(exam.id)
-          goto(`/exams/${exam.id}/result?submissionId=${submissionId}`, { replaceState: true })
-          return
+      const res = await submissionApi.submitById(submissionId, answers, sessionId)
+      if (res.status === 409) {
+        const d = await res.json().catch(() => ({}))
+        if (d.reason === 'session_conflict') {
+          sessionConflict = true; submitting = false; return
         }
-      } else {
-        res = await submissionApi.submit({ exam_id: exam.id, answers })
+        // Batch grader already graded it — redirect to result
+        clearSession(exam.id)
+        goto(`/exams/${exam.id}/result?submissionId=${submissionId}`, { replaceState: true })
+        return
       }
       const data = await res.json()
       if (!res.ok) { error = data.error; submitting = false; return }

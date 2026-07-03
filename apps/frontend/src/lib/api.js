@@ -95,12 +95,6 @@ export const submissionApi = {
       headers: { ...authHeaders(), ...(sessionId ? { 'x-exam-session': sessionId } : {}) },
       body: JSON.stringify({ answers })
     }),
-  submit: (data) =>
-    apiFetch(`${SUB_URL}/submissions`, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify(data)
-    }),
   getActive: (exam_id) =>
     apiFetch(`${SUB_URL}/submissions/active?exam_id=${exam_id}`, { headers: authHeaders(false) }),
   get: (id) => apiFetch(`${SUB_URL}/submissions/${id}`, { headers: authHeaders(false) }),

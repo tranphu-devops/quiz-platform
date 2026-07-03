@@ -20,6 +20,9 @@ All notable changes to this project will be documented in this file.
 - **Input ngày giờ (`datetime-local`/`date`/`time`) đẹp & nhất quán hơn**: bo góc, viền, focus ring theo brand; picker tự đổi sang giao diện tối trong dark mode (`color-scheme`).
 - **Cập nhật tài liệu & landing page theo trạng thái mới nhất**: `README.md` bổ sung `interaction-service`, `grader-service`, `migrate` (job one-shot), dev port 4005, health check interactions và nhóm tính năng credit/collections/tương tác/khám phá. Landing page (`landing/index.html`) thêm card tính năng cho bình luận–thích–báo lỗi, khám phá đề theo tag, ghi chú khi làm bài và hồ sơ công khai; gỡ nhãn "Mới" khỏi các tính năng đã ra mắt từ trước.
 
+### Fixed
+- **Rò credit khi làm bài (student không bị trừ credit)**: gỡ endpoint legacy `POST /submissions` chấm-điểm-một-phát — nó bỏ qua toàn bộ cổng kiểm soát (trừ credit, `max_attempts`, cooldown, lịch mở đề). Frontend vẫn dùng nó làm fallback khi không có `submissionId`, nên mọi lượt làm bài không đi qua `POST /submissions/start` đều được nộp miễn phí. Nay mọi lượt chấm điểm bắt buộc qua luồng `start` → `submit`. Ngoài ra, trang làm bài không còn tin cờ `credit_deducted` trong localStorage để bỏ qua bước trừ credit; học viên luôn được định tuyến qua `/start` (vốn idempotent — tự resume phiên `in_progress` đang chạy mà không trừ lại).
+
 ## [Unreleased] — 2026-07-02
 
 ### Added
