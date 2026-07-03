@@ -3,6 +3,7 @@ import cors from '@fastify/cors'
 import multipart from '@fastify/multipart'
 import userRoutes from './routes/users.js'
 import uploadRoutes from './routes/upload.js'
+import apiKeyRoutes from './routes/api-keys.js'
 import { encryptOnSend } from './lib/encryptResponse.js'
 
 const fastify = Fastify({ logger: true })
@@ -17,6 +18,7 @@ fastify.get('/health', async () => ({
   timestamp: new Date().toISOString()
 }))
 
+fastify.register(apiKeyRoutes, { prefix: '/' })
 fastify.register(userRoutes, { prefix: '/' })
 fastify.register(uploadRoutes, { prefix: '/' })
 

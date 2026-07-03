@@ -78,6 +78,7 @@
     person:   `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="5.5" r="3"/><path d="M2 14c0-3.3 2.7-5 6-5s6 1.7 6 5"/></svg>`,
     shield:   `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5L2 4.5v3.5c0 3.5 2.5 6 6 7 3.5-1 6-3.5 6-7V4.5z"/></svg>`,
     menu:     `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2.5" y1="5" x2="15.5" y2="5"/><line x1="2.5" y1="9" x2="15.5" y2="9"/><line x1="2.5" y1="13" x2="15.5" y2="13"/></svg>`,
+    code:     `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4l4 4-4 4"/><path d="M6 12L2 8l4-4"/></svg>`,
   }
 
   // ── Sidebar sections (reactive) ──────────────────────────────────────────────
@@ -103,6 +104,9 @@
       label: 'TÀI KHOẢN',
       items: [
         { icon: I.person, label: 'Hồ sơ', href: '/profile', active: $page.url.pathname === '/profile' },
+        ...($user.role !== 'student' ? [
+          { icon: I.code, label: 'API Docs', href: '/api-docs', active: $page.url.pathname === '/api-docs' },
+        ] : []),
       ]
     }
   ])
