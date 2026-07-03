@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import { goto } from '$app/navigation'
   import { user } from '$lib/stores/auth'
-  import { userApi, badgeApi, reportApi } from '$lib/api'
+  import { userApi, badgeApi, reportApi, apiKeyApi } from '$lib/api'
   import ImageUpload from '$lib/components/ImageUpload.svelte'
   import PageHeader from '$lib/components/ui/PageHeader.svelte'
   import Card from '$lib/components/ui/Card.svelte'
@@ -50,6 +50,14 @@
   let teacherUpgradeCost  = $state(100)
   let showUpgradeConfirm  = $state(false)
 
+  // API keys (teacher/admin)
+  let apiKeys      = $state([])
+  let newKeyName   = $state('')
+  let createdKey   = $state('')     // plaintext, shown once after creation
+  let keyError     = $state('')
+  let keyLoading   = $state(false)
+  let copiedKey    = $state(false)
+
   onMount(async () => {
     if (!$user) { goto('/login'); return }
     try {
@@ -92,8 +100,40 @@
         const inboxRes = await reportApi.inbox()
         if (inboxRes.ok) inboxReports = (await inboxRes.json()).reports ?? []
       } catch {}
+      try {
+        const keysRes = await apiKeyApi.list()
+        if (keysRes.ok) apiKeys = await keysRes.json()
+      } catch {}
     }
   })
+
+  async function createKey() {
+    keyError = ''; createdKey = ''; copiedKey = false
+    const name = newKeyName.trim()
+    if (!name) { keyError = 'Nhập tên cho key'; return }
+    keyLoading = true
+    try {
+      const res = await apiKeyApi.create(name)
+      const d = await res.json()
+      if (!res.ok) { keyError = d.error ?? 'Lỗi tạo key'; return }
+      createdKey = d.key
+      newKeyName = ''
+      apiKeys = [{ ...d, key: undefined }, ...apiKeys]
+    } catch { keyError = 'Không thể kết nối server' } finally { keyLoading = false }
+  }
+
+  async function revokeKey(id) {
+    const res = await apiKeyApi.revoke(id)
+    if (res.ok) apiKeys = apiKeys.map(k => k.id === id ? { ...k, revoked_at: new Date().toISOString() } : k)
+  }
+
+  async function copyCreatedKey() {
+    try { await navigator.clipboard.writeText(createdKey); copiedKey = true } catch {}
+  }
+
+  function fmtDate(s) {
+    return s ? new Date(s).toLocaleString('vi-VN') : '—'
+  }
 
   function startRespond(r) {
     respondingId = r.id
@@ -374,6 +414,60 @@
           </Card>
         {/if}
 
+        <!-- Teacher/admin: API access (programmatic exam management) -->
+        {#if isStaff}
+          <Card title="API Access" subtitle="Tạo API key để quản lý đề thi bằng chương trình">
+            <p class="api-help">
+              Dùng key với header <code>X-API-Key</code> để gọi API tạo/sửa đề thi.
+              Xem hướng dẫn tại <a href="/api-docs">tài liệu API</a>.
+            </p>
+
+            <div class="api-create">
+              <Input bind:value={newKeyName} placeholder="Tên key (vd: script-import)" />
+              <Button variant="primary" onclick={createKey} disabled={keyLoading}>
+                {keyLoading ? 'Đang tạo...' : 'Tạo key'}
+              </Button>
+            </div>
+            {#if keyError}<p class="ix-error">{keyError}</p>{/if}
+
+            {#if createdKey}
+              <div class="api-new-key">
+                <p class="api-warn">⚠️ Key chỉ hiện <strong>một lần</strong>. Hãy sao chép và lưu lại ngay:</p>
+                <div class="api-key-box">
+                  <code>{createdKey}</code>
+                  <Button variant="secondary" onclick={copyCreatedKey}>
+                    {copiedKey ? 'Đã copy ✓' : 'Copy'}
+                  </Button>
+                </div>
+              </div>
+            {/if}
+
+            {#if apiKeys.length === 0}
+              <p class="reports-empty">Chưa có API key nào.</p>
+            {:else}
+              <div class="api-key-list">
+                {#each apiKeys as k (k.id)}
+                  <div class="api-key-row {k.revoked_at ? 'revoked' : ''}">
+                    <div class="api-key-meta">
+                      <span class="api-key-name">{k.name}</span>
+                      <code class="api-key-prefix">{k.key_prefix}…</code>
+                      {#if k.revoked_at}<span class="api-key-tag revoked">Đã thu hồi</span>{/if}
+                    </div>
+                    <div class="api-key-sub">
+                      Tạo: {fmtDate(k.created_at)} · Dùng lần cuối: {fmtDate(k.last_used_at)}
+                    </div>
+                    {#if !k.revoked_at}
+                      <div class="report-row-actions">
+                        <Button variant="secondary" onclick={() => revokeKey(k.id)}>Thu hồi</Button>
+                      </div>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+            {/if}
+          </Card>
+        {/if}
+
         <!-- My filed reports (tracking) -->
         {#if myReports.length > 0}
           <Card title="Báo lỗi của tôi" subtitle="Theo dõi trạng thái xử lý">
@@ -418,6 +512,87 @@
 {/if}
 
 <style>
+  /* ── API keys ──────────────────────────────────────────────────────────── */
+  .api-help {
+    font-size: 0.9rem;
+    color: var(--text-muted, #6b6a80);
+    margin: 0 0 14px;
+  }
+  .api-help code {
+    background: var(--primary-light);
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85em;
+  }
+  .api-create {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+  .api-create :global(.ix-field) { flex: 1; }
+  .api-new-key {
+    background: var(--primary-light);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-btn, 10px);
+    padding: 12px 14px;
+    margin: 12px 0;
+  }
+  .api-warn { margin: 0 0 8px; font-size: 0.88rem; }
+  .api-key-box {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .api-key-box code {
+    flex: 1;
+    overflow-x: auto;
+    white-space: nowrap;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+  }
+  .api-key-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .api-key-row {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-btn, 10px);
+    padding: 12px 14px;
+  }
+  .api-key-row.revoked { opacity: 0.55; }
+  .api-key-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .api-key-name { font-weight: 600; }
+  .api-key-prefix {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--text-muted, #6b6a80);
+  }
+  .api-key-tag.revoked {
+    font-size: 0.72rem;
+    background: rgba(107, 114, 128, 0.15);
+    color: #6b7280;
+    padding: 1px 8px;
+    border-radius: 999px;
+  }
+  .api-key-sub {
+    font-size: 0.8rem;
+    color: var(--text-muted, #6b6a80);
+    margin-top: 4px;
+  }
+
   /* ── Layout ────────────────────────────────────────────────────────────── */
   .profile-layout {
     display: grid;

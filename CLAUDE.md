@@ -134,6 +134,14 @@ JWT claims:
 
 Each backend verifies JWT locally via `JWT_SECRET` in `src/middleware/auth.js`, which sets `req.user` and `req.ability`. After JWT verification, the middleware does a **live DB query** to check if the user's role is `banned` — this ensures bans take effect immediately without waiting for token expiry.
 
+### Teacher API — API key auth (exam-service only)
+Long-lived credentials for programmatic exam management, so teachers can automate the exam lifecycle without a browser session (JWT expires after 1h; Google-OAuth teachers have no password for a machine grant). Keys work regardless of signup method.
+
+- **Storage:** `quiz_users.api_keys` (`id, user_id, name, key_prefix, key_hash, last_used_at, created_at, revoked_at`). Only the **SHA-256 hash** is stored; plaintext (`qz_live_<48 hex>`) is returned **once** at creation. `key_prefix` = first 14 chars, shown in listings for identification.
+- **Key management (user-service, JWT-protected, teacher/admin only):** `apps/user-service/src/routes/api-keys.js` — `POST /api-keys` (create, returns plaintext once), `GET /api-keys` (list metadata), `DELETE /api-keys/:id` (soft-revoke via `revoked_at`). Via Nginx: `/api/users/api-keys`.
+- **Consuming the key (exam-service):** `apps/exam-service/src/middleware/auth.js` `verifyAuth` accepts header `X-API-Key` when there's no `Authorization: Bearer`. It resolves the key cross-schema (join `quiz_users.api_keys` → `profiles` → `auth.users`), rejects missing/revoked (`401`) and `banned` (`403`), sets `req.user`/`req.ability` from the **profile role** (source of truth, same as ban-check), and stamps `last_used_at` fire-and-forget. Authorization then flows through the existing CASL rules (teacher CRUD own `Exam`). **Only exam-service** accepts API keys; other services stay JWT-only.
+- **Frontend:** `apiKeyApi` in `api.js`; "API Access" card on `/profile` (teacher/admin); static docs at `/api-docs` (linked from the sidebar for teacher/admin). Question images are passed as `image_url` (no file upload over the API in v1).
+
 ### Authorization — CASL
 Each service has `src/lib/ability.js` with `defineAbilityFor(user)` using `@casl/ability` / `createMongoAbility`.
 

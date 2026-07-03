@@ -95,12 +95,6 @@ export const submissionApi = {
       headers: { ...authHeaders(), ...(sessionId ? { 'x-exam-session': sessionId } : {}) },
       body: JSON.stringify({ answers })
     }),
-  submit: (data) =>
-    apiFetch(`${SUB_URL}/submissions`, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify(data)
-    }),
   getActive: (exam_id) =>
     apiFetch(`${SUB_URL}/submissions/active?exam_id=${exam_id}`, { headers: authHeaders(false) }),
   get: (id) => apiFetch(`${SUB_URL}/submissions/${id}`, { headers: authHeaders(false) }),
@@ -145,6 +139,18 @@ export const userApi = {
       headers: authHeaders(),
       body: JSON.stringify(data)
     })
+}
+
+export const apiKeyApi = {
+  list: () => apiFetch(`${USER_URL}/api-keys`, { headers: authHeaders(false) }),
+  create: (name) =>
+    apiFetch(`${USER_URL}/api-keys`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ name })
+    }),
+  revoke: (id) =>
+    apiFetch(`${USER_URL}/api-keys/${id}`, { method: 'DELETE', headers: authHeaders(false) })
 }
 
 export const collectionApi = {
