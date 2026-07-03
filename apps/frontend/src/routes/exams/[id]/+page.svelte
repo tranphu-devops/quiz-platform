@@ -5,6 +5,7 @@
   import { onMount } from 'svelte'
   import { page } from '$app/stores'
   import { marked } from 'marked'
+  import { sanitizeHtml, isHtmlEmpty } from '$lib/sanitizeHtml'
 
   let now = $state(Date.now())
   onMount(() => {
@@ -47,9 +48,10 @@
   const canStart = $derived(!mySubmission || !!exam?.allow_retake || !hasPassed)
   const creditCost = $derived(exam?.credit_cost ?? 10)
   const hasEnoughCredits = $derived(myCredits === null || myCredits >= creditCost)
-  const previewQuestions = $derived((exam?.questions ?? []).slice(0, 3))
+  const previewQuestions = $derived((exam?.questions ?? []).slice(0, 1))
   const totalQuestions = $derived(exam?.question_count ?? exam?.questions?.length ?? 0)
   const hiddenCount = $derived(totalQuestions - previewQuestions.length)
+  const hasDescription = $derived(!isHtmlEmpty(exam?.description))
 
   onMount(async () => {
     if (!$user) { goto('/login'); return }
@@ -398,6 +400,18 @@
   }
   .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
+  /* Rich-text description */
+  .desc-rich { font-size: 0.95rem; line-height: 1.7; color: var(--text); }
+  .desc-rich :global(p) { margin: 0 0 0.6rem; }
+  .desc-rich :global(p:last-child) { margin-bottom: 0; }
+  .desc-rich :global(ul), .desc-rich :global(ol) { margin: 0 0 0.6rem; padding-left: 1.5rem; }
+  .desc-rich :global(li) { margin-bottom: 0.2rem; }
+  .desc-rich :global(a) { color: var(--primary); text-decoration: underline; }
+  .desc-rich :global(strong), .desc-rich :global(b) { font-weight: 700; }
+  .desc-rich :global(h3) { font-size: 1.05rem; font-weight: 700; margin: 0.4rem 0; }
+  .desc-rich :global(h4) { font-size: 0.98rem; font-weight: 700; margin: 0.4rem 0; }
+  .desc-rich :global(blockquote) { margin: 0 0 0.6rem; padding-left: 0.9rem; border-left: 3px solid var(--border); color: var(--muted); }
+
   /* Question preview cards */
   .q-card {
     background: var(--surface); border-radius: 12px;
@@ -545,6 +559,14 @@
   <!-- ── Main column ─────────────────────────────────────────────────────────── -->
   <div>
 
+    <!-- Description (rich text) -->
+    {#if hasDescription}
+      <div class="section">
+        <div class="section-title">Giới thiệu đề thi</div>
+        <div class="desc-rich">{@html sanitizeHtml(exam.description)}</div>
+      </div>
+    {/if}
+
     <!-- Result banner (student, has submission) -->
     {#if !isTeacher && mySubmission}
       <div class="result-banner {hasPassed ? 'passed' : 'failed'}">
@@ -565,7 +587,7 @@
     <!-- Question preview section (student or teacher) -->
     {#if !isTeacher}
       <div class="section">
-        <div class="section-title">Xem trước nội dung</div>
+        <div class="section-title">Câu hỏi mẫu (ngẫu nhiên)</div>
         {#each previewQuestions as q, i}
           <div class="q-card">
             <div class="q-header">
@@ -600,9 +622,6 @@
     <!-- Teacher: full question list with answers -->
     {#if isTeacher}
       <div class="teacher-meta" style="margin-bottom: 1.25rem;">
-        {#if exam.description}
-          <span>{exam.description}</span>
-        {/if}
         <div class="teacher-meta-item">Giải thích: <strong>{exam.show_explanation ? 'Hiển thị' : 'Ẩn'}</strong></div>
       </div>
       <div class="section">

@@ -4,6 +4,8 @@
   import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
   import MarkdownEditor from '$lib/components/MarkdownEditor.svelte'
+  import RichTextEditor from '$lib/components/RichTextEditor.svelte'
+  import { sanitizeHtml, isHtmlEmpty } from '$lib/sanitizeHtml'
   import ImageUpload from '$lib/components/ImageUpload.svelte'
 
   // ── Step state ──────────────────────────────────────────────────────────────
@@ -473,7 +475,7 @@
   </div>
   <div class="form-row">
     <label for="desc">Mô tả ngắn</label>
-    <textarea id="desc" bind:value={description} placeholder="Mô tả nội dung đề thi..."></textarea>
+    <RichTextEditor bind:value={description} placeholder="Mô tả nội dung đề thi... (dùng thanh công cụ để in đậm, gạch đầu dòng, chèn link)" />
   </div>
   <div class="form-row">
     <label>Ảnh bìa</label>
@@ -817,8 +819,8 @@
       {#each tags as t}<span class="review-tag">{t}</span>{/each}
     </div>
   {/if}
-  {#if description}
-    <p style="font-size:0.88rem;color:var(--muted);margin-top:0.75rem">{description}</p>
+  {#if !isHtmlEmpty(description)}
+    <div class="desc-rich" style="font-size:0.88rem;color:var(--muted);margin-top:0.75rem">{@html sanitizeHtml(description)}</div>
   {/if}
 </div>
 

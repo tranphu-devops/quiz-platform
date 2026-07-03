@@ -9,8 +9,13 @@ All notable changes to this project will be documented in this file.
 ### Added
 - **Lọc & sắp xếp đề thi ở trang danh sách (`/exams`)**: thêm thanh chip lọc theo **tag** (bấm tag để lọc, "Tất cả" để bỏ lọc; tag xếp theo tần suất xuất hiện) và dropdown **sắp xếp** — "Mới nhất" (mặc định) hoặc "Phổ biến nhất" (ưu tiên theo lượt thích + bình luận + lượt thi). Lọc/sắp xếp chạy phía client trên dữ liệu đã tải.
 - **Hiển thị lượt thích/bình luận trên thẻ đề thi**: mỗi thẻ ở `/exams` giờ hiện số ❤️ và 💬 (khi > 0) để người dùng cảm nhận mức độ tương tác trước khi chọn đề. Số liệu lấy từ `quiz_interactions` qua subquery cross-schema trong endpoint `GET /exams` (một truy vấn, không N+1).
+- **Rich text cho mô tả đề thi**: form tạo/sửa đề dùng editor WYSIWYG (đậm/nghiêng/gạch chân/gạch ngang/danh sách/liên kết) cho phần "Mô tả ngắn". Mô tả hiển thị có định dạng trên trang chi tiết đề (cho cả học viên lẫn giáo viên). HTML được làm sạch (allowlist) khi lưu và khi render; các nơi hiển thị dạng thẻ (danh sách đề, hồ sơ công khai) tự rút gọn về text thuần.
+- **Trang lỗi 404 & 5xx**: thêm `+error.svelte` với thiết kế theo brand — phân biệt "không tìm thấy trang" (404) và "máy chủ gặp sự cố" (5xx), kèm nút về trang chủ / thử lại / quay lại.
+- **Tag của bộ đề**: thẻ bộ đề ở `/collections` hiển thị tập hợp tag (unique) của các đề thi thành viên — tự suy ra qua truy vấn, không cần nhập tay.
 
 ### Changed
+- **Trang chi tiết đề chỉ xem trước 1 câu hỏi ngẫu nhiên** (trước đây hiển thị 3 câu đầu) — chọn ngẫu nhiên phía server mỗi lần mở.
+- **Input ngày giờ (`datetime-local`/`date`/`time`) đẹp & nhất quán hơn**: bo góc, viền, focus ring theo brand; picker tự đổi sang giao diện tối trong dark mode (`color-scheme`).
 - **Cập nhật tài liệu & landing page theo trạng thái mới nhất**: `README.md` bổ sung `interaction-service`, `grader-service`, `migrate` (job one-shot), dev port 4005, health check interactions và nhóm tính năng credit/collections/tương tác/khám phá. Landing page (`landing/index.html`) thêm card tính năng cho bình luận–thích–báo lỗi, khám phá đề theo tag, ghi chú khi làm bài và hồ sơ công khai; gỡ nhãn "Mới" khỏi các tính năng đã ra mắt từ trước.
 
 ## [Unreleased] — 2026-07-02

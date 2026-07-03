@@ -19,6 +19,13 @@ export default async function collectionRoutes(fastify) {
             COALESCE(p.full_name, au.email, 'Unknown') AS creator_name,
             COALESCE(json_agg(json_build_object('id', e.id, 'title', e.title) ORDER BY ce.position)
               FILTER (WHERE e.id IS NOT NULL), '[]') AS exams,
+            COALESCE((
+              SELECT array_agg(DISTINCT t ORDER BY t)
+              FROM collection_exams ce2
+              JOIN exams e2 ON e2.id = ce2.exam_id
+              CROSS JOIN LATERAL unnest(COALESCE(e2.tags, ARRAY[]::text[])) AS t
+              WHERE ce2.collection_id = c.id
+            ), ARRAY[]::text[]) AS tags,
             COUNT(DISTINCT sb.user_id)::int AS badge_count
           FROM collections c
           LEFT JOIN quiz_users.profiles p ON p.id = c.created_by
@@ -33,7 +40,14 @@ export default async function collectionRoutes(fastify) {
           SELECT c.*,
             COALESCE(p.full_name, au.email, 'Unknown') AS creator_name,
             COALESCE(json_agg(json_build_object('id', e.id, 'title', e.title) ORDER BY ce.position)
-              FILTER (WHERE e.id IS NOT NULL), '[]') AS exams
+              FILTER (WHERE e.id IS NOT NULL), '[]') AS exams,
+            COALESCE((
+              SELECT array_agg(DISTINCT t ORDER BY t)
+              FROM collection_exams ce2
+              JOIN exams e2 ON e2.id = ce2.exam_id
+              CROSS JOIN LATERAL unnest(COALESCE(e2.tags, ARRAY[]::text[])) AS t
+              WHERE ce2.collection_id = c.id
+            ), ARRAY[]::text[]) AS tags
           FROM collections c
           LEFT JOIN quiz_users.profiles p ON p.id = c.created_by
           LEFT JOIN auth.users au ON au.id = c.created_by
@@ -53,7 +67,14 @@ export default async function collectionRoutes(fastify) {
                 'cover_image_url', e.cover_image_url, 'description', e.description,
                 'passing_score', e.passing_score, 'credit_cost', e.credit_cost
               ) ORDER BY ce.position
-            ) FILTER (WHERE e.id IS NOT NULL AND e.is_published = true), '[]') AS exams
+            ) FILTER (WHERE e.id IS NOT NULL AND e.is_published = true), '[]') AS exams,
+            COALESCE((
+              SELECT array_agg(DISTINCT t ORDER BY t)
+              FROM collection_exams ce2
+              JOIN exams e2 ON e2.id = ce2.exam_id
+              CROSS JOIN LATERAL unnest(COALESCE(e2.tags, ARRAY[]::text[])) AS t
+              WHERE ce2.collection_id = c.id AND e2.is_published = true
+            ), ARRAY[]::text[]) AS tags
           FROM collections c
           LEFT JOIN quiz_users.profiles p ON p.id = c.created_by
           LEFT JOIN auth.users au ON au.id = c.created_by

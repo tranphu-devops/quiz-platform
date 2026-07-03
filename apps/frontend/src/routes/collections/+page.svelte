@@ -78,6 +78,12 @@
   }
   .pill.published { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
 
+  .col-tags { padding: 0 1.25rem 0.85rem; display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: -0.15rem; }
+  .col-tag {
+    font-size: 0.7rem; font-weight: 600; padding: 0.1rem 0.55rem; border-radius: 99px;
+    background: var(--primary-light); color: var(--primary);
+  }
+
   .card-actions {
     padding: 0.65rem 1.25rem; border-top: 1px solid var(--border);
     display: flex; gap: 0.5rem;
@@ -130,6 +136,11 @@
             {col.is_published ? '● Đã xuất bản' : '○ Nháp'}
           </span>
         </div>
+        {#if col.tags?.length}
+          <div class="col-tags">
+            {#each col.tags as t}<span class="col-tag">{t}</span>{/each}
+          </div>
+        {/if}
         <div class="card-actions">
           <a href="/collections/{col.id}/edit" class="btn-sm">✏️ Sửa</a>
           <button class="btn-sm danger" onclick={() => remove(col.id)} disabled={deletingId === col.id}>
