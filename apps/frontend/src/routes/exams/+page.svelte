@@ -34,6 +34,37 @@
   let loading = $state(true)
   let error = $state('')
 
+  // Tag filter + sort (client-side; all exams are already loaded)
+  let selectedTag = $state('')        // '' = tất cả
+  let sortBy = $state('newest')       // 'newest' | 'popular'
+
+  // Unique tags across all exams, ordered by frequency (most common first)
+  const allTags = $derived.by(() => {
+    const counts = new Map()
+    for (const e of exams)
+      for (const t of (e.tags ?? []))
+        counts.set(t, (counts.get(t) ?? 0) + 1)
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([t]) => t)
+  })
+
+  // Popularity weight: likes > comments > lượt thi
+  function popularity(e) {
+    return (e.like_count ?? 0) * 3 + (e.comment_count ?? 0) * 2 + (e.submission_count ?? 0)
+  }
+
+  const displayedExams = $derived.by(() => {
+    const list = selectedTag
+      ? exams.filter(e => e.tags?.includes(selectedTag))
+      : [...exams]
+    return list.sort((a, b) =>
+      sortBy === 'popular'
+        ? popularity(b) - popularity(a)
+        : new Date(b.created_at) - new Date(a.created_at)
+    )
+  })
+
   onMount(async () => {
     if (!$user) { goto('/login'); return }
     try {
@@ -127,6 +158,35 @@
   }
   .btn-create:hover { opacity: 0.82; }
 
+  /* ── Filter / sort toolbar ─────────────────────────────────────────────────── */
+  .toolbar {
+    display: flex; align-items: center; gap: 1rem;
+    margin-bottom: 1.1rem; flex-wrap: wrap;
+  }
+  .tag-filter {
+    display: flex; gap: 0.4rem; flex-wrap: wrap; flex: 1; min-width: 0;
+  }
+  .tag-chip {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); border-radius: 99px;
+    padding: 0.3rem 0.85rem; font-size: 0.8rem; font-weight: 600;
+    cursor: pointer; transition: all 0.15s; font-family: inherit;
+    white-space: nowrap;
+  }
+  .tag-chip:hover { border-color: var(--primary); color: var(--primary); }
+  .tag-chip.active {
+    background: var(--primary); border-color: var(--primary); color: #fff;
+    box-shadow: 0 2px 8px rgba(99,102,241,0.3);
+  }
+  .sort-wrap { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
+  .sort-label { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+  .sort-select {
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 0.35rem 0.6rem; font-size: 0.8rem; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+  .sort-select:focus { outline: none; border-color: var(--primary); }
+
   /* ── Exam grid ─────────────────────────────────────────────────────────────── */
   .grid {
     display: grid;
@@ -213,9 +273,11 @@
   .card-creator { font-size: 0.75rem; color: var(--muted); display: flex; align-items: center; gap: 0.25rem; margin-top: 0.1rem; }
   .creator-link { color: var(--muted); text-decoration: none; }
   .creator-link:hover { color: var(--primary); text-decoration: underline; }
-  .card-stats { font-size: 0.75rem; color: var(--muted); display: flex; align-items: center; gap: 0.5rem; margin-top: auto; padding-top: 0.4rem; }
+  .card-stats { font-size: 0.75rem; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-top: auto; padding-top: 0.4rem; }
   .stat-pill { background: var(--bg); border: 1px solid var(--border); border-radius: 99px; padding: 0.1rem 0.5rem; font-size: 0.72rem; font-weight: 600; color: var(--text); }
   .stat-pill.pass { color: #15803d; background: #f0fdf4; border-color: #bbf7d0; }
+  .stat-pill.like { color: #dc2626; background: #fef2f2; border-color: #fecaca; }
+  .stat-pill.comment { color: var(--primary); background: var(--primary-light); border-color: transparent; }
   .tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.3rem; }
   .tag {
     background: var(--primary-light); color: var(--primary);
@@ -306,8 +368,28 @@
       </p>
     </div>
   {:else}
+    <div class="toolbar">
+      {#if allTags.length}
+        <div class="tag-filter">
+          <button class="tag-chip {selectedTag === '' ? 'active' : ''}" onclick={() => selectedTag = ''}>Tất cả</button>
+          {#each allTags as tag}
+            <button class="tag-chip {selectedTag === tag ? 'active' : ''}" onclick={() => selectedTag = tag}>{tag}</button>
+          {/each}
+        </div>
+      {:else}
+        <div class="tag-filter"></div>
+      {/if}
+      <div class="sort-wrap">
+        <span class="sort-label">Sắp xếp:</span>
+        <select class="sort-select" bind:value={sortBy}>
+          <option value="newest">Mới nhất</option>
+          <option value="popular">Phổ biến nhất</option>
+        </select>
+      </div>
+    </div>
+
     <div class="grid">
-      {#each exams as exam}
+      {#each displayedExams as exam}
         {@const st = statusOf(exam)}
         {@const sub = latestSub[exam.id]}
         {@const pct = sub?.percentage ?? 0}
@@ -370,6 +452,12 @@
                 {/if}
               {:else}
                 <span class="stat-pill">Chưa có lượt thi</span>
+              {/if}
+              {#if (exam.like_count ?? 0) > 0}
+                <span class="stat-pill like">❤️ {exam.like_count}</span>
+              {/if}
+              {#if (exam.comment_count ?? 0) > 0}
+                <span class="stat-pill comment">💬 {exam.comment_count}</span>
               {/if}
             </div>
           </div>
