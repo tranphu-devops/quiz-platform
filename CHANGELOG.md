@@ -12,6 +12,8 @@ All notable changes to this project will be documented in this file.
 - **Rich text cho mô tả đề thi**: form tạo/sửa đề dùng editor WYSIWYG (đậm/nghiêng/gạch chân/gạch ngang/danh sách/liên kết) cho phần "Mô tả ngắn". Mô tả hiển thị có định dạng trên trang chi tiết đề (cho cả học viên lẫn giáo viên). HTML được làm sạch (allowlist) khi lưu và khi render; các nơi hiển thị dạng thẻ (danh sách đề, hồ sơ công khai) tự rút gọn về text thuần.
 - **Trang lỗi 404 & 5xx**: thêm `+error.svelte` với thiết kế theo brand — phân biệt "không tìm thấy trang" (404) và "máy chủ gặp sự cố" (5xx), kèm nút về trang chủ / thử lại / quay lại.
 - **Tag của bộ đề**: thẻ bộ đề ở `/collections` hiển thị tập hợp tag (unique) của các đề thi thành viên — tự suy ra qua truy vấn, không cần nhập tay.
+- **Analytics (PageSense + Umami)**: nhúng script theo dõi Zoho PageSense và Umami vào toàn bộ website — quiz app (SvelteKit `app.html`) và landing page (`landing/index.html`).
+- **Giám sát lỗi Sentry (quiz app)**: tích hợp `@sentry/sveltekit` qua `hooks.client.js`/`hooks.server.js`; chỉ bật ở production build (`import.meta.env.PROD`), bỏ qua khi `vite dev`. Vite plugin `sentrySvelteKit()` upload source maps khi có `SENTRY_AUTH_TOKEN` lúc build (không có thì tự bỏ qua, build vẫn chạy). Trong CI, token được truyền vào Docker build của frontend qua **BuildKit secret** (`--mount=type=secret`, không bake vào image layer).
 
 ### Changed
 - **Trang chi tiết đề chỉ xem trước 1 câu hỏi ngẫu nhiên** (trước đây hiển thị 3 câu đầu) — chọn ngẫu nhiên phía server mỗi lần mở.
