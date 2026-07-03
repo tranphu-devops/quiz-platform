@@ -10,6 +10,9 @@ All notable changes to this project will be documented in this file.
 - **Lọc & sắp xếp đề thi ở trang danh sách (`/exams`)**: thêm thanh chip lọc theo **tag** (bấm tag để lọc, "Tất cả" để bỏ lọc; tag xếp theo tần suất xuất hiện) và dropdown **sắp xếp** — "Mới nhất" (mặc định) hoặc "Phổ biến nhất" (ưu tiên theo lượt thích + bình luận + lượt thi). Lọc/sắp xếp chạy phía client trên dữ liệu đã tải.
 - **Hiển thị lượt thích/bình luận trên thẻ đề thi**: mỗi thẻ ở `/exams` giờ hiện số ❤️ và 💬 (khi > 0) để người dùng cảm nhận mức độ tương tác trước khi chọn đề. Số liệu lấy từ `quiz_interactions` qua subquery cross-schema trong endpoint `GET /exams` (một truy vấn, không N+1).
 
+### Changed
+- **Cập nhật tài liệu & landing page theo trạng thái mới nhất**: `README.md` bổ sung `interaction-service`, `grader-service`, `migrate` (job one-shot), dev port 4005, health check interactions và nhóm tính năng credit/collections/tương tác/khám phá. Landing page (`landing/index.html`) thêm card tính năng cho bình luận–thích–báo lỗi, khám phá đề theo tag, ghi chú khi làm bài và hồ sơ công khai; gỡ nhãn "Mới" khỏi các tính năng đã ra mắt từ trước.
+
 ## [Unreleased] — 2026-07-02
 
 ### Added
