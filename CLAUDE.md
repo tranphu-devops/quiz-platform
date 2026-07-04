@@ -105,6 +105,7 @@ AWS_PUBLIC_URL=               # public base URL of the bucket, e.g. https://buck
 # Optional
 API_ENCRYPTION_KEY=          # EC private key for response encryption (production only); generate with scripts/generate-api-key.js
 GHCR_ORG=tranphu-devops      # GHCR org prefix for docker-compose image names
+SENTRY_AUTH_TOKEN=           # Build-time secret for Sentry source map upload; passed via BuildKit secret, never in image
 # Frontend Vite overrides (defaults point to /api/* via Nginx; override for direct service access)
 PUBLIC_EXAM_URL=
 PUBLIC_SUBMISSION_URL=
@@ -204,6 +205,7 @@ Key files:
 Components in `src/lib/components/`:
 - `ImageUpload.svelte` — drag-and-drop upload with preview; `bind:value` for the URL; accepts `type` prop (`avatar|exam-cover|question`); automatically passes the current URL as `old_url` to delete the old file on replace.
 - `MarkdownEditor.svelte` — markdown editor for question explanations
+- `RichTextEditor.svelte` — WYSIWYG editor (bold/italic/underline/lists/links toolbar) for exam `description`; `bind:value` for the HTML string. Pair with `sanitizeHtml.js` before storing.
 - `BadgePicker.svelte` — grid of 50 preset badge SVGs + custom upload tab; `bind:value` for badge URL. Preset metadata from `src/lib/badge-presets.json`.
 
 `src/lib/components/ui/` — shared design-system primitives used across all pages: `Button.svelte`, `Card.svelte`, `Input.svelte`, `PageHeader.svelte` (unifies page title/breadcrumb/actions header), `Sidebar.svelte` (permanent left nav, collapsible, replaces the old top navbar — collapse state persisted to localStorage).
@@ -265,16 +267,16 @@ A separate microservice (schema `quiz_interactions`) for social/feedback feature
 On `/exams/[id]/take` there is a **single scratch note for the whole exam session** (one `note` string in per-tab Svelte `$state`), shared across all questions and unchanged when navigating between them. It lives in a floating widget (`.note-widget`) anchored bottom-right, **hidden by default**, toggled by a FAB (the FAB shows a dot when the note is non-empty). The note is **intentionally not sent to any server** — lost on refresh (F5); a helper line states this. There is no notes table or endpoint.
 
 ### Database schemas
-Schema is defined by the ordered migration files in `infra/postgres/migrations/` (see **Database migrations** above), all idempotent (`IF NOT EXISTS` + `ALTER TABLE … ADD COLUMN IF NOT EXISTS`) and applied automatically by the `migrate` service. `0001_init.sql` is the base; later files (`0002_image_upload` … `0010_interactions`) add columns/tables incrementally.
+Schema is defined by the ordered migration files in `infra/postgres/migrations/` (see **Database migrations** above), all idempotent (`IF NOT EXISTS` + `ALTER TABLE … ADD COLUMN IF NOT EXISTS`) and applied automatically by the `migrate` service. `0001_init.sql` is the base; later files (`0002_image_upload` … `0012_soft_delete`) add columns/tables incrementally.
 
 Never manually create tables in `auth` / `quiz_auth` — GoTrue manages that schema (the `auth` schema is created by `0001_init.sql` so it exists before GoTrue starts).
 
 Schema summary:
 - `quiz_users.profiles` — `id, full_name, avatar_url, role, credits, updated_at`, plus extended personal fields: `bio, birth_year, gender, interests, facebook_url, zalo, tiktok_url, youtube_url, instagram_url, linkedin_url, website_url`
 - `quiz_users.admin_settings` — `key, value` (upload validation + credit config)
-- `quiz_exams.exams` — includes `cover_image_url`, `tags TEXT[]`, `show_explanation`, `allow_retake`, `credit_cost`, `cooldown_minutes` (int, minutes between retakes), `max_attempts` (int nullable, null = unlimited), `scheduled_at` (timestamptz nullable, when null or in the past the exam is open; when in the future the exam is visible but locked), `passing_score` (float nullable, percentage threshold for "pass"; used by badge-award logic)
-- `quiz_exams.questions` — includes `image_url`, `question_type` (`single`|`multiple`), `correct_answer` (comma-separated keys for multiple)
-- `quiz_exams.collections` — `id, title, description, created_by, badge_image_url, is_published`
+- `quiz_exams.exams` — includes `cover_image_url`, `tags TEXT[]`, `show_explanation`, `allow_retake`, `credit_cost`, `cooldown_minutes` (int, minutes between retakes), `max_attempts` (int nullable, null = unlimited), `scheduled_at` (timestamptz nullable, when null or in the past the exam is open; when in the future the exam is visible but locked), `passing_score` (float nullable, percentage threshold for "pass"; used by badge-award logic), `deleted_at TIMESTAMPTZ` (soft-delete; NULL = active)
+- `quiz_exams.questions` — includes `image_url`, `question_type` (`single`|`multiple`), `correct_answer` (comma-separated keys for multiple), `deleted_at TIMESTAMPTZ` (soft-delete; cascaded from exam delete)
+- `quiz_exams.collections` — `id, title, description, created_by, badge_image_url, is_published`, `deleted_at TIMESTAMPTZ` (soft-delete)
 - `quiz_exams.collection_exams` — `(collection_id, exam_id, position)` many-to-many
 - `quiz_submissions.submissions` — `answers JSONB`, `results_detail JSONB`, `percentage FLOAT`, `status VARCHAR(20)` (`in_progress`|`completed`|`timed_out`, DEFAULT `completed`), `started_at TIMESTAMPTZ`, `expires_at TIMESTAMPTZ`, `exam_session_id UUID` (UUID assigned per active browser tab to enforce single-device rule), `session_last_active TIMESTAMPTZ` (updated on every progress heartbeat; used to detect stale sessions)
 - `quiz_submissions.student_badges` — `(user_id, collection_id)` unique; `earned_at`
@@ -301,6 +303,20 @@ Standalone Node.js worker — no HTTP server, no Fastify. Runs `node-cron` every
 On each tick it queries `quiz_submissions.submissions WHERE status = 'in_progress' AND expires_at < NOW()`, fetches exam questions via `EXAM_SERVICE_URL/exams/internal/:id` (internal key), grades each submission using the same logic as submission-service, then `UPDATE ... SET status = 'timed_out'` (the `WHERE status = 'in_progress'` acts as an optimistic lock against races with the user submit endpoint). Also runs once at startup to catch submissions that expired while the service was down.
 
 Environment: `DATABASE_URL` (same as `SUBMISSION_DATABASE_URL`), `EXAM_SERVICE_URL`, `INTERNAL_API_KEY`.
+
+### Rich-text exam description
+Exam `description` field is rich HTML (not plain text). In the create/edit forms, `RichTextEditor.svelte` provides a lightweight WYSIWYG editor (toolbar: bold, italic, underline, lists, links). On save, the HTML is sanitized server-side via an allowlist before storing. On the exam detail page, it renders formatted HTML. `apps/frontend/src/lib/sanitizeHtml.js` defines the allowlist used in both sanitization and rendering. `htmlToText()` in the same file strips tags to plain text (used for collection tag aggregation and search snippets).
+
+The exam detail page (`/exams/[id]`) shows a **1-random-question preview** (`ORDER BY RANDOM() LIMIT 1`) to give students a taste without revealing the full question set.
+
+Collection tags are **derived** (not stored): the backend computes the union of all member exams' `tags` arrays in the query, so collection tag filters on `/exams` and `/collections` always reflect current exam state.
+
+Custom SvelteKit error pages (`+error.svelte`) handle 404 and 5xx responses with brand-consistent styling.
+
+### Analytics & error monitoring
+- **Zoho PageSense** and **Umami** tracking scripts are embedded in `apps/frontend/src/app.html` (quiz app) and `landing/index.html`. Both are load-time embeds — no npm packages; update the script src URLs directly in those files.
+- **Sentry** (`@sentry/sveltekit`) is configured in `apps/frontend/src/hooks.client.js` and `hooks.server.js`. It is **enabled only when `import.meta.env.PROD` is true** (i.e., skipped during `vite dev`). Source maps are uploaded at Docker build time when `SENTRY_AUTH_TOKEN` is passed as a BuildKit secret (`--secret id=SENTRY_AUTH_TOKEN`); the token is never baked into any image layer. If the secret is absent, `sentrySvelteKit()` in `vite.config.js` silently skips the upload.
+- To rotate the Sentry DSN or org/project slugs, update `hooks.client.js`, `hooks.server.js`, and `vite.config.js` together.
 
 ### Landing page
 `landing/` contains a static HTML landing page served by Nginx for the production domain (`phutx.top` / `www.phutx.top`). The `default_server` block (used locally) skips it and goes straight to the frontend SPA.
@@ -332,6 +348,7 @@ Three GitHub Actions workflows:
 - **Scheduled publish:** `exams.scheduled_at` — if set to a future datetime and `is_published = true`, the exam is visible to students but locked. The frontend shows a live countdown (1 s interval via `setInterval`). Server blocks `POST /submissions/start` with HTTP 423 if `scheduled_at > NOW()`. Create/edit forms have a 3-way publish mode selector: draft / now / scheduled. `PUT /exams/:id` uses a `(has_scheduled_at, scheduled_at_val)` param pair so `null` can clear the field.
 - **Interactions gating:** Comments — any authenticated user. Likes — **students only** (server rejects others with 403). Reports — only after a completed submission (server verifies via cross-schema query, 403 otherwise). Comment moderation is **author + admin only** (teachers can't moderate comments on their own exams). Report responses are **owner + admin** and flip `status` to `resolved`.
 - **Exam notes are not persisted:** the take-page note textareas are in-memory only (Svelte `$state`), never sent to a server; don't add a notes table/endpoint — losing them on refresh is intended behavior.
+- **Soft-delete pattern (exams / questions / collections):** DELETE endpoints set `deleted_at = NOW()` instead of hard-deleting. All SELECT queries must include `AND deleted_at IS NULL` (or `AND e.deleted_at IS NULL` for aliased tables). Deleting an exam cascades the same timestamp to all its questions. `deleted_at` rows are never returned to the frontend; no restore UI exists yet — recovery is done directly in DB if needed.
 
 ## Design System
 

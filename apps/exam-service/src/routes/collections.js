@@ -33,6 +33,7 @@ export default async function collectionRoutes(fastify) {
           LEFT JOIN collection_exams ce ON ce.collection_id = c.id
           LEFT JOIN exams e ON e.id = ce.exam_id
           LEFT JOIN quiz_submissions.student_badges sb ON sb.collection_id = c.id
+          WHERE c.deleted_at IS NULL
           GROUP BY c.id, p.full_name, au.email ORDER BY c.created_at DESC`)
         rows = r.rows
       } else if (req.user.role === 'teacher') {
@@ -53,7 +54,7 @@ export default async function collectionRoutes(fastify) {
           LEFT JOIN auth.users au ON au.id = c.created_by
           LEFT JOIN collection_exams ce ON ce.collection_id = c.id
           LEFT JOIN exams e ON e.id = ce.exam_id
-          WHERE c.created_by = $1
+          WHERE c.created_by = $1 AND c.deleted_at IS NULL
           GROUP BY c.id, p.full_name, au.email ORDER BY c.created_at DESC`, [req.user.id])
         rows = r.rows
       } else {
@@ -80,7 +81,7 @@ export default async function collectionRoutes(fastify) {
           LEFT JOIN auth.users au ON au.id = c.created_by
           LEFT JOIN collection_exams ce ON ce.collection_id = c.id
           LEFT JOIN exams e ON e.id = ce.exam_id
-          WHERE c.is_published = true
+          WHERE c.is_published = true AND c.deleted_at IS NULL
           GROUP BY c.id, p.full_name, au.email
           HAVING COUNT(DISTINCT e.id) FILTER (WHERE e.is_published = true) > 0
           ORDER BY c.created_at DESC`)
@@ -142,7 +143,7 @@ export default async function collectionRoutes(fastify) {
         FROM collections c
         LEFT JOIN collection_exams ce ON ce.collection_id = c.id
         LEFT JOIN exams e ON e.id = ce.exam_id
-        WHERE c.id = $1
+        WHERE c.id = $1 AND c.deleted_at IS NULL
         GROUP BY c.id`, [id])
 
       if (r.rows.length === 0) return reply.status(404).send({ error: 'Not found', statusCode: 404 })
@@ -164,7 +165,7 @@ export default async function collectionRoutes(fastify) {
     const { title, description, badge_image_url, is_published, exam_ids } = req.body ?? {}
 
     try {
-      const existing = await pool.query('SELECT * FROM collections WHERE id = $1', [id])
+      const existing = await pool.query('SELECT * FROM collections WHERE id = $1 AND deleted_at IS NULL', [id])
       if (existing.rows.length === 0) return reply.status(404).send({ error: 'Not found', statusCode: 404 })
       const col = existing.rows[0]
 
@@ -209,17 +210,17 @@ export default async function collectionRoutes(fastify) {
     }
   })
 
-  // DELETE /collections/:id
+  // DELETE /collections/:id — soft delete
   fastify.delete('/collections/:id', async (req, reply) => {
     const { id } = req.params
     try {
-      const existing = await pool.query('SELECT * FROM collections WHERE id = $1', [id])
+      const existing = await pool.query('SELECT * FROM collections WHERE id = $1 AND deleted_at IS NULL', [id])
       if (existing.rows.length === 0) return reply.status(404).send({ error: 'Not found', statusCode: 404 })
 
       if (req.ability.cannot('delete', subject('Collection', existing.rows[0]))) {
         return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
       }
-      await pool.query('DELETE FROM collections WHERE id = $1', [id])
+      await pool.query('UPDATE collections SET deleted_at = NOW() WHERE id = $1', [id])
       return { success: true }
     } catch (err) {
       fastify.log.error(err)
@@ -242,7 +243,7 @@ export default async function collectionRoutes(fastify) {
           (SELECT array_agg(ce2.exam_id) FROM collection_exams ce2 WHERE ce2.collection_id = c.id) AS exam_ids
         FROM collection_exams ce
         JOIN collections c ON c.id = ce.collection_id
-        WHERE ce.exam_id = $1 AND c.is_published = true`, [exam_id])
+        WHERE ce.exam_id = $1 AND c.is_published = true AND c.deleted_at IS NULL`, [exam_id])
       return r.rows
     } catch (err) {
       fastify.log.error(err)
