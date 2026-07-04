@@ -1,4 +1,5 @@
 import crypto from 'node:crypto'
+import bcrypt from 'bcryptjs'
 import { pool } from '../db.js'
 import { verifyAuth } from '../middleware/auth.js'
 
@@ -255,6 +256,70 @@ export default async function userRoutes(fastify) {
       [id, credits]
     )
     return { success: true }
+  })
+
+  // ── GET /admin/users/:id — full profile for edit form ────────────────────
+  fastify.get('/admin/users/:id', async (req, reply) => {
+    if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+    const { id } = req.params
+    const { rows } = await pool.query(`
+      SELECT u.id, u.email,
+             u.raw_user_meta_data->>'role' AS role,
+             p.full_name, p.avatar_url, p.credits,
+             p.bio, p.birth_year, p.gender, p.interests,
+             p.facebook_url, p.zalo, p.tiktok_url, p.youtube_url,
+             p.instagram_url, p.linkedin_url, p.website_url,
+             u.created_at, u.last_sign_in_at
+      FROM auth.users u
+      LEFT JOIN profiles p ON p.id = u.id
+      WHERE u.id = $1
+    `, [id])
+    if (rows.length === 0) return reply.status(404).send({ error: 'Không tìm thấy người dùng', statusCode: 404 })
+    return rows[0]
+  })
+
+  // ── POST /admin/users — tạo tài khoản mới ────────────────────────────────
+  fastify.post('/admin/users', async (req, reply) => {
+    if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+    const { email, password, full_name, role = 'student' } = req.body ?? {}
+
+    if (!email || !password) return reply.status(400).send({ error: 'Email và mật khẩu là bắt buộc', statusCode: 400 })
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return reply.status(400).send({ error: 'Email không hợp lệ', statusCode: 400 })
+    if (password.length < 8) return reply.status(400).send({ error: 'Mật khẩu phải có ít nhất 8 ký tự', statusCode: 400 })
+    if (!['student', 'teacher'].includes(role)) return reply.status(400).send({ error: 'Role phải là student hoặc teacher', statusCode: 400 })
+
+    const normalizedEmail = email.toLowerCase().trim()
+    const { rows: existing } = await pool.query('SELECT id FROM auth.users WHERE email = $1', [normalizedEmail])
+    if (existing.length > 0) return reply.status(409).send({ error: 'Email đã được sử dụng', statusCode: 409 })
+
+    const id = crypto.randomUUID()
+    const encryptedPassword = await bcrypt.hash(password, 10)
+    const meta = JSON.stringify({ role, full_name: full_name ?? '' })
+
+    try {
+      await pool.query(`
+        INSERT INTO auth.users
+          (id, instance_id, aud, role, email, encrypted_password,
+           email_confirmed_at, raw_user_meta_data, created_at, updated_at)
+        VALUES ($1, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+          $2, $3, NOW(), $4, NOW(), NOW())
+      `, [id, normalizedEmail, encryptedPassword, meta])
+
+      const { rows: cs } = await pool.query(
+        `SELECT COALESCE(value::int, 20) AS v FROM admin_settings WHERE key = 'default_credits'`
+      )
+      const defaultCredits = cs[0]?.v ?? 20
+
+      await pool.query(`
+        INSERT INTO profiles (id, full_name, role, credits, updated_at)
+        VALUES ($1, $2, $3, $4, NOW())
+      `, [id, full_name ?? null, role, defaultCredits])
+
+      return reply.status(201).send({ id, email: normalizedEmail, role, full_name: full_name ?? null, credits: defaultCredits })
+    } catch (err) {
+      fastify.log.error(err)
+      return reply.status(500).send({ error: 'Lỗi tạo tài khoản', statusCode: 500 })
+    }
   })
 
   fastify.get('/admin/settings', async (req, reply) => {

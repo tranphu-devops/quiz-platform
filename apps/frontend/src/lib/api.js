@@ -114,6 +114,13 @@ export const userApi = {
       body: JSON.stringify(data)
     }),
   adminListUsers: () => apiFetch(`${USER_URL}/admin/users`, { headers: authHeaders(false) }),
+  adminGetUser: (id) => apiFetch(`${USER_URL}/admin/users/${id}`, { headers: authHeaders(false) }),
+  adminCreateUser: (data) =>
+    apiFetch(`${USER_URL}/admin/users`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data)
+    }),
   adminUpdateRole: (id, role) =>
     apiFetch(`${USER_URL}/admin/users/${id}/role`, {
       method: 'PATCH',
