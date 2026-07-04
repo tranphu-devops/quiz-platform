@@ -9,6 +9,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Viết ngắn gọn, tập trung vào **what & why** từ góc nhìn người dùng/developer, không liệt kê từng file đã sửa
 - Khi release, đổi `[Unreleased]` thành số phiên bản theo SemVer
 
+## Git workflow (bắt buộc)
+
+**Trước khi thay đổi bất kỳ source code nào**, phải làm việc trong một **git worktree riêng**, không sửa trực tiếp trên cây làm việc chính:
+
+1. **Tạo git worktree + nhánh mới từ `main`**: mỗi task = một worktree + một nhánh xuất phát từ `main` (cập nhật `origin/main` mới nhất). Không commit thẳng lên `main`.
+2. **Làm toàn bộ thay đổi trong worktree đó** — tách biệt, tránh xung đột khi có nhiều luồng làm việc song song trên cùng repo.
+3. **Khi hoàn thành**: `push` nhánh lên `origin` và **mở Pull Request** vào `main` để review; không merge thẳng.
+
+Lý do: cô lập từng luồng công việc (nhiều tiến trình có thể cùng sinh code trên một repo), giữ `main` luôn sạch, và mọi thay đổi đều đi qua PR.
+
 ## Commands
 
 ### Run everything locally
