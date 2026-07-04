@@ -18,13 +18,13 @@ export default async function examRoutes(fastify) {
 
     const { id } = req.params
     try {
-      const examResult = await pool.query('SELECT * FROM exams WHERE id = $1', [id])
+      const examResult = await pool.query('SELECT * FROM exams WHERE id = $1 AND deleted_at IS NULL', [id])
       if (examResult.rows.length === 0) {
         return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
       }
 
       const questionsResult = await pool.query(
-        'SELECT * FROM questions WHERE exam_id = $1 ORDER BY order_index',
+        'SELECT * FROM questions WHERE exam_id = $1 AND deleted_at IS NULL ORDER BY order_index',
         [id]
       )
 
@@ -101,18 +101,17 @@ export default async function examRoutes(fastify) {
 
       let query, params = []
       if (isStudent || creator_id) {
-        // When filtering by creator (public profile page), anyone gets published exams only
         if (creator_id) {
-          query = `${studentBase} WHERE e.is_published = true AND e.created_by = $1 GROUP BY e.id, p.full_name, p.avatar_url, au.email ORDER BY e.created_at DESC`
+          query = `${studentBase} WHERE e.is_published = true AND e.deleted_at IS NULL AND e.created_by = $1 GROUP BY e.id, p.full_name, p.avatar_url, au.email ORDER BY e.created_at DESC`
           params = [creator_id]
         } else {
-          query = `${studentBase} WHERE e.is_published = true GROUP BY e.id, p.full_name, p.avatar_url, au.email ORDER BY e.created_at DESC`
+          query = `${studentBase} WHERE e.is_published = true AND e.deleted_at IS NULL GROUP BY e.id, p.full_name, p.avatar_url, au.email ORDER BY e.created_at DESC`
         }
       } else if (req.user.role === 'teacher') {
-        query = `${fullSelect} WHERE e.created_by = $1 ${group}`
+        query = `${fullSelect} WHERE e.created_by = $1 AND e.deleted_at IS NULL ${group}`
         params = [req.user.id]
       } else {
-        query = `${fullSelect} ${group}`
+        query = `${fullSelect} WHERE e.deleted_at IS NULL ${group}`
       }
 
       const result = await pool.query(query, params)
@@ -131,7 +130,7 @@ export default async function examRoutes(fastify) {
     const isPreview = req.query.preview === 'true'
 
     try {
-      const examResult = await pool.query('SELECT * FROM exams WHERE id = $1', [id])
+      const examResult = await pool.query('SELECT * FROM exams WHERE id = $1 AND deleted_at IS NULL', [id])
       if (examResult.rows.length === 0) {
         return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
       }
@@ -142,7 +141,7 @@ export default async function examRoutes(fastify) {
       }
 
       const countResult = await pool.query(
-        'SELECT COUNT(*)::int AS n FROM questions WHERE exam_id = $1',
+        'SELECT COUNT(*)::int AS n FROM questions WHERE exam_id = $1 AND deleted_at IS NULL',
         [id]
       )
       const question_count = countResult.rows[0].n
@@ -151,8 +150,8 @@ export default async function examRoutes(fastify) {
       // Full (teacher/take): all questions in authored order.
       const questionsResult = await pool.query(
         isPreview
-          ? `SELECT * FROM questions WHERE exam_id = $1 ORDER BY RANDOM() LIMIT 1`
-          : `SELECT * FROM questions WHERE exam_id = $1 ORDER BY order_index`,
+          ? `SELECT * FROM questions WHERE exam_id = $1 AND deleted_at IS NULL ORDER BY RANDOM() LIMIT 1`
+          : `SELECT * FROM questions WHERE exam_id = $1 AND deleted_at IS NULL ORDER BY order_index`,
         [id]
       )
 
@@ -189,7 +188,7 @@ export default async function examRoutes(fastify) {
     const scheduled_at_val = has_scheduled_at ? (body.scheduled_at || null) : undefined
 
     try {
-      const examResult = await pool.query('SELECT * FROM exams WHERE id = $1', [id])
+      const examResult = await pool.query('SELECT * FROM exams WHERE id = $1 AND deleted_at IS NULL', [id])
       if (examResult.rows.length === 0) {
         return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
       }
@@ -214,7 +213,7 @@ export default async function examRoutes(fastify) {
           cooldown_minutes = COALESCE($12, cooldown_minutes),
           max_attempts = CASE WHEN $13::int IS NOT NULL THEN $13::int ELSE max_attempts END,
           scheduled_at = CASE WHEN $14 THEN $15::timestamptz ELSE scheduled_at END
-         WHERE id = $9 RETURNING *`,
+         WHERE id = $9 AND deleted_at IS NULL RETURNING *`,
         [title, description, cover_image_url ?? null, time_limit, passing_score ?? null, is_published, tags ?? null, show_explanation ?? null, id, allow_retake ?? null, credit_cost ?? null, cooldown_minutes ?? null, max_attempts ?? null, has_scheduled_at, scheduled_at_val]
       )
       return result.rows[0]
@@ -224,12 +223,12 @@ export default async function examRoutes(fastify) {
     }
   })
 
-  // DELETE /exams/:id
+  // DELETE /exams/:id — soft delete
   fastify.delete('/exams/:id', async (req, reply) => {
     const { id } = req.params
 
     try {
-      const examResult = await pool.query('SELECT * FROM exams WHERE id = $1', [id])
+      const examResult = await pool.query('SELECT * FROM exams WHERE id = $1 AND deleted_at IS NULL', [id])
       if (examResult.rows.length === 0) {
         return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
       }
@@ -239,7 +238,11 @@ export default async function examRoutes(fastify) {
         return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
       }
 
-      await pool.query('DELETE FROM exams WHERE id = $1', [id])
+      const now = new Date()
+      await pool.query('UPDATE exams SET deleted_at = $1 WHERE id = $2', [now, id])
+      // Cascade soft-delete to questions
+      await pool.query('UPDATE questions SET deleted_at = $1 WHERE exam_id = $2 AND deleted_at IS NULL', [now, id])
+
       return reply.status(204).send()
     } catch (err) {
       fastify.log.error(err)
@@ -258,7 +261,7 @@ export default async function examRoutes(fastify) {
     }
 
     try {
-      const examResult = await pool.query('SELECT * FROM exams WHERE id = $1', [id])
+      const examResult = await pool.query('SELECT * FROM exams WHERE id = $1 AND deleted_at IS NULL', [id])
       if (examResult.rows.length === 0) {
         return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
       }
@@ -286,7 +289,7 @@ export default async function examRoutes(fastify) {
     const correct_answer = ca2 != null ? (Array.isArray(ca2) ? [...ca2].sort().join(',') : ca2) : undefined
 
     try {
-      const examResult = await pool.query('SELECT * FROM exams WHERE id = $1', [id])
+      const examResult = await pool.query('SELECT * FROM exams WHERE id = $1 AND deleted_at IS NULL', [id])
       if (examResult.rows.length === 0) {
         return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
       }
@@ -305,7 +308,7 @@ export default async function examRoutes(fastify) {
           order_index = COALESCE($6, order_index),
           explanation = COALESCE($7, explanation),
           question_type = COALESCE($8, question_type)
-         WHERE id = $9 AND exam_id = $10 RETURNING *`,
+         WHERE id = $9 AND exam_id = $10 AND deleted_at IS NULL RETURNING *`,
         [content, image_url ?? null, options ? JSON.stringify(options) : null, correct_answer ?? null, points, order_index, explanation ?? null, question_type ?? null, qid, id]
       )
 
@@ -319,12 +322,12 @@ export default async function examRoutes(fastify) {
     }
   })
 
-  // DELETE /exams/:id/questions/:qid
+  // DELETE /exams/:id/questions/:qid — soft delete
   fastify.delete('/exams/:id/questions/:qid', async (req, reply) => {
     const { id, qid } = req.params
 
     try {
-      const examResult = await pool.query('SELECT * FROM exams WHERE id = $1', [id])
+      const examResult = await pool.query('SELECT * FROM exams WHERE id = $1 AND deleted_at IS NULL', [id])
       if (examResult.rows.length === 0) {
         return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
       }
@@ -333,7 +336,14 @@ export default async function examRoutes(fastify) {
         return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
       }
 
-      await pool.query('DELETE FROM questions WHERE id = $1 AND exam_id = $2', [qid, id])
+      const result = await pool.query(
+        'UPDATE questions SET deleted_at = NOW() WHERE id = $1 AND exam_id = $2 AND deleted_at IS NULL RETURNING id',
+        [qid, id]
+      )
+      if (result.rows.length === 0) {
+        return reply.status(404).send({ error: 'Question not found', statusCode: 404 })
+      }
+
       return reply.status(204).send()
     } catch (err) {
       fastify.log.error(err)
