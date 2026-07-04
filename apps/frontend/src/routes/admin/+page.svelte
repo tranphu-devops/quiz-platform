@@ -18,6 +18,28 @@
   let editingCredits = $state({})
   let savingCredits = $state({})
 
+  // ── Create user modal ──────────────────────────────────────────────────────
+  let showCreate = $state(false)
+  let createForm = $state({ email: '', password: '', full_name: '', role: 'student' })
+  let createError = $state('')
+  let createLoading = $state(false)
+
+  function openCreate() { createForm = { email: '', password: '', full_name: '', role: 'student' }; createError = ''; showCreate = true }
+  function closeCreate() { showCreate = false }
+
+  async function submitCreate() {
+    createError = ''
+    if (!createForm.email || !createForm.password) { createError = 'Email và mật khẩu là bắt buộc'; return }
+    createLoading = true
+    try {
+      const res = await userApi.adminCreateUser(createForm)
+      const d = await res.json()
+      if (!res.ok) { createError = d.error ?? 'Lỗi tạo tài khoản'; return }
+      users = [{ ...d, created_at: new Date().toISOString(), last_sign_in_at: null }, ...users]
+      closeCreate()
+    } catch { createError = 'Không thể kết nối server' } finally { createLoading = false }
+  }
+
   // ── Settings tab ───────────────────────────────────────────────────────────
   let settings = $state({ upload_max_size_mb: '5', upload_allowed_types: 'image/jpeg,image/png,image/webp,image/gif' })
   let settingsLoading = $state(false)
@@ -199,6 +221,11 @@
           {/if}
         </div>
 
+        <!-- Create user bar -->
+        <div class="create-user-bar">
+          <Button onclick={openCreate}>+ Tạo tài khoản</Button>
+        </div>
+
         <!-- Users table -->
         <Card noPad={true}>
           <div class="ix-table-wrap">
@@ -212,6 +239,7 @@
                   <th>NGÀY TẠO</th>
                   <th>ĐĂNG NHẬP</th>
                   <th>ĐỔI ROLE</th>
+                  <th>THAO TÁC</th>
                 </tr>
               </thead>
               <tbody>
@@ -271,6 +299,9 @@
                         <option value="admin">admin</option>
                         <option value="banned">banned</option>
                       </select>
+                    </td>
+                    <td>
+                      <a href="/admin/users/{u.id}/edit" class="edit-user-link">Sửa</a>
                     </td>
                   </tr>
                 {/each}
@@ -470,6 +501,54 @@
       </div>
     {/if}
 </div>
+
+<!-- ── Create user modal ──────────────────────────────────────────────── -->
+{#if showCreate}
+  <div class="modal-overlay" onclick={closeCreate} role="presentation">
+    <div class="modal-box" onclick|stopPropagation role="dialog" aria-modal="true" aria-label="Tạo tài khoản mới">
+      <div class="modal-header">
+        <h2>Tạo tài khoản mới</h2>
+        <button class="modal-close" onclick={closeCreate} aria-label="Đóng">✕</button>
+      </div>
+
+      <div class="modal-body">
+        {#if createError}
+          <p class="create-error">{createError}</p>
+        {/if}
+
+        <div class="form-row">
+          <label for="c-email">Email <span class="req">*</span></label>
+          <Input id="c-email" type="email" bind:value={createForm.email} placeholder="user@example.com" />
+        </div>
+
+        <div class="form-row">
+          <label for="c-password">Mật khẩu <span class="req">*</span></label>
+          <Input id="c-password" type="password" bind:value={createForm.password} placeholder="Tối thiểu 8 ký tự" />
+        </div>
+
+        <div class="form-row">
+          <label for="c-fullname">Họ tên</label>
+          <Input id="c-fullname" type="text" bind:value={createForm.full_name} placeholder="Nguyễn Văn A" />
+        </div>
+
+        <div class="form-row">
+          <label for="c-role">Vai trò</label>
+          <select id="c-role" class="modal-select" bind:value={createForm.role}>
+            <option value="student">Student</option>
+            <option value="teacher">Teacher</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <Button variant="ghost" onclick={closeCreate} disabled={createLoading}>Huỷ</Button>
+        <Button onclick={submitCreate} disabled={createLoading}>
+          {createLoading ? 'Đang tạo...' : 'Tạo tài khoản'}
+        </Button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   /* ── Tab navigation ───────────────────────────────────────────────────── */
@@ -772,5 +851,83 @@
     .ix-table th, .ix-table td {
       padding: 10px 12px;
     }
+  }
+
+  /* ── Create-user bar ────────────────────────────────────────────────── */
+  .create-user-bar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 0.75rem;
+  }
+
+  /* ── Edit user link ─────────────────────────────────────────────────── */
+  .edit-user-link {
+    display: inline-block;
+    padding: 0.3rem 0.75rem;
+    background: var(--primary-light);
+    color: var(--primary);
+    border-radius: var(--radius-btn);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+  .edit-user-link:hover { background: var(--primary); color: #fff; }
+
+  /* ── Create modal ───────────────────────────────────────────────────── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 999;
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem;
+  }
+  .modal-box {
+    background: var(--surface);
+    border-radius: var(--radius-card);
+    width: 100%; max-width: 480px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.25rem 1.5rem 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-header h2 { margin: 0; font-size: 1.1rem; color: var(--text); }
+  .modal-close {
+    background: none; border: none; cursor: pointer;
+    color: var(--text); opacity: 0.5; font-size: 1.1rem; line-height: 1;
+    padding: 0.25rem;
+  }
+  .modal-close:hover { opacity: 1; }
+  .modal-body { padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+  .modal-footer {
+    padding: 1rem 1.5rem 1.25rem;
+    border-top: 1px solid var(--border);
+    display: flex; gap: 0.75rem; justify-content: flex-end;
+  }
+  .form-row { display: flex; flex-direction: column; gap: 0.35rem; }
+  .form-row label { font-size: 0.82rem; font-weight: 600; color: var(--text); opacity: 0.75; }
+  .req { color: var(--primary); }
+  .modal-select {
+    width: 100%; padding: 0.55rem 0.75rem;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .modal-select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+  .create-error {
+    background: #fef2f2; border: 1px solid #fecaca;
+    color: #dc2626; border-radius: 8px;
+    padding: 0.6rem 0.9rem; font-size: 0.85rem; margin: 0;
+  }
+  :global([data-theme="dark"]) .create-error {
+    background: rgba(220,38,38,0.15); border-color: rgba(220,38,38,0.35); color: #fca5a5;
   }
 </style>

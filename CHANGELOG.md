@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased] — 2026-07-04
+
+### Added
+- **Quản lý tài khoản người dùng (Admin)**: admin có thể tạo tài khoản teacher/student mới trực tiếp từ trang `/admin` (tab Người dùng → nút "Tạo tài khoản") — nhập email, mật khẩu, họ tên, vai trò; mật khẩu được hash bcrypt trước khi lưu vào DB, tài khoản xác nhận ngay mà không cần email confirmation. Admin cũng có thể chỉnh sửa toàn bộ thông tin hồ sơ của bất kỳ người dùng nào (avatar, họ tên, bio, năm sinh, giới tính, sở thích, liên kết mạng xã hội, vai trò, credits) qua trang `/admin/users/:id/edit` — có link "Sửa" trong từng hàng của bảng người dùng.
+
+---
+
 ## [Unreleased] — 2026-07-03
 
 ### Added
