@@ -505,7 +505,7 @@
 <!-- ── Create user modal ──────────────────────────────────────────────── -->
 {#if showCreate}
   <div class="modal-overlay" onclick={closeCreate} role="presentation">
-    <div class="modal-box" onclick|stopPropagation role="dialog" aria-modal="true" aria-label="Tạo tài khoản mới">
+    <div class="modal-box" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Tạo tài khoản mới">
       <div class="modal-header">
         <h2>Tạo tài khoản mới</h2>
         <button class="modal-close" onclick={closeCreate} aria-label="Đóng">✕</button>
