@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased] — 2026-07-05
+
+### Added
+- **Upload ảnh qua Teacher API (X-API-Key)**: endpoint `POST /api/users/upload` giờ chấp nhận cả `X-API-Key` lẫn JWT — teacher có thể upload ảnh bìa/câu hỏi bằng API key thay vì phải đăng nhập trình duyệt. Trả về S3 URL dùng trực tiếp cho `cover_image_url` / `image_url`.
+- **`make-cover-ai.mjs` hỗ trợ upload trực tiếp lên S3**: thêm flag `--upload <url> --api-key <key>` — script sinh ảnh AI rồi tự upload, in ra S3 URL thay vì base64 data URI, tránh lưu dữ liệu nặng vào DB.
+- **Tài liệu API cập nhật**: thêm endpoint `POST /api/users/upload` vào trang `/api-docs` kèm curl example.
+
+### Fixed
+- Upload file `.jpg` bị reject do MIME type `image/jpg` (không chuẩn) — giờ được normalize thành `image/jpeg` trước khi kiểm tra.
+
+---
+
 ## [Unreleased] — 2026-07-04
 
 ### Fixed
