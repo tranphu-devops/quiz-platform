@@ -25,7 +25,10 @@ export default async function uploadRoutes(fastify) {
     const maxSizeMb = Number(settings.upload_max_size_mb ?? 5)
     const allowedTypes = (settings.upload_allowed_types ?? 'image/jpeg,image/png,image/webp,image/gif').split(',').map(s => s.trim())
 
-    if (!allowedTypes.includes(data.mimetype)) {
+    // Normalize image/jpg → image/jpeg (some clients send non-standard MIME type)
+    const mimetype = data.mimetype === 'image/jpg' ? 'image/jpeg' : data.mimetype
+
+    if (!allowedTypes.includes(mimetype)) {
       return reply.status(400).send({
         error: `Loại file không được phép. Chỉ chấp nhận: ${allowedTypes.join(', ')}`,
         statusCode: 400
@@ -46,7 +49,7 @@ export default async function uploadRoutes(fastify) {
 
     try {
       await deleteFromS3(oldUrl)
-      const url = await uploadToS3(buffer, data.mimetype, uploadType)
+      const url = await uploadToS3(buffer, mimetype, uploadType)
       return { url }
     } catch (err) {
       fastify.log.error(err)

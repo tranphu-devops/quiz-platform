@@ -38,7 +38,16 @@
   -H "Content-Type: application/json" \\
   -d '{ "is_published": true }'`
 
+  const curlUpload = `curl -X POST ${base}/api/users/upload \\
+  -H "X-API-Key: qz_live_xxxxxxxx..." \\
+  -F "file=@/path/to/image.jpg" \\
+  -F "type=exam-cover"
+
+# Dùng URL trả về làm cover_image_url / image_url:
+# { "url": "https://..." }`
+
   const endpoints = [
+    { m: 'POST',   p: '/api/users/upload',                      d: 'Upload ảnh lên S3 — trả về URL (dùng cho cover_image_url, image_url).' },
     { m: 'POST',   p: '/api/exams/exams',                       d: 'Tạo đề thi mới (bạn là chủ sở hữu).' },
     { m: 'GET',    p: '/api/exams/exams?creator_id=<YOUR_ID>',  d: 'Liệt kê đề thi (kèm bản nháp của chính bạn).' },
     { m: 'GET',    p: '/api/exams/exams/:id',                   d: 'Xem chi tiết một đề thi.' },
@@ -100,11 +109,21 @@
     <ul class="notes">
       <li><code>question_type</code>: <code>single</code> (1 đáp án) hoặc <code>multiple</code> (nhiều đáp án).</li>
       <li>Với <code>multiple</code>, gửi <code>correct_answer</code> là mảng, ví dụ <code>["A","C"]</code>.</li>
-      <li>Ảnh câu hỏi: truyền <code>image_url</code> là URL công khai có sẵn. API v1 chưa hỗ trợ upload file trực tiếp — hãy upload ảnh ở giao diện web hoặc host sẵn rồi dán URL vào đây.</li>
+      <li>Ảnh câu hỏi: upload file trước qua <code>POST /api/users/upload</code> (xem mục 6), rồi dùng URL trả về làm <code>image_url</code>. Hoặc truyền thẳng URL công khai có sẵn.</li>
     </ul>
   </Card>
 
-  <Card title="6. Ví dụ — publish đề thi">
+  <Card title="6. Ví dụ — upload ảnh lên S3">
+    <pre><code>{curlUpload}</code></pre>
+    <ul class="notes">
+      <li>Field <code>type</code>: <code>exam-cover</code> (ảnh bìa đề thi) hoặc <code>question</code> (ảnh câu hỏi) hoặc <code>avatar</code>.</li>
+      <li>Định dạng chấp nhận: <code>image/jpeg</code>, <code>image/png</code>, <code>image/webp</code>, <code>image/gif</code> (admin có thể thay đổi).</li>
+      <li>Kích thước tối đa mặc định: 5 MB.</li>
+      <li>Trả về <code>{"{ url: \"https://...\" }"}</code> — dùng URL này cho <code>cover_image_url</code> hoặc <code>image_url</code> trong các API khác.</li>
+    </ul>
+  </Card>
+
+  <Card title="7. Ví dụ — publish đề thi">
     <pre><code>{curlPublish}</code></pre>
     <p class="notes">Đặt <code>is_published: true</code> để học viên có thể thấy và làm bài.</p>
   </Card>
