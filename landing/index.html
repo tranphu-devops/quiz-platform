@@ -48,6 +48,18 @@
     .btn-nav:hover { opacity: .92; transform: translateY(-1px); }
     @media (max-width: 640px) { .nav-hide { display: none; } }
 
+    /* ─── LANG SWITCH ─── */
+    .lang-switch {
+      display: inline-flex; align-items: center; gap: 4px;
+      border: 1.5px solid var(--border); background: white; color: var(--muted);
+      border-radius: 8px; padding: .4rem .6rem; font-size: .78rem; font-weight: 700;
+      cursor: pointer; letter-spacing: .02em; transition: all .15s;
+    }
+    .lang-switch:hover { border-color: var(--accent); color: var(--primary); }
+    .lang-switch span { opacity: .5; }
+    .lang-switch span.active { opacity: 1; color: var(--primary); }
+    .lang-switch .lang-sep { opacity: .35; }
+
     /* ─── HERO ─── */
     .hero {
       padding: 6rem 1.5rem 5rem;
@@ -306,21 +318,24 @@
 <nav>
   <a class="nav-brand" href="/">QuizPlatform</a>
   <div class="nav-links">
-    <a href="#features" class="nav-hide">Tính năng</a>
-    <a href="#security" class="nav-hide">Bảo mật</a>
-    <a href="#how" class="nav-hide">Cách dùng</a>
-    <a href="#faq" class="nav-hide">FAQ</a>
-    <a href="https://quiz.phutx.top/login" class="btn-nav">Bắt đầu khám phá</a>
+    <a href="#features" class="nav-hide" data-i18n="nav.features">Tính năng</a>
+    <a href="#security" class="nav-hide" data-i18n="nav.security">Bảo mật</a>
+    <a href="#how" class="nav-hide" data-i18n="nav.how">Cách dùng</a>
+    <a href="#faq" class="nav-hide" data-i18n="nav.faq">FAQ</a>
+    <button class="lang-switch" onclick="toggleLang()" aria-label="Switch language">
+      <span data-lang-mark="vi">VI</span><span class="lang-sep">/</span><span data-lang-mark="en">EN</span>
+    </button>
+    <a href="https://quiz.phutx.top/login" class="btn-nav" data-i18n="nav.cta">Bắt đầu khám phá</a>
   </div>
 </nav>
 
 <!-- HERO -->
 <div class="hero">
-  <div class="hero-eyebrow">✦ Nền tảng thi trực tuyến thế hệ mới</div>
-  <h1>Thi trực tuyến <em>thông minh</em>,<br/>bảo mật, công bằng</h1>
-  <p>Soạn đề wizard 4 bước, auto-save tiến trình, chống gian lận theo thời gian thực và trao huy hiệu tự động — tất cả trên một nền tảng.</p>
+  <div class="hero-eyebrow" data-i18n="hero.eyebrow">✦ Nền tảng thi trực tuyến thế hệ mới</div>
+  <h1 data-i18n="hero.title" data-i18n-html="true">Thi trực tuyến <em>thông minh</em>,<br/>bảo mật, công bằng</h1>
+  <p data-i18n="hero.desc">Soạn đề wizard 4 bước, auto-save tiến trình, chống gian lận theo thời gian thực và trao huy hiệu tự động — tất cả trên một nền tảng.</p>
   <div class="hero-ctas">
-    <a href="https://quiz.phutx.top/login" class="btn-hero-primary">Bắt đầu khám phá →</a>
+    <a href="https://quiz.phutx.top/login" class="btn-hero-primary" data-i18n="hero.cta">Bắt đầu khám phá →</a>
   </div>
 
   <!-- Browser Mockup -->
@@ -334,25 +349,25 @@
         <div class="mockup-header">
           <div class="m-title">AWS Solutions Architect — Practice</div>
           <div class="m-badges">
-            <span class="m-session">🔒 1 thiết bị</span>
+            <span class="m-session" data-i18n="mockup.session">🔒 1 thiết bị</span>
             <span class="m-credit">💳 85</span>
             <span class="m-timer">⏱ 42:17</span>
           </div>
         </div>
         <div class="m-progress"><div class="m-progress-fill"></div></div>
         <div class="m-question">
-          <div class="m-q-meta">Câu 3 / 5 · 1 điểm · Đáp án đã lưu</div>
-          <p>Dịch vụ AWS nào cho phép lưu trữ object với độ bền 99.999999999%?</p>
+          <div class="m-q-meta" data-i18n="mockup.qmeta">Câu 3 / 5 · 1 điểm · Đáp án đã lưu</div>
+          <p data-i18n="mockup.question">Dịch vụ AWS nào cho phép lưu trữ object với độ bền 99.999999999%?</p>
         </div>
         <div class="m-opt"><div class="m-opt-key">A</div> Amazon EBS</div>
         <div class="m-opt"><div class="m-opt-key">B</div> Amazon EFS</div>
         <div class="m-opt selected"><div class="m-opt-key">C</div> Amazon S3</div>
         <div class="m-opt"><div class="m-opt-key">D</div> AWS Storage Gateway</div>
         <div class="m-nav">
-          <span class="m-autosave">✓ Đã lưu tự động</span>
+          <span class="m-autosave" data-i18n="mockup.autosave">✓ Đã lưu tự động</span>
           <div style="display:flex;gap:.5rem">
-            <button class="m-btn m-btn-prev">← Câu trước</button>
-            <button class="m-btn m-btn-next">Câu sau →</button>
+            <button class="m-btn m-btn-prev" data-i18n="mockup.prev">← Câu trước</button>
+            <button class="m-btn m-btn-next" data-i18n="mockup.next">Câu sau →</button>
           </div>
         </div>
       </div>
@@ -362,19 +377,19 @@
 
 <!-- TRUST BAR -->
 <div class="trust-bar">
-  <div class="trust-item"><span class="trust-icon">🔒</span> 1 tài khoản = 1 thiết bị làm bài</div>
-  <div class="trust-item"><span class="trust-icon">💾</span> Auto-save mỗi câu, không mất tiến trình</div>
-  <div class="trust-item"><span class="trust-icon">🔄</span> Resume khi mất mạng hoặc đóng tab</div>
-  <div class="trust-item"><span class="trust-icon">🛡️</span> Mã hoá response API end-to-end</div>
-  <div class="trust-item"><span class="trust-icon">⏰</span> Auto-grade khi hết giờ</div>
+  <div class="trust-item"><span class="trust-icon">🔒</span> <span data-i18n="trust.1">1 tài khoản = 1 thiết bị làm bài</span></div>
+  <div class="trust-item"><span class="trust-icon">💾</span> <span data-i18n="trust.2">Auto-save mỗi câu, không mất tiến trình</span></div>
+  <div class="trust-item"><span class="trust-icon">🔄</span> <span data-i18n="trust.3">Resume khi mất mạng hoặc đóng tab</span></div>
+  <div class="trust-item"><span class="trust-icon">🛡️</span> <span data-i18n="trust.4">Mã hoá response API end-to-end</span></div>
+  <div class="trust-item"><span class="trust-icon">⏰</span> <span data-i18n="trust.5">Auto-grade khi hết giờ</span></div>
 </div>
 
 <!-- STATS -->
 <div class="stats">
-  <div class="stat"><div class="stat-num">500+</div><div class="stat-label">Đề thi đã tạo</div></div>
-  <div class="stat"><div class="stat-num">12 000+</div><div class="stat-label">Bài thi đã nộp</div></div>
-  <div class="stat"><div class="stat-num">3 000+</div><div class="stat-label">Học viên đang học</div></div>
-  <div class="stat"><div class="stat-num">50+</div><div class="stat-label">Huy hiệu hoàn thành</div></div>
+  <div class="stat"><div class="stat-num">500+</div><div class="stat-label" data-i18n="stats.exams">Đề thi đã tạo</div></div>
+  <div class="stat"><div class="stat-num">12 000+</div><div class="stat-label" data-i18n="stats.submissions">Bài thi đã nộp</div></div>
+  <div class="stat"><div class="stat-num">3 000+</div><div class="stat-label" data-i18n="stats.students">Học viên đang học</div></div>
+  <div class="stat"><div class="stat-num">50+</div><div class="stat-label" data-i18n="stats.badges">Huy hiệu hoàn thành</div></div>
 </div>
 
 <hr class="divider" />
@@ -382,76 +397,76 @@
 <!-- FEATURES -->
 <section id="features">
   <div class="section-inner" style="text-align:center;margin-bottom:0">
-    <div class="section-tag">Tính năng</div>
-    <div class="section-title">Mọi thứ cần thiết để dạy và<br/>học hiệu quả</div>
-    <p class="section-sub" style="margin:0 auto">Từ soạn đề đến phân tích kết quả — QuizPlatform lo từ A đến Z.</p>
+    <div class="section-tag" data-i18n="features.tag">Tính năng</div>
+    <div class="section-title" data-i18n="features.title" data-i18n-html="true">Mọi thứ cần thiết để dạy và<br/>học hiệu quả</div>
+    <p class="section-sub" style="margin:0 auto" data-i18n="features.sub">Từ soạn đề đến phân tích kết quả — QuizPlatform lo từ A đến Z.</p>
   </div>
   <div class="section-inner">
     <div class="features-grid">
       <div class="feature-card">
         <div class="feature-icon" style="background:#ede6ff">📝</div>
-        <h3>Wizard soạn đề 4 bước</h3>
-        <p>Thông tin → Import JSON → Sửa câu hỏi → Review. Tiết kiệm 80% thời gian, hỗ trợ câu đơn và nhiều đáp án đúng.</p>
+        <h3 data-i18n="features.f1.title">Wizard soạn đề 4 bước</h3>
+        <p data-i18n="features.f1.desc">Thông tin → Import JSON → Sửa câu hỏi → Review. Tiết kiệm 80% thời gian, hỗ trợ câu đơn và nhiều đáp án đúng.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon" style="background:#f2edff">🗂️</div>
-        <h3>Bộ đề &amp; Huy hiệu tự động</h3>
-        <p>Teacher nhóm đề thi thành lộ trình. Student hoàn thành toàn bộ → tự động nhận huy hiệu trên profile.</p>
+        <h3 data-i18n="features.f2.title" data-i18n-html="true">Bộ đề &amp; Huy hiệu tự động</h3>
+        <p data-i18n="features.f2.desc">Teacher nhóm đề thi thành lộ trình. Student hoàn thành toàn bộ → tự động nhận huy hiệu trên profile.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon" style="background:#fefce8">💳</div>
-        <h3>Hệ thống Credit</h3>
-        <p>Kiểm soát quyền truy cập bằng credit. Admin cấu hình cost theo từng đề, student thấy số dư trước khi thi.</p>
+        <h3 data-i18n="features.f3.title">Hệ thống Credit</h3>
+        <p data-i18n="features.f3.desc">Kiểm soát quyền truy cập bằng credit. Admin cấu hình cost theo từng đề, student thấy số dư trước khi thi.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon" style="background:#f0fdf4">💾</div>
-        <h3>Auto-save tiến trình</h3>
-        <p>Mỗi lần chuyển câu, đáp án lưu ngay lên server. Đóng tab, mất điện, mất mạng — không mất câu trả lời nào.</p>
+        <h3 data-i18n="features.f4.title">Auto-save tiến trình</h3>
+        <p data-i18n="features.f4.desc">Mỗi lần chuyển câu, đáp án lưu ngay lên server. Đóng tab, mất điện, mất mạng — không mất câu trả lời nào.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon" style="background:#f0fdf4">🔄</div>
-        <h3>Resume bài thi</h3>
-        <p>Login lại trên bất kỳ thiết bị nào — nếu bài thi còn giờ, đồng hồ tiếp tục đúng chỗ cũ, đáp án được khôi phục đầy đủ.</p>
+        <h3 data-i18n="features.f5.title">Resume bài thi</h3>
+        <p data-i18n="features.f5.desc">Login lại trên bất kỳ thiết bị nào — nếu bài thi còn giờ, đồng hồ tiếp tục đúng chỗ cũ, đáp án được khôi phục đầy đủ.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon" style="background:#f0fdf4">⏰</div>
-        <h3>Auto-grade hết giờ</h3>
-        <p>Grader service chạy ngầm 15 phút/lần, tự chấm điểm bài thi hết giờ. Student không cần bấm nộp — kết quả luôn được ghi nhận.</p>
+        <h3 data-i18n="features.f6.title">Auto-grade hết giờ</h3>
+        <p data-i18n="features.f6.desc">Grader service chạy ngầm 15 phút/lần, tự chấm điểm bài thi hết giờ. Student không cần bấm nộp — kết quả luôn được ghi nhận.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon" style="background:#fdf4ff">📤</div>
-        <h3>Import câu hỏi từ JSON</h3>
-        <p>Soạn ngân hàng câu hỏi trong Notion hay Excel rồi import một lần. Preview lỗi từng câu ngay trong wizard.</p>
+        <h3 data-i18n="features.f7.title">Import câu hỏi từ JSON</h3>
+        <p data-i18n="features.f7.desc">Soạn ngân hàng câu hỏi trong Notion hay Excel rồi import một lần. Preview lỗi từng câu ngay trong wizard.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon" style="background:#fff7ed">📅</div>
-        <h3>Xuất bản theo lịch</h3>
-        <p>Đặt giờ mở đề thi — student thấy bộ đếm ngược, nút bắt đầu tự kích hoạt đúng giờ. Server chặn submit sớm.</p>
+        <h3 data-i18n="features.f8.title">Xuất bản theo lịch</h3>
+        <p data-i18n="features.f8.desc">Đặt giờ mở đề thi — student thấy bộ đếm ngược, nút bắt đầu tự kích hoạt đúng giờ. Server chặn submit sớm.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon" style="background:#fff1f2">📊</div>
-        <h3>Kết quả &amp; Giải thích tức thì</h3>
-        <p>Điểm số, tỷ lệ đúng, phân tích từng câu và giải thích markdown ngay sau khi nộp bài. Xem lại bất cứ lúc nào.</p>
+        <h3 data-i18n="features.f9.title" data-i18n-html="true">Kết quả &amp; Giải thích tức thì</h3>
+        <p data-i18n="features.f9.desc">Điểm số, tỷ lệ đúng, phân tích từng câu và giải thích markdown ngay sau khi nộp bài. Xem lại bất cứ lúc nào.</p>
       </div>
       <div class="feature-card" style="border-color:#bbf7d0">
         <div class="feature-icon" style="background:#f0fdf4">💬</div>
-        <h3>Bình luận, thích &amp; báo lỗi <span class="new-badge">Mới</span></h3>
-        <p>Học viên thảo luận dưới mỗi đề, thả tim đề hay, và báo lỗi câu hỏi sau khi thi. Giáo viên nhận &amp; phản hồi báo lỗi ngay trong hộp thư.</p>
+        <h3><span data-i18n="features.f10.title" data-i18n-html="true">Bình luận, thích &amp; báo lỗi</span> <span class="new-badge" data-i18n="features.newBadge">Mới</span></h3>
+        <p data-i18n="features.f10.desc" data-i18n-html="true">Học viên thảo luận dưới mỗi đề, thả tim đề hay, và báo lỗi câu hỏi sau khi thi. Giáo viên nhận &amp; phản hồi báo lỗi ngay trong hộp thư.</p>
       </div>
       <div class="feature-card" style="border-color:#bbf7d0">
         <div class="feature-icon" style="background:#f0fdf4">🔎</div>
-        <h3>Khám phá đề theo tag <span class="new-badge">Mới</span></h3>
-        <p>Lọc đề theo chủ đề, sắp xếp theo mới nhất hoặc phổ biến nhất. Mỗi thẻ hiện lượt thích &amp; bình luận để chọn đề tự tin hơn.</p>
+        <h3><span data-i18n="features.f11.title">Khám phá đề theo tag</span> <span class="new-badge" data-i18n="features.newBadge">Mới</span></h3>
+        <p data-i18n="features.f11.desc" data-i18n-html="true">Lọc đề theo chủ đề, sắp xếp theo mới nhất hoặc phổ biến nhất. Mỗi thẻ hiện lượt thích &amp; bình luận để chọn đề tự tin hơn.</p>
       </div>
       <div class="feature-card" style="border-color:#bbf7d0">
         <div class="feature-icon" style="background:#f0fdf4">🗒️</div>
-        <h3>Ghi chú nháp khi làm bài <span class="new-badge">Mới</span></h3>
-        <p>Ô ghi chú nổi dùng chung cho cả bài thi — nháp công thức, gạch ý mà không rời màn hình. Riêng tư, không gửi lên server.</p>
+        <h3><span data-i18n="features.f12.title">Ghi chú nháp khi làm bài</span> <span class="new-badge" data-i18n="features.newBadge">Mới</span></h3>
+        <p data-i18n="features.f12.desc">Ô ghi chú nổi dùng chung cho cả bài thi — nháp công thức, gạch ý mà không rời màn hình. Riêng tư, không gửi lên server.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon" style="background:#eef2ff">👤</div>
-        <h3>Hồ sơ công khai</h3>
-        <p>Mỗi người tạo đề có trang hồ sơ riêng — giới thiệu, liên kết mạng xã hội và danh sách đề đã công bố cho học viên khám phá.</p>
+        <h3 data-i18n="features.f13.title">Hồ sơ công khai</h3>
+        <p data-i18n="features.f13.desc">Mỗi người tạo đề có trang hồ sơ riêng — giới thiệu, liên kết mạng xã hội và danh sách đề đã công bố cho học viên khám phá.</p>
       </div>
     </div>
   </div>
@@ -463,45 +478,45 @@
 <section id="security">
   <div class="showcase section-inner" style="padding:0">
     <div class="showcase-text">
-      <div class="section-tag">Bảo mật &amp; Chống gian lận</div>
-      <div class="section-title">Mỗi bài thi,<br/>chỉ một thiết bị</div>
-      <p>Hệ thống theo dõi session real-time: khi một thiết bị đang làm bài, mọi thiết bị khác đăng nhập cùng tài khoản đều bị chặn ngay lập tức.</p>
+      <div class="section-tag" data-i18n="security.tag" data-i18n-html="true">Bảo mật &amp; Chống gian lận</div>
+      <div class="section-title" data-i18n="security.title" data-i18n-html="true">Mỗi bài thi,<br/>chỉ một thiết bị</div>
+      <p data-i18n="security.desc">Hệ thống theo dõi session real-time: khi một thiết bị đang làm bài, mọi thiết bị khác đăng nhập cùng tài khoản đều bị chặn ngay lập tức.</p>
       <ul class="check-list">
-        <li><span class="ck">✓</span> Session token duy nhất per submission — không chia sẻ được</li>
-        <li><span class="ck">✓</span> Heartbeat 30s/lần để phát hiện thiết bị cũ bị ngắt kết nối</li>
-        <li><span class="ck">✓</span> Response API mã hoá AES-256-GCM — ECDH key exchange</li>
-        <li><span class="ck">✓</span> Auto-recovery sau 5 phút không heartbeat (crash / mất mạng)</li>
+        <li><span class="ck">✓</span> <span data-i18n="security.check1">Session token duy nhất per submission — không chia sẻ được</span></li>
+        <li><span class="ck">✓</span> <span data-i18n="security.check2">Heartbeat 30s/lần để phát hiện thiết bị cũ bị ngắt kết nối</span></li>
+        <li><span class="ck">✓</span> <span data-i18n="security.check3">Response API mã hoá AES-256-GCM — ECDH key exchange</span></li>
+        <li><span class="ck">✓</span> <span data-i18n="security.check4">Auto-recovery sau 5 phút không heartbeat (crash / mất mạng)</span></li>
       </ul>
     </div>
     <div>
       <div class="security-card">
-        <h4>🛡️ Trạng thái bảo mật bài thi</h4>
+        <h4 data-i18n="security.cardTitle">🛡️ Trạng thái bảo mật bài thi</h4>
         <div class="sec-row">
           <div class="sec-icon">🔒</div>
           <div>
-            <div class="sec-title">Session độc quyền</div>
-            <div class="sec-desc">Thiết bị này đang giữ session. Mọi thiết bị khác thử vào đều bị chặn với thông báo rõ ràng.</div>
+            <div class="sec-title" data-i18n="security.row1.title">Session độc quyền</div>
+            <div class="sec-desc" data-i18n="security.row1.desc">Thiết bị này đang giữ session. Mọi thiết bị khác thử vào đều bị chặn với thông báo rõ ràng.</div>
           </div>
         </div>
         <div class="sec-row">
           <div class="sec-icon">💾</div>
           <div>
-            <div class="sec-title">Auto-save liên tục</div>
-            <div class="sec-desc">Đáp án lưu mỗi lần chuyển câu + heartbeat 30 giây, kể cả khi user đang đọc câu hỏi.</div>
+            <div class="sec-title" data-i18n="security.row2.title">Auto-save liên tục</div>
+            <div class="sec-desc" data-i18n="security.row2.desc">Đáp án lưu mỗi lần chuyển câu + heartbeat 30 giây, kể cả khi user đang đọc câu hỏi.</div>
           </div>
         </div>
         <div class="sec-row">
           <div class="sec-icon">🔐</div>
           <div>
-            <div class="sec-title">Mã hoá end-to-end</div>
-            <div class="sec-desc">Backend mã hoá toàn bộ API response. Proxy hay packet sniffer chỉ thấy ciphertext.</div>
+            <div class="sec-title" data-i18n="security.row3.title">Mã hoá end-to-end</div>
+            <div class="sec-desc" data-i18n="security.row3.desc">Backend mã hoá toàn bộ API response. Proxy hay packet sniffer chỉ thấy ciphertext.</div>
           </div>
         </div>
         <div class="sec-row">
           <div class="sec-icon">⏰</div>
           <div>
-            <div class="sec-title">Server-authoritative timer</div>
-            <div class="sec-desc">Thời gian làm bài tính từ server, không thể can thiệp bằng DevTools hay sửa local storage.</div>
+            <div class="sec-title" data-i18n="security.row4.title">Server-authoritative timer</div>
+            <div class="sec-desc" data-i18n="security.row4.desc">Thời gian làm bài tính từ server, không thể can thiệp bằng DevTools hay sửa local storage.</div>
           </div>
         </div>
       </div>
@@ -515,19 +530,19 @@
 <section>
   <div class="showcase flip section-inner" style="padding:0">
     <div class="showcase-text">
-      <div class="section-tag">Bộ đề &amp; Huy hiệu</div>
-      <div class="section-title">Tạo lộ trình học,<br/>trao phần thưởng xứng đáng</div>
-      <p>Teacher nhóm nhiều đề thi vào một <strong>bộ đề</strong> có chủ đề chung. Khi student vượt qua tất cả, hệ thống <strong>tự động trao huy hiệu</strong> vào profile.</p>
+      <div class="section-tag" data-i18n="collections.tag" data-i18n-html="true">Bộ đề &amp; Huy hiệu</div>
+      <div class="section-title" data-i18n="collections.title" data-i18n-html="true">Tạo lộ trình học,<br/>trao phần thưởng xứng đáng</div>
+      <p data-i18n="collections.desc" data-i18n-html="true">Teacher nhóm nhiều đề thi vào một <strong>bộ đề</strong> có chủ đề chung. Khi student vượt qua tất cả, hệ thống <strong>tự động trao huy hiệu</strong> vào profile.</p>
       <ul class="check-list">
-        <li><span class="ck">✓</span> 50 huy hiệu preset sẵn hoặc tải lên ảnh tùy chỉnh</li>
-        <li><span class="ck">✓</span> Huy hiệu hiển thị nổi bật trên trang profile</li>
-        <li><span class="ck">✓</span> Tạo động lực hoàn thành toàn bộ lộ trình</li>
-        <li><span class="ck">✓</span> Admin theo dõi số huy hiệu đã trao theo từng bộ đề</li>
+        <li><span class="ck">✓</span> <span data-i18n="collections.check1">50 huy hiệu preset sẵn hoặc tải lên ảnh tùy chỉnh</span></li>
+        <li><span class="ck">✓</span> <span data-i18n="collections.check2">Huy hiệu hiển thị nổi bật trên trang profile</span></li>
+        <li><span class="ck">✓</span> <span data-i18n="collections.check3">Tạo động lực hoàn thành toàn bộ lộ trình</span></li>
+        <li><span class="ck">✓</span> <span data-i18n="collections.check4">Admin theo dõi số huy hiệu đã trao theo từng bộ đề</span></li>
       </ul>
     </div>
     <div>
       <div class="preview-card">
-        <h4>🗂️ Bộ đề — AWS Complete Roadmap</h4>
+        <h4 data-i18n="collections.cardTitle">🗂️ Bộ đề — AWS Complete Roadmap</h4>
         <div class="badge-grid">
           <div class="badge-item earned">🏆</div>
           <div class="badge-item earned">⭐</div>
@@ -540,7 +555,7 @@
           <div class="coll-info">
             <div class="coll-name">AWS Solutions Architect Series</div>
             <div class="coll-bar-wrap"><div class="coll-bar"></div></div>
-            <div class="coll-label">Hoàn thành 2 / 3 đề thi · Còn 1 đề để nhận huy hiệu</div>
+            <div class="coll-label" data-i18n="collections.progressLabel">Hoàn thành 2 / 3 đề thi · Còn 1 đề để nhận huy hiệu</div>
           </div>
         </div>
       </div>
@@ -554,45 +569,45 @@
 <section>
   <div class="showcase section-inner" style="padding:0">
     <div class="showcase-text">
-      <div class="section-tag">Không mất tiến trình</div>
-      <div class="section-title">Đóng tab, login lại —<br/>tiếp tục đúng chỗ</div>
-      <p>Dù mất điện, hết pin hay vô tình đóng tab — khi login lại và vào trang bài thi, hệ thống tự động phát hiện session chưa kết thúc và khôi phục đúng trạng thái.</p>
+      <div class="section-tag" data-i18n="resume.tag">Không mất tiến trình</div>
+      <div class="section-title" data-i18n="resume.title" data-i18n-html="true">Đóng tab, login lại —<br/>tiếp tục đúng chỗ</div>
+      <p data-i18n="resume.desc">Dù mất điện, hết pin hay vô tình đóng tab — khi login lại và vào trang bài thi, hệ thống tự động phát hiện session chưa kết thúc và khôi phục đúng trạng thái.</p>
       <ul class="check-list">
-        <li><span class="ck">✓</span> Đáp án đã chọn được khôi phục từ server (không phụ thuộc localStorage)</li>
-        <li><span class="ck">✓</span> Đồng hồ đếm ngược từ thời gian còn lại (server-authoritative)</li>
-        <li><span class="ck">✓</span> Hoạt động trên mọi thiết bị có cùng tài khoản</li>
-        <li><span class="ck">✓</span> Credit không bị trừ lần 2 khi resume</li>
+        <li><span class="ck">✓</span> <span data-i18n="resume.check1">Đáp án đã chọn được khôi phục từ server (không phụ thuộc localStorage)</span></li>
+        <li><span class="ck">✓</span> <span data-i18n="resume.check2">Đồng hồ đếm ngược từ thời gian còn lại (server-authoritative)</span></li>
+        <li><span class="ck">✓</span> <span data-i18n="resume.check3">Hoạt động trên mọi thiết bị có cùng tài khoản</span></li>
+        <li><span class="ck">✓</span> <span data-i18n="resume.check4">Credit không bị trừ lần 2 khi resume</span></li>
       </ul>
     </div>
     <div>
       <div class="resume-card">
-        <h4>🔄 Khôi phục bài thi tự động</h4>
+        <h4 data-i18n="resume.cardTitle">🔄 Khôi phục bài thi tự động</h4>
         <div class="resume-step">
           <div class="step-dot done">✓</div>
           <div class="step-text">
-            <div class="step-label">Bắt đầu làm bài — trừ credit</div>
-            <div class="step-sub">Session được tạo, đồng hồ bắt đầu chạy</div>
+            <div class="step-label" data-i18n="resume.step1.title">Bắt đầu làm bài — trừ credit</div>
+            <div class="step-sub" data-i18n="resume.step1.sub">Session được tạo, đồng hồ bắt đầu chạy</div>
           </div>
         </div>
         <div class="resume-step">
           <div class="step-dot done">✓</div>
           <div class="step-text">
-            <div class="step-label">Đóng tab / mất kết nối</div>
-            <div class="step-sub">Đáp án đã lưu lên server, session vẫn còn hiệu lực</div>
+            <div class="step-label" data-i18n="resume.step2.title">Đóng tab / mất kết nối</div>
+            <div class="step-sub" data-i18n="resume.step2.sub">Đáp án đã lưu lên server, session vẫn còn hiệu lực</div>
           </div>
         </div>
         <div class="resume-step">
           <div class="step-dot active">▶</div>
           <div class="step-text">
-            <div class="step-label">Login lại → vào trang đề thi</div>
-            <div class="step-sub">Hệ thống phát hiện session chưa kết thúc</div>
+            <div class="step-label" data-i18n="resume.step3.title">Login lại → vào trang đề thi</div>
+            <div class="step-sub" data-i18n="resume.step3.sub">Hệ thống phát hiện session chưa kết thúc</div>
           </div>
         </div>
         <div class="resume-step">
           <div class="step-dot pending">→</div>
           <div class="step-text">
-            <div class="step-label">Tiếp tục đúng câu đang làm</div>
-            <div class="step-sub">Đáp án &amp; thời gian còn lại được khôi phục đầy đủ</div>
+            <div class="step-label" data-i18n="resume.step4.title">Tiếp tục đúng câu đang làm</div>
+            <div class="step-sub" data-i18n="resume.step4.sub" data-i18n-html="true">Đáp án &amp; thời gian còn lại được khôi phục đầy đủ</div>
           </div>
         </div>
       </div>
@@ -605,30 +620,30 @@
 <!-- HOW IT WORKS -->
 <section id="how">
   <div class="section-inner" style="text-align:center">
-    <div class="section-tag">Cách hoạt động</div>
-    <div class="section-title">Bắt đầu trong vài phút</div>
-    <p class="section-sub" style="margin:0 auto">Không cần cài đặt, không cần thẻ tín dụng — chỉ cần tài khoản.</p>
+    <div class="section-tag" data-i18n="how.tag">Cách hoạt động</div>
+    <div class="section-title" data-i18n="how.title">Bắt đầu trong vài phút</div>
+    <p class="section-sub" style="margin:0 auto" data-i18n="how.sub">Không cần cài đặt, không cần thẻ tín dụng — chỉ cần tài khoản.</p>
     <div class="steps-wrap">
       <div class="steps">
         <div class="step">
           <div class="step-num">01</div>
-          <h3>Tạo tài khoản</h3>
-          <p>Dùng email hoặc Google để đăng nhập. Học sinh nhận credit mặc định, có thể thi ngay.</p>
+          <h3 data-i18n="how.s1.title">Tạo tài khoản</h3>
+          <p data-i18n="how.s1.desc">Dùng email hoặc Google để đăng nhập. Học sinh nhận credit mặc định, có thể thi ngay.</p>
         </div>
         <div class="step">
           <div class="step-num">02</div>
-          <h3>Tạo hoặc chọn đề thi</h3>
-          <p>Teacher soạn đề wizard 4 bước hoặc import JSON. Student duyệt danh sách đề và bắt đầu khi sẵn sàng.</p>
+          <h3 data-i18n="how.s2.title">Tạo hoặc chọn đề thi</h3>
+          <p data-i18n="how.s2.desc">Teacher soạn đề wizard 4 bước hoặc import JSON. Student duyệt danh sách đề và bắt đầu khi sẵn sàng.</p>
         </div>
         <div class="step">
           <div class="step-num">03</div>
-          <h3>Làm bài an toàn</h3>
-          <p>Thi với đồng hồ đếm ngược, auto-save từng câu, session bảo mật — không lo mất dữ liệu.</p>
+          <h3 data-i18n="how.s3.title">Làm bài an toàn</h3>
+          <p data-i18n="how.s3.desc">Thi với đồng hồ đếm ngược, auto-save từng câu, session bảo mật — không lo mất dữ liệu.</p>
         </div>
         <div class="step">
           <div class="step-num">04</div>
-          <h3>Xem kết quả &amp; nhận huy hiệu</h3>
-          <p>Điểm số và phân tích chi tiết hiển thị ngay. Hoàn thành bộ đề — nhận huy hiệu tự động.</p>
+          <h3 data-i18n="how.s4.title" data-i18n-html="true">Xem kết quả &amp; nhận huy hiệu</h3>
+          <p data-i18n="how.s4.desc">Điểm số và phân tích chi tiết hiển thị ngay. Hoàn thành bộ đề — nhận huy hiệu tự động.</p>
         </div>
       </div>
     </div>
@@ -640,35 +655,35 @@
 <!-- ROLES -->
 <section>
   <div class="section-inner" style="text-align:center">
-    <div class="section-tag">Vai trò</div>
-    <div class="section-title">Phù hợp cho cả<br/>giáo viên lẫn học sinh</div>
+    <div class="section-tag" data-i18n="roles.tag">Vai trò</div>
+    <div class="section-title" data-i18n="roles.title" data-i18n-html="true">Phù hợp cho cả<br/>giáo viên lẫn học sinh</div>
   </div>
   <div class="roles-grid">
     <div class="role-card teacher">
-      <div class="role-label">Giáo viên / Người tạo đề</div>
-      <h3>Tạo và quản lý<br/>toàn bộ nội dung</h3>
+      <div class="role-label" data-i18n="roles.teacherLabel">Giáo viên / Người tạo đề</div>
+      <h3 data-i18n="roles.teacherTitle" data-i18n-html="true">Tạo và quản lý<br/>toàn bộ nội dung</h3>
       <ul class="role-ul">
-        <li><span class="role-check">✓</span> Tạo đề thi với wizard 4 bước</li>
-        <li><span class="role-check">✓</span> Import hàng loạt câu hỏi từ JSON</li>
-        <li><span class="role-check">✓</span> Tổ chức bộ đề và trao huy hiệu</li>
-        <li><span class="role-check">✓</span> Đặt lịch xuất bản tự động</li>
-        <li><span class="role-check">✓</span> Xem thống kê lượt thi và tỷ lệ pass</li>
-        <li><span class="role-check">✓</span> Cấu hình credit cost, cooldown, max attempts</li>
+        <li><span class="role-check">✓</span> <span data-i18n="roles.t1">Tạo đề thi với wizard 4 bước</span></li>
+        <li><span class="role-check">✓</span> <span data-i18n="roles.t2">Import hàng loạt câu hỏi từ JSON</span></li>
+        <li><span class="role-check">✓</span> <span data-i18n="roles.t3">Tổ chức bộ đề và trao huy hiệu</span></li>
+        <li><span class="role-check">✓</span> <span data-i18n="roles.t4">Đặt lịch xuất bản tự động</span></li>
+        <li><span class="role-check">✓</span> <span data-i18n="roles.t5">Xem thống kê lượt thi và tỷ lệ pass</span></li>
+        <li><span class="role-check">✓</span> <span data-i18n="roles.t6">Cấu hình credit cost, cooldown, max attempts</span></li>
       </ul>
-      <a href="https://quiz.phutx.top/login" class="role-cta">Bắt đầu khám phá →</a>
+      <a href="https://quiz.phutx.top/login" class="role-cta" data-i18n="hero.cta">Bắt đầu khám phá →</a>
     </div>
     <div class="role-card student">
-      <div class="role-label">Học sinh / Người thi</div>
-      <h3>Học và thi<br/>theo lộ trình</h3>
+      <div class="role-label" data-i18n="roles.studentLabel">Học sinh / Người thi</div>
+      <h3 data-i18n="roles.studentTitle" data-i18n-html="true">Học và thi<br/>theo lộ trình</h3>
       <ul class="role-ul">
-        <li><span class="role-check">✓</span> Nhận 20 credit khi đăng ký</li>
-        <li><span class="role-check">✓</span> Thi bài với đồng hồ và auto-save</li>
-        <li><span class="role-check">✓</span> Resume bài thi nếu mất kết nối</li>
-        <li><span class="role-check">✓</span> Xem kết quả chi tiết và giải thích</li>
-        <li><span class="role-check">✓</span> Sưu tập huy hiệu hoàn thành bộ đề</li>
-        <li><span class="role-check">✓</span> Nâng cấp lên Teacher bằng credit tích lũy</li>
+        <li><span class="role-check">✓</span> <span data-i18n="roles.s1">Nhận 20 credit khi đăng ký</span></li>
+        <li><span class="role-check">✓</span> <span data-i18n="roles.s2">Thi bài với đồng hồ và auto-save</span></li>
+        <li><span class="role-check">✓</span> <span data-i18n="roles.s3">Resume bài thi nếu mất kết nối</span></li>
+        <li><span class="role-check">✓</span> <span data-i18n="roles.s4">Xem kết quả chi tiết và giải thích</span></li>
+        <li><span class="role-check">✓</span> <span data-i18n="roles.s5">Sưu tập huy hiệu hoàn thành bộ đề</span></li>
+        <li><span class="role-check">✓</span> <span data-i18n="roles.s6">Nâng cấp lên Teacher bằng credit tích lũy</span></li>
       </ul>
-      <a href="https://quiz.phutx.top/login" class="role-cta">Bắt đầu khám phá →</a>
+      <a href="https://quiz.phutx.top/login" class="role-cta" data-i18n="hero.cta">Bắt đầu khám phá →</a>
     </div>
   </div>
 </section>
@@ -678,62 +693,331 @@
 <!-- FAQ -->
 <section id="faq">
   <div class="section-inner" style="text-align:center;margin-bottom:0">
-    <div class="section-tag">FAQ</div>
-    <div class="section-title">Câu hỏi thường gặp</div>
+    <div class="section-tag" data-i18n="nav.faq">FAQ</div>
+    <div class="section-title" data-i18n="faq.title">Câu hỏi thường gặp</div>
   </div>
   <div class="faq-grid">
     <div class="faq-item">
-      <h4>Tôi có thể dùng nhiều thiết bị cùng lúc không?</h4>
-      <p>Không — trong lúc làm bài, hệ thống chỉ cho phép 1 thiết bị hoạt động. Nếu mở trên thiết bị khác, thiết bị đó sẽ bị chặn. Sau 5 phút không có hoạt động, session cũ tự giải phóng để thiết bị mới có thể vào.</p>
+      <h4 data-i18n="faq.q1">Tôi có thể dùng nhiều thiết bị cùng lúc không?</h4>
+      <p data-i18n="faq.a1">Không — trong lúc làm bài, hệ thống chỉ cho phép 1 thiết bị hoạt động. Nếu mở trên thiết bị khác, thiết bị đó sẽ bị chặn. Sau 5 phút không có hoạt động, session cũ tự giải phóng để thiết bị mới có thể vào.</p>
     </div>
     <div class="faq-item">
-      <h4>Nếu đóng tab hoặc mất điện, bài thi có bị mất không?</h4>
-      <p>Không. Đáp án được lưu tự động lên server mỗi lần chuyển câu và mỗi 30 giây. Khi login lại, hệ thống tự phát hiện bài thi còn dang dở và khôi phục đúng trạng thái — không mất câu trả lời, không mất thời gian còn lại.</p>
+      <h4 data-i18n="faq.q2">Nếu đóng tab hoặc mất điện, bài thi có bị mất không?</h4>
+      <p data-i18n="faq.a2">Không. Đáp án được lưu tự động lên server mỗi lần chuyển câu và mỗi 30 giây. Khi login lại, hệ thống tự phát hiện bài thi còn dang dở và khôi phục đúng trạng thái — không mất câu trả lời, không mất thời gian còn lại.</p>
     </div>
     <div class="faq-item">
-      <h4>Nếu hết giờ mà chưa nộp thì sao?</h4>
-      <p>Grader service tự động chấm điểm tất cả bài thi hết giờ mỗi 15 phút. Kết quả được ghi nhận dựa trên những đáp án đã lưu. Student nhận kết quả chính xác dù không bấm nộp bài.</p>
+      <h4 data-i18n="faq.q3">Nếu hết giờ mà chưa nộp thì sao?</h4>
+      <p data-i18n="faq.a3">Grader service tự động chấm điểm tất cả bài thi hết giờ mỗi 15 phút. Kết quả được ghi nhận dựa trên những đáp án đã lưu. Student nhận kết quả chính xác dù không bấm nộp bài.</p>
     </div>
     <div class="faq-item">
-      <h4>Credit là gì và tôi có thể mua thêm không?</h4>
-      <p>Credit là đơn vị để làm bài thi — mỗi đề có mức phí riêng. Bạn nhận 20 credit khi đăng ký. Hiện tại admin cấp thêm credit; tương lai sẽ có hệ thống mua thêm trực tiếp.</p>
+      <h4 data-i18n="faq.q4">Credit là gì và tôi có thể mua thêm không?</h4>
+      <p data-i18n="faq.a4">Credit là đơn vị để làm bài thi — mỗi đề có mức phí riêng. Bạn nhận 20 credit khi đăng ký. Hiện tại admin cấp thêm credit; tương lai sẽ có hệ thống mua thêm trực tiếp.</p>
     </div>
     <div class="faq-item">
-      <h4>Làm sao trở thành Giáo viên?</h4>
-      <p>Sau khi đăng ký tài khoản Student, vào trang Profile → dùng credit để nâng cấp lên Teacher. Sau khi nâng cấp, bạn có thể tạo đề thi, bộ đề và quản lý học viên. Cần đăng xuất và đăng nhập lại để role có hiệu lực.</p>
+      <h4 data-i18n="faq.q5">Làm sao trở thành Giáo viên?</h4>
+      <p data-i18n="faq.a5">Sau khi đăng ký tài khoản Student, vào trang Profile → dùng credit để nâng cấp lên Teacher. Sau khi nâng cấp, bạn có thể tạo đề thi, bộ đề và quản lý học viên. Cần đăng xuất và đăng nhập lại để role có hiệu lực.</p>
     </div>
     <div class="faq-item">
-      <h4>Dữ liệu tôi có được bảo mật không?</h4>
-      <p>Có. Toàn bộ API response được mã hoá AES-256-GCM với ECDH P-256 key exchange — dữ liệu truyền giữa trình duyệt và server không thể đọc được nếu bị chặn. JWT auth, CASL authorization và rate limiting bảo vệ mọi endpoint.</p>
+      <h4 data-i18n="faq.q6">Dữ liệu tôi có được bảo mật không?</h4>
+      <p data-i18n="faq.a6">Có. Toàn bộ API response được mã hoá AES-256-GCM với ECDH P-256 key exchange — dữ liệu truyền giữa trình duyệt và server không thể đọc được nếu bị chặn. JWT auth, CASL authorization và rate limiting bảo vệ mọi endpoint.</p>
     </div>
   </div>
 </section>
 
 <!-- CTA -->
 <div class="cta-section">
-  <h2>Sẵn sàng tổ chức bài thi<br/>công bằng và thông minh?</h2>
-  <p>Miễn phí để khám phá. Không cần thẻ tín dụng. Chạy trong vài phút.</p>
+  <h2 data-i18n="cta.title">Sẵn sàng tổ chức bài thi<br/>công bằng và thông minh?</h2>
+  <p data-i18n="cta.desc">Miễn phí để khám phá. Không cần thẻ tín dụng. Chạy trong vài phút.</p>
   <div class="cta-actions">
-    <a href="https://quiz.phutx.top/login" class="btn-white">Bắt đầu khám phá →</a>
+    <a href="https://quiz.phutx.top/login" class="btn-white" data-i18n="hero.cta">Bắt đầu khám phá →</a>
   </div>
 </div>
 
 <!-- FOOTER -->
 <footer>
   <div class="footer-links">
-    <a href="https://quiz.phutx.top/login">Bắt đầu khám phá</a>
+    <a href="https://quiz.phutx.top/login" data-i18n="nav.cta">Bắt đầu khám phá</a>
     <span class="footer-divider">·</span>
-    <a href="#features">Tính năng</a>
+    <a href="#features" data-i18n="nav.features">Tính năng</a>
     <span class="footer-divider">·</span>
-    <a href="#faq">FAQ</a>
+    <a href="#faq" data-i18n="nav.faq">FAQ</a>
   </div>
-  <p style="margin-bottom:.75rem">© 2026 <strong>QuizPlatform</strong> · Nền tảng thi trực tuyến thông minh</p>
+  <p style="margin-bottom:.75rem">© 2026 <strong>QuizPlatform</strong> · <span data-i18n="footer.tagline">Nền tảng thi trực tuyến thông minh</span></p>
   <p style="font-size:.8rem;opacity:.6">
-    Được xây dựng bởi <strong style="color:#94a3b8">Trần Phú</strong>
+    <span data-i18n="footer.builtBy">Được xây dựng bởi</span> <strong style="color:#94a3b8">Trần Phú</strong>
     &nbsp;·&nbsp; <a href="mailto:tranphu.dev@gmail.com" style="color:#94a3b8;text-decoration:none">tranphu.dev@gmail.com</a>
     &nbsp;·&nbsp; <a href="https://phutx.top" style="color:#94a3b8;text-decoration:none">phutx.top</a>
   </p>
 </footer>
+
+<script>
+  var I18N = {
+    vi: {
+      'nav.features': 'Tính năng', 'nav.security': 'Bảo mật', 'nav.how': 'Cách dùng', 'nav.faq': 'FAQ', 'nav.cta': 'Bắt đầu khám phá',
+      'hero.eyebrow': '✦ Nền tảng thi trực tuyến thế hệ mới',
+      'hero.title': 'Thi trực tuyến <em>thông minh</em>,<br/>bảo mật, công bằng',
+      'hero.desc': 'Soạn đề wizard 4 bước, auto-save tiến trình, chống gian lận theo thời gian thực và trao huy hiệu tự động — tất cả trên một nền tảng.',
+      'hero.cta': 'Bắt đầu khám phá →',
+      'mockup.session': '🔒 1 thiết bị',
+      'mockup.qmeta': 'Câu 3 / 5 · 1 điểm · Đáp án đã lưu',
+      'mockup.question': 'Dịch vụ AWS nào cho phép lưu trữ object với độ bền 99.999999999%?',
+      'mockup.autosave': '✓ Đã lưu tự động',
+      'mockup.prev': '← Câu trước',
+      'mockup.next': 'Câu sau →',
+      'trust.1': '1 tài khoản = 1 thiết bị làm bài',
+      'trust.2': 'Auto-save mỗi câu, không mất tiến trình',
+      'trust.3': 'Resume khi mất mạng hoặc đóng tab',
+      'trust.4': 'Mã hoá response API end-to-end',
+      'trust.5': 'Auto-grade khi hết giờ',
+      'stats.exams': 'Đề thi đã tạo', 'stats.submissions': 'Bài thi đã nộp', 'stats.students': 'Học viên đang học', 'stats.badges': 'Huy hiệu hoàn thành',
+      'features.tag': 'Tính năng',
+      'features.title': 'Mọi thứ cần thiết để dạy và<br/>học hiệu quả',
+      'features.sub': 'Từ soạn đề đến phân tích kết quả — QuizPlatform lo từ A đến Z.',
+      'features.f1.title': 'Wizard soạn đề 4 bước',
+      'features.f1.desc': 'Thông tin → Import JSON → Sửa câu hỏi → Review. Tiết kiệm 80% thời gian, hỗ trợ câu đơn và nhiều đáp án đúng.',
+      'features.f2.title': 'Bộ đề &amp; Huy hiệu tự động',
+      'features.f2.desc': 'Teacher nhóm đề thi thành lộ trình. Student hoàn thành toàn bộ → tự động nhận huy hiệu trên profile.',
+      'features.f3.title': 'Hệ thống Credit',
+      'features.f3.desc': 'Kiểm soát quyền truy cập bằng credit. Admin cấu hình cost theo từng đề, student thấy số dư trước khi thi.',
+      'features.f4.title': 'Auto-save tiến trình',
+      'features.f4.desc': 'Mỗi lần chuyển câu, đáp án lưu ngay lên server. Đóng tab, mất điện, mất mạng — không mất câu trả lời nào.',
+      'features.f5.title': 'Resume bài thi',
+      'features.f5.desc': 'Login lại trên bất kỳ thiết bị nào — nếu bài thi còn giờ, đồng hồ tiếp tục đúng chỗ cũ, đáp án được khôi phục đầy đủ.',
+      'features.f6.title': 'Auto-grade hết giờ',
+      'features.f6.desc': 'Grader service chạy ngầm 15 phút/lần, tự chấm điểm bài thi hết giờ. Student không cần bấm nộp — kết quả luôn được ghi nhận.',
+      'features.f7.title': 'Import câu hỏi từ JSON',
+      'features.f7.desc': 'Soạn ngân hàng câu hỏi trong Notion hay Excel rồi import một lần. Preview lỗi từng câu ngay trong wizard.',
+      'features.f8.title': 'Xuất bản theo lịch',
+      'features.f8.desc': 'Đặt giờ mở đề thi — student thấy bộ đếm ngược, nút bắt đầu tự kích hoạt đúng giờ. Server chặn submit sớm.',
+      'features.f9.title': 'Kết quả &amp; Giải thích tức thì',
+      'features.f9.desc': 'Điểm số, tỷ lệ đúng, phân tích từng câu và giải thích markdown ngay sau khi nộp bài. Xem lại bất cứ lúc nào.',
+      'features.f10.title': 'Bình luận, thích &amp; báo lỗi',
+      'features.f10.desc': 'Học viên thảo luận dưới mỗi đề, thả tim đề hay, và báo lỗi câu hỏi sau khi thi. Giáo viên nhận &amp; phản hồi báo lỗi ngay trong hộp thư.',
+      'features.f11.title': 'Khám phá đề theo tag',
+      'features.f11.desc': 'Lọc đề theo chủ đề, sắp xếp theo mới nhất hoặc phổ biến nhất. Mỗi thẻ hiện lượt thích &amp; bình luận để chọn đề tự tin hơn.',
+      'features.f12.title': 'Ghi chú nháp khi làm bài',
+      'features.f12.desc': 'Ô ghi chú nổi dùng chung cho cả bài thi — nháp công thức, gạch ý mà không rời màn hình. Riêng tư, không gửi lên server.',
+      'features.f13.title': 'Hồ sơ công khai',
+      'features.f13.desc': 'Mỗi người tạo đề có trang hồ sơ riêng — giới thiệu, liên kết mạng xã hội và danh sách đề đã công bố cho học viên khám phá.',
+      'features.newBadge': 'Mới',
+      'security.tag': 'Bảo mật &amp; Chống gian lận',
+      'security.title': 'Mỗi bài thi,<br/>chỉ một thiết bị',
+      'security.desc': 'Hệ thống theo dõi session real-time: khi một thiết bị đang làm bài, mọi thiết bị khác đăng nhập cùng tài khoản đều bị chặn ngay lập tức.',
+      'security.check1': 'Session token duy nhất per submission — không chia sẻ được',
+      'security.check2': 'Heartbeat 30s/lần để phát hiện thiết bị cũ bị ngắt kết nối',
+      'security.check3': 'Response API mã hoá AES-256-GCM — ECDH key exchange',
+      'security.check4': 'Auto-recovery sau 5 phút không heartbeat (crash / mất mạng)',
+      'security.cardTitle': '🛡️ Trạng thái bảo mật bài thi',
+      'security.row1.title': 'Session độc quyền',
+      'security.row1.desc': 'Thiết bị này đang giữ session. Mọi thiết bị khác thử vào đều bị chặn với thông báo rõ ràng.',
+      'security.row2.title': 'Auto-save liên tục',
+      'security.row2.desc': 'Đáp án lưu mỗi lần chuyển câu + heartbeat 30 giây, kể cả khi user đang đọc câu hỏi.',
+      'security.row3.title': 'Mã hoá end-to-end',
+      'security.row3.desc': 'Backend mã hoá toàn bộ API response. Proxy hay packet sniffer chỉ thấy ciphertext.',
+      'security.row4.title': 'Server-authoritative timer',
+      'security.row4.desc': 'Thời gian làm bài tính từ server, không thể can thiệp bằng DevTools hay sửa local storage.',
+      'collections.tag': 'Bộ đề &amp; Huy hiệu',
+      'collections.title': 'Tạo lộ trình học,<br/>trao phần thưởng xứng đáng',
+      'collections.desc': 'Teacher nhóm nhiều đề thi vào một <strong>bộ đề</strong> có chủ đề chung. Khi student vượt qua tất cả, hệ thống <strong>tự động trao huy hiệu</strong> vào profile.',
+      'collections.check1': '50 huy hiệu preset sẵn hoặc tải lên ảnh tùy chỉnh',
+      'collections.check2': 'Huy hiệu hiển thị nổi bật trên trang profile',
+      'collections.check3': 'Tạo động lực hoàn thành toàn bộ lộ trình',
+      'collections.check4': 'Admin theo dõi số huy hiệu đã trao theo từng bộ đề',
+      'collections.cardTitle': '🗂️ Bộ đề — AWS Complete Roadmap',
+      'collections.progressLabel': 'Hoàn thành 2 / 3 đề thi · Còn 1 đề để nhận huy hiệu',
+      'resume.tag': 'Không mất tiến trình',
+      'resume.title': 'Đóng tab, login lại —<br/>tiếp tục đúng chỗ',
+      'resume.desc': 'Dù mất điện, hết pin hay vô tình đóng tab — khi login lại và vào trang bài thi, hệ thống tự động phát hiện session chưa kết thúc và khôi phục đúng trạng thái.',
+      'resume.check1': 'Đáp án đã chọn được khôi phục từ server (không phụ thuộc localStorage)',
+      'resume.check2': 'Đồng hồ đếm ngược từ thời gian còn lại (server-authoritative)',
+      'resume.check3': 'Hoạt động trên mọi thiết bị có cùng tài khoản',
+      'resume.check4': 'Credit không bị trừ lần 2 khi resume',
+      'resume.cardTitle': '🔄 Khôi phục bài thi tự động',
+      'resume.step1.title': 'Bắt đầu làm bài — trừ credit', 'resume.step1.sub': 'Session được tạo, đồng hồ bắt đầu chạy',
+      'resume.step2.title': 'Đóng tab / mất kết nối', 'resume.step2.sub': 'Đáp án đã lưu lên server, session vẫn còn hiệu lực',
+      'resume.step3.title': 'Login lại → vào trang đề thi', 'resume.step3.sub': 'Hệ thống phát hiện session chưa kết thúc',
+      'resume.step4.title': 'Tiếp tục đúng câu đang làm', 'resume.step4.sub': 'Đáp án &amp; thời gian còn lại được khôi phục đầy đủ',
+      'how.tag': 'Cách hoạt động', 'how.title': 'Bắt đầu trong vài phút',
+      'how.sub': 'Không cần cài đặt, không cần thẻ tín dụng — chỉ cần tài khoản.',
+      'how.s1.title': 'Tạo tài khoản', 'how.s1.desc': 'Dùng email hoặc Google để đăng nhập. Học sinh nhận credit mặc định, có thể thi ngay.',
+      'how.s2.title': 'Tạo hoặc chọn đề thi', 'how.s2.desc': 'Teacher soạn đề wizard 4 bước hoặc import JSON. Student duyệt danh sách đề và bắt đầu khi sẵn sàng.',
+      'how.s3.title': 'Làm bài an toàn', 'how.s3.desc': 'Thi với đồng hồ đếm ngược, auto-save từng câu, session bảo mật — không lo mất dữ liệu.',
+      'how.s4.title': 'Xem kết quả &amp; nhận huy hiệu', 'how.s4.desc': 'Điểm số và phân tích chi tiết hiển thị ngay. Hoàn thành bộ đề — nhận huy hiệu tự động.',
+      'roles.tag': 'Vai trò', 'roles.title': 'Phù hợp cho cả<br/>giáo viên lẫn học sinh',
+      'roles.teacherLabel': 'Giáo viên / Người tạo đề', 'roles.teacherTitle': 'Tạo và quản lý<br/>toàn bộ nội dung',
+      'roles.t1': 'Tạo đề thi với wizard 4 bước', 'roles.t2': 'Import hàng loạt câu hỏi từ JSON',
+      'roles.t3': 'Tổ chức bộ đề và trao huy hiệu', 'roles.t4': 'Đặt lịch xuất bản tự động',
+      'roles.t5': 'Xem thống kê lượt thi và tỷ lệ pass', 'roles.t6': 'Cấu hình credit cost, cooldown, max attempts',
+      'roles.studentLabel': 'Học sinh / Người thi', 'roles.studentTitle': 'Học và thi<br/>theo lộ trình',
+      'roles.s1': 'Nhận 20 credit khi đăng ký', 'roles.s2': 'Thi bài với đồng hồ và auto-save',
+      'roles.s3': 'Resume bài thi nếu mất kết nối', 'roles.s4': 'Xem kết quả chi tiết và giải thích',
+      'roles.s5': 'Sưu tập huy hiệu hoàn thành bộ đề', 'roles.s6': 'Nâng cấp lên Teacher bằng credit tích lũy',
+      'faq.title': 'Câu hỏi thường gặp',
+      'faq.q1': 'Tôi có thể dùng nhiều thiết bị cùng lúc không?',
+      'faq.a1': 'Không — trong lúc làm bài, hệ thống chỉ cho phép 1 thiết bị hoạt động. Nếu mở trên thiết bị khác, thiết bị đó sẽ bị chặn. Sau 5 phút không có hoạt động, session cũ tự giải phóng để thiết bị mới có thể vào.',
+      'faq.q2': 'Nếu đóng tab hoặc mất điện, bài thi có bị mất không?',
+      'faq.a2': 'Không. Đáp án được lưu tự động lên server mỗi lần chuyển câu và mỗi 30 giây. Khi login lại, hệ thống tự phát hiện bài thi còn dang dở và khôi phục đúng trạng thái — không mất câu trả lời, không mất thời gian còn lại.',
+      'faq.q3': 'Nếu hết giờ mà chưa nộp thì sao?',
+      'faq.a3': 'Grader service tự động chấm điểm tất cả bài thi hết giờ mỗi 15 phút. Kết quả được ghi nhận dựa trên những đáp án đã lưu. Student nhận kết quả chính xác dù không bấm nộp bài.',
+      'faq.q4': 'Credit là gì và tôi có thể mua thêm không?',
+      'faq.a4': 'Credit là đơn vị để làm bài thi — mỗi đề có mức phí riêng. Bạn nhận 20 credit khi đăng ký. Hiện tại admin cấp thêm credit; tương lai sẽ có hệ thống mua thêm trực tiếp.',
+      'faq.q5': 'Làm sao trở thành Giáo viên?',
+      'faq.a5': 'Sau khi đăng ký tài khoản Student, vào trang Profile → dùng credit để nâng cấp lên Teacher. Sau khi nâng cấp, bạn có thể tạo đề thi, bộ đề và quản lý học viên. Cần đăng xuất và đăng nhập lại để role có hiệu lực.',
+      'faq.q6': 'Dữ liệu tôi có được bảo mật không?',
+      'faq.a6': 'Có. Toàn bộ API response được mã hoá AES-256-GCM với ECDH P-256 key exchange — dữ liệu truyền giữa trình duyệt và server không thể đọc được nếu bị chặn. JWT auth, CASL authorization và rate limiting bảo vệ mọi endpoint.',
+      'cta.title': 'Sẵn sàng tổ chức bài thi<br/>công bằng và thông minh?',
+      'cta.desc': 'Miễn phí để khám phá. Không cần thẻ tín dụng. Chạy trong vài phút.',
+      'footer.tagline': 'Nền tảng thi trực tuyến thông minh',
+      'footer.builtBy': 'Được xây dựng bởi',
+    },
+    en: {
+      'nav.features': 'Features', 'nav.security': 'Security', 'nav.how': 'How it works', 'nav.faq': 'FAQ', 'nav.cta': 'Get started',
+      'hero.eyebrow': '✦ A new generation online testing platform',
+      'hero.title': '<em>Smart</em> online exams,<br/>secure and fair',
+      'hero.desc': 'A 4-step exam wizard, auto-saved progress, real-time anti-cheat, and automatic badge awards — all on one platform.',
+      'hero.cta': 'Get started →',
+      'mockup.session': '🔒 1 device',
+      'mockup.qmeta': 'Question 3 / 5 · 1 point · Answer saved',
+      'mockup.question': 'Which AWS service offers object storage with 99.999999999% durability?',
+      'mockup.autosave': '✓ Auto-saved',
+      'mockup.prev': '← Previous',
+      'mockup.next': 'Next →',
+      'trust.1': '1 account = 1 device while taking an exam',
+      'trust.2': 'Auto-save on every question, never lose progress',
+      'trust.3': 'Resume after losing connection or closing the tab',
+      'trust.4': 'End-to-end encrypted API responses',
+      'trust.5': 'Auto-graded when time runs out',
+      'stats.exams': 'Exams created', 'stats.submissions': 'Submissions graded', 'stats.students': 'Active students', 'stats.badges': 'Completion badges',
+      'features.tag': 'Features',
+      'features.title': 'Everything you need to teach and<br/>learn effectively',
+      'features.sub': 'From authoring exams to analyzing results — QuizPlatform handles it end to end.',
+      'features.f1.title': '4-step exam wizard',
+      'features.f1.desc': 'Info → Import JSON → Edit questions → Review. Saves 80% of your time, supports single and multiple-answer questions.',
+      'features.f2.title': 'Collections &amp; automatic badges',
+      'features.f2.desc': 'Teachers group exams into a learning path. Students who complete them all automatically earn a badge on their profile.',
+      'features.f3.title': 'Credit system',
+      'features.f3.desc': 'Control access with credits. Admins configure the cost per exam; students see their balance before starting.',
+      'features.f4.title': 'Auto-saved progress',
+      'features.f4.desc': 'Every time you move to the next question, your answer is saved to the server instantly. Closed tab, power outage, lost connection — no answer is ever lost.',
+      'features.f5.title': 'Resume an exam',
+      'features.f5.desc': 'Log back in on any device — if time remains, the timer picks up exactly where you left off and your answers are fully restored.',
+      'features.f6.title': 'Auto-grade on timeout',
+      'features.f6.desc': 'A background grader service runs every 15 minutes and automatically grades exams that ran out of time. Students never need to click submit — results are always recorded.',
+      'features.f7.title': 'Import questions from JSON',
+      'features.f7.desc': 'Draft your question bank in Notion or Excel, then import it all at once. Per-question error previews right inside the wizard.',
+      'features.f8.title': 'Scheduled publishing',
+      'features.f8.desc': 'Set an opening time for an exam — students see a countdown, and the start button activates automatically. The server blocks early submissions.',
+      'features.f9.title': 'Instant results &amp; explanations',
+      'features.f9.desc': 'Score, accuracy rate, per-question analysis, and markdown explanations right after submission. Review any time.',
+      'features.f10.title': 'Comments, likes &amp; reports',
+      'features.f10.desc': 'Students discuss under each exam, like the ones they enjoy, and report question issues after taking the exam. Teachers receive &amp; respond to reports right in their inbox.',
+      'features.f11.title': 'Discover exams by tag',
+      'features.f11.desc': 'Filter exams by topic, sort by newest or most popular. Every card shows likes &amp; comments to help you choose with confidence.',
+      'features.f12.title': 'Scratch notes while testing',
+      'features.f12.desc': 'A floating note shared across the whole exam — jot down formulas or outlines without leaving the screen. Private, never sent to the server.',
+      'features.f13.title': 'Public profile',
+      'features.f13.desc': 'Every exam creator gets their own profile page — bio, social links, and a list of their published exams for students to discover.',
+      'features.newBadge': 'New',
+      'security.tag': 'Security &amp; anti-cheat',
+      'security.title': 'One exam,<br/>one device only',
+      'security.desc': 'The system tracks sessions in real time: while one device is taking an exam, any other device logging into the same account is blocked immediately.',
+      'security.check1': 'A unique session token per submission — can\'t be shared',
+      'security.check2': 'A heartbeat every 30s to detect disconnected devices',
+      'security.check3': 'API responses encrypted with AES-256-GCM — ECDH key exchange',
+      'security.check4': 'Auto-recovery after 5 minutes without a heartbeat (crash / lost connection)',
+      'security.cardTitle': '🛡️ Exam security status',
+      'security.row1.title': 'Exclusive session',
+      'security.row1.desc': 'This device holds the active session. Any other device that tries to join is blocked with a clear message.',
+      'security.row2.title': 'Continuous auto-save',
+      'security.row2.desc': 'Answers are saved on every question change plus a 30-second heartbeat, even while the user is just reading.',
+      'security.row3.title': 'End-to-end encryption',
+      'security.row3.desc': 'The backend encrypts every API response. A proxy or packet sniffer only ever sees ciphertext.',
+      'security.row4.title': 'Server-authoritative timer',
+      'security.row4.desc': 'Exam time is tracked on the server — it can\'t be tampered with via DevTools or local storage edits.',
+      'collections.tag': 'Collections &amp; badges',
+      'collections.title': 'Build learning paths,<br/>award well-earned rewards',
+      'collections.desc': 'Teachers group several exams into a <strong>collection</strong> with a shared theme. When a student passes them all, the system <strong>automatically awards a badge</strong> to their profile.',
+      'collections.check1': '50 preset badges available, or upload a custom image',
+      'collections.check2': 'Badges are shown prominently on the profile page',
+      'collections.check3': 'Creates motivation to complete the entire path',
+      'collections.check4': 'Admins track how many badges were awarded per collection',
+      'collections.cardTitle': '🗂️ Collection — AWS Complete Roadmap',
+      'collections.progressLabel': '2 / 3 exams completed · 1 more to earn the badge',
+      'resume.tag': 'Never lose your progress',
+      'resume.title': 'Close the tab, log back in —<br/>pick up right where you left off',
+      'resume.desc': 'Whether it\'s a power outage, a dead battery, or an accidentally closed tab — logging back in and opening the exam page automatically detects the unfinished session and restores the exact state.',
+      'resume.check1': 'Selected answers are restored from the server (not dependent on localStorage)',
+      'resume.check2': 'The countdown resumes from the time remaining (server-authoritative)',
+      'resume.check3': 'Works on any device with the same account',
+      'resume.check4': 'Credit is never deducted a second time on resume',
+      'resume.cardTitle': '🔄 Automatic exam recovery',
+      'resume.step1.title': 'Start the exam — credit deducted', 'resume.step1.sub': 'A session is created and the timer starts',
+      'resume.step2.title': 'Tab closed / connection lost', 'resume.step2.sub': 'Answers are saved to the server, the session is still valid',
+      'resume.step3.title': 'Log back in → open the exam page', 'resume.step3.sub': 'The system detects the unfinished session',
+      'resume.step4.title': 'Resume on the exact question', 'resume.step4.sub': 'Answers &amp; remaining time are fully restored',
+      'how.tag': 'How it works', 'how.title': 'Get started in minutes',
+      'how.sub': 'No install, no credit card — just an account.',
+      'how.s1.title': 'Create an account', 'how.s1.desc': 'Sign in with email or Google. Students get default credits and can start an exam right away.',
+      'how.s2.title': 'Create or pick an exam', 'how.s2.desc': 'Teachers author exams with the 4-step wizard or import JSON. Students browse the exam list and start whenever ready.',
+      'how.s3.title': 'Take the exam safely', 'how.s3.desc': 'A countdown timer, per-question auto-save, and secure sessions — no risk of losing your data.',
+      'how.s4.title': 'View results &amp; earn badges', 'how.s4.desc': 'Score and detailed analysis appear instantly. Complete a collection to earn a badge automatically.',
+      'roles.tag': 'Roles', 'roles.title': 'Built for both<br/>teachers and students',
+      'roles.teacherLabel': 'Teacher / Exam creator', 'roles.teacherTitle': 'Create and manage<br/>all your content',
+      'roles.t1': 'Create exams with the 4-step wizard', 'roles.t2': 'Bulk import questions from JSON',
+      'roles.t3': 'Organize collections and award badges', 'roles.t4': 'Schedule automatic publishing',
+      'roles.t5': 'View attempt stats and pass rates', 'roles.t6': 'Configure credit cost, cooldown, max attempts',
+      'roles.studentLabel': 'Student / Test taker', 'roles.studentTitle': 'Learn and test<br/>along a path',
+      'roles.s1': 'Get 20 credits on sign-up', 'roles.s2': 'Take exams with a timer and auto-save',
+      'roles.s3': 'Resume an exam if you lose connection', 'roles.s4': 'View detailed results and explanations',
+      'roles.s5': 'Collect badges for completed collections', 'roles.s6': 'Upgrade to Teacher using accumulated credits',
+      'faq.title': 'Frequently asked questions',
+      'faq.q1': 'Can I use multiple devices at the same time?',
+      'faq.a1': 'No — while taking an exam, the system only allows one active device. Opening it on another device blocks that one. After 5 minutes of inactivity, the old session is released so a new device can take over.',
+      'faq.q2': 'If I close the tab or lose power, is my exam lost?',
+      'faq.a2': 'No. Answers are auto-saved to the server every time you move to the next question and every 30 seconds. When you log back in, the system detects the unfinished exam and restores the exact state — no lost answers, no lost time.',
+      'faq.q3': 'What happens if time runs out before I submit?',
+      'faq.a3': 'A grader service automatically grades every timed-out exam every 15 minutes. Results are recorded based on the answers already saved. Students get an accurate result even without clicking submit.',
+      'faq.q4': 'What are credits, and can I buy more?',
+      'faq.a4': 'Credits are the unit used to take exams — each exam has its own cost. You get 20 credits on sign-up. Currently, admins grant additional credits; a direct purchase system is planned for the future.',
+      'faq.q5': 'How do I become a Teacher?',
+      'faq.a5': 'After signing up as a Student, go to the Profile page → use credits to upgrade to Teacher. Once upgraded, you can create exams, collections, and manage students. You\'ll need to log out and back in for the role to take effect.',
+      'faq.q6': 'Is my data secure?',
+      'faq.a6': 'Yes. Every API response is encrypted with AES-256-GCM using ECDH P-256 key exchange — data traveling between the browser and server can\'t be read if intercepted. JWT auth, CASL authorization, and rate limiting protect every endpoint.',
+      'cta.title': 'Ready to run exams<br/>that are fair and smart?',
+      'cta.desc': 'Free to explore. No credit card required. Up and running in minutes.',
+      'footer.tagline': 'A smart online testing platform',
+      'footer.builtBy': 'Built by',
+    }
+  };
+
+  function applyLang(lang) {
+    var dict = I18N[lang] || I18N.vi;
+    document.documentElement.lang = lang;
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      var key = el.getAttribute('data-i18n');
+      var val = dict[key];
+      if (val === undefined) return;
+      if (el.getAttribute('data-i18n-html') === 'true') el.innerHTML = val;
+      else el.textContent = val;
+    });
+    document.querySelectorAll('[data-lang-mark]').forEach(function (el) {
+      el.classList.toggle('active', el.getAttribute('data-lang-mark') === lang);
+    });
+    try { localStorage.setItem('landing-lang', lang); } catch (e) {}
+  }
+
+  function toggleLang() {
+    var current = document.documentElement.lang === 'en' ? 'en' : 'vi';
+    applyLang(current === 'vi' ? 'en' : 'vi');
+  }
+
+  (function initLang() {
+    var saved = null;
+    try { saved = localStorage.getItem('landing-lang'); } catch (e) {}
+    var lang = saved || (navigator.language && navigator.language.toLowerCase().indexOf('en') === 0 ? 'en' : 'vi');
+    applyLang(lang);
+  })();
+</script>
 
 </body>
 </html>

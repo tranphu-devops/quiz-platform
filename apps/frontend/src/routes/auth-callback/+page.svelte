@@ -2,6 +2,7 @@
   import { auth } from '$lib/auth'
   import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
+  import { t } from '$lib/i18n'
 
   let error = $state('')
 
@@ -15,15 +16,15 @@
       if (s) { subscription.unsubscribe(); goto('/dashboard') }
     })
 
-    setTimeout(() => { error = 'Xác thực thất bại. Vui lòng thử lại.' }, 10000)
+    setTimeout(() => { error = $t('authCallback.authFailed') }, 10000)
   })
 </script>
 
 {#if error}
   <p style="color: #dc2626; text-align: center; margin-top: 4rem">
-    Lỗi xác thực: {error}<br />
-    <a href="/login" style="color: #1e40af">Quay lại đăng nhập</a>
+    {$t('authCallback.authError', { error })}<br />
+    <a href="/login" style="color: #1e40af">{$t('authCallback.backToLogin')}</a>
   </p>
 {:else}
-  <p style="text-align: center; margin-top: 4rem; color: #6b7280">Đang xử lý đăng nhập...</p>
+  <p style="text-align: center; margin-top: 4rem; color: #6b7280">{$t('authCallback.processing')}</p>
 {/if}

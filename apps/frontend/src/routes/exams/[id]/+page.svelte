@@ -6,11 +6,12 @@
   import { page } from '$app/stores'
   import { marked } from 'marked'
   import { sanitizeHtml, isHtmlEmpty } from '$lib/sanitizeHtml'
+  import { t, locale, localeCode } from '$lib/i18n'
 
   let now = $state(Date.now())
   onMount(() => {
-    const t = setInterval(() => { now = Date.now() }, 1000)
-    return () => clearInterval(t)
+    const timer = setInterval(() => { now = Date.now() }, 1000)
+    return () => clearInterval(timer)
   })
 
   let exam = $state(null)
@@ -36,10 +37,10 @@
     const m = Math.floor((s % 3600) / 60)
     const sec = s % 60
     const parts = []
-    if (d > 0) parts.push(`${d} ngày`)
-    if (h > 0 || d > 0) parts.push(`${h} giờ`)
-    if (m > 0 || h > 0 || d > 0) parts.push(`${m} phút`)
-    parts.push(`${sec < 10 ? '0' : ''}${sec} giây`)
+    if (d > 0) parts.push($t('examDetail.countdownDays', { d }))
+    if (h > 0 || d > 0) parts.push($t('examDetail.countdownHours', { h }))
+    if (m > 0 || h > 0 || d > 0) parts.push($t('examDetail.countdownMins', { m }))
+    parts.push($t('examDetail.countdownSecs', { sec: `${sec < 10 ? '0' : ''}${sec}` }))
     return parts.join(' ')
   })
   const hasPassed = $derived(
@@ -61,7 +62,7 @@
       const res = $user.role === 'student'
         ? await examApi.getPreview(id)
         : await examApi.get(id)
-      if (!res.ok) { error = 'Không tìm thấy đề thi'; return }
+      if (!res.ok) { error = $t('examDetail.notFound'); return }
       exam = await res.json()
 
       if ($user.role === 'student') {
@@ -76,7 +77,7 @@
         }
       }
     } catch {
-      error = 'Không thể kết nối server'
+      error = $t('imageUpload.connectionError')
     } finally {
       loading = false
     }
@@ -212,7 +213,7 @@
 
   function fmtDate(iso) {
     if (!iso) return ''
-    return new Date(iso).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    return new Date(iso).toLocaleString(localeCode($locale), { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   }
 </script>
 
@@ -510,7 +511,7 @@
 </style>
 
 {#if loading}
-  <div style="text-align:center; padding: 4rem 0; color: var(--muted)">Đang tải...</div>
+  <div style="text-align:center; padding: 4rem 0; color: var(--muted)">{$t('common.loading')}</div>
 {:else if error}
   <p class="error">{error}</p>
 {:else if exam}
@@ -524,16 +525,16 @@
   <div class="hero-body">
     <div class="hero-top">
       <span class="badge {isScheduledLocked ? 'badge-scheduled' : exam.is_published ? 'badge-published' : 'badge-draft'}">
-        {isScheduledLocked ? '🔒 Chưa mở' : exam.is_published ? '● Đã xuất bản' : '○ Nháp'}
+        {isScheduledLocked ? '🔒 ' + $t('examDetail.notOpenYet') : exam.is_published ? '● ' + $t('examDetail.publishedBadge') : '○ ' + $t('examDetail.draftBadge')}
       </span>
       {#if isTeacher}
-        <span class="mode-badge">{exam.allow_retake ? 'Thi thực hành' : 'Thi chính thức'}</span>
+        <span class="mode-badge">{exam.allow_retake ? $t('examDetail.practiceExam') : $t('examDetail.officialExam')}</span>
       {/if}
     </div>
     <h1>{exam.title}</h1>
     {#if exam.tags?.length}
       <div class="hero-tags">
-        {#each exam.tags as t}<span class="hero-tag">{t}</span>{/each}
+        {#each exam.tags as tag}<span class="hero-tag">{tag}</span>{/each}
       </div>
     {/if}
     <div class="hero-social">
@@ -543,12 +544,12 @@
         class:readonly={!isStudent}
         onclick={toggleLike}
         disabled={likeBusy || !isStudent}
-        title={isStudent ? (liked ? 'Bỏ thích' : 'Thích đề thi này') : 'Chỉ học viên mới có thể thích'}
+        title={isStudent ? (liked ? $t('examDetail.unlike') : $t('examDetail.likeThis')) : $t('examDetail.onlyStudentsLike')}
       >
         <span class="like-heart">{liked ? '❤️' : '🤍'}</span>
         <span>{likeCount}</span>
       </button>
-      <a href="#comments" class="hero-social-stat">💬 {commentCount} bình luận</a>
+      <a href="#comments" class="hero-social-stat">💬 {$t('examDetail.commentsCount', { n: commentCount })}</a>
     </div>
   </div>
 </div>
@@ -562,7 +563,7 @@
     <!-- Description (rich text) -->
     {#if hasDescription}
       <div class="section">
-        <div class="section-title">Giới thiệu đề thi</div>
+        <div class="section-title">{$t('examDetail.introTitle')}</div>
         <div class="desc-rich">{@html sanitizeHtml(exam.description)}</div>
       </div>
     {/if}
@@ -573,12 +574,12 @@
         <div class="result-icon">{hasPassed ? '🎉' : '❌'}</div>
         <div class="result-info">
           <div class="result-title {hasPassed ? 'passed' : 'failed'}">
-            {hasPassed ? 'Bạn đã đạt bài thi này!' : 'Chưa đạt — hãy thử lại'}
+            {hasPassed ? $t('examDetail.resultBannerPassed') : $t('examDetail.resultBannerFailed')}
           </div>
           <div class="result-score">
-            Điểm: <strong>{mySubmission.score}/{mySubmission.total_points}</strong>
+            {$t('examDetail.scoreLabel')}: <strong>{mySubmission.score}/{mySubmission.total_points}</strong>
             ({mySubmission.percentage?.toFixed(1)}%)
-            {#if exam.passing_score != null} · Cần đạt: <strong>{exam.passing_score}%</strong>{/if}
+            {#if exam.passing_score != null} · {$t('examDetail.needsLabel')}: <strong>{exam.passing_score}%</strong>{/if}
           </div>
         </div>
       </div>
@@ -587,14 +588,14 @@
     <!-- Question preview section (student or teacher) -->
     {#if !isTeacher}
       <div class="section">
-        <div class="section-title">Câu hỏi mẫu (ngẫu nhiên)</div>
+        <div class="section-title">{$t('examDetail.sampleQuestion')}</div>
         {#each previewQuestions as q, i}
           <div class="q-card">
             <div class="q-header">
               <div class="q-num-badge">{i + 1}</div>
               <div class="q-content">{q.content}</div>
               <span class="q-type {q.question_type === 'multiple' ? 'multi' : 'single'}">
-                {q.question_type === 'multiple' ? 'Nhiều đáp án' : '1 đáp án'}
+                {q.question_type === 'multiple' ? $t('examDetail.multiAnswer') : $t('examDetail.singleAnswer')}
               </span>
             </div>
             {#if q.image_url}
@@ -610,11 +611,10 @@
 
         {#if hiddenCount > 0}
           <div class="more-teaser">
-            Còn <strong>{hiddenCount} câu hỏi</strong> khác trong bài thi này.
-            Bắt đầu làm bài để xem toàn bộ nội dung.
+            {@html $t('examDetail.hiddenCount', { n: hiddenCount })}
           </div>
         {:else if previewQuestions.length === 0}
-          <div class="more-teaser">Bài thi này chưa có câu hỏi nào.</div>
+          <div class="more-teaser">{$t('examDetail.noQuestionsYet')}</div>
         {/if}
       </div>
     {/if}
@@ -622,10 +622,10 @@
     <!-- Teacher: full question list with answers -->
     {#if isTeacher}
       <div class="teacher-meta" style="margin-bottom: 1.25rem;">
-        <div class="teacher-meta-item">Giải thích: <strong>{exam.show_explanation ? 'Hiển thị' : 'Ẩn'}</strong></div>
+        <div class="teacher-meta-item">{$t('examDetail.explanationLabel')}: <strong>{exam.show_explanation ? $t('examDetail.shown') : $t('examDetail.hidden')}</strong></div>
       </div>
       <div class="section">
-        <div class="section-title">Câu hỏi ({totalQuestions})</div>
+        <div class="section-title">{$t('examDetail.questionsCount', { n: totalQuestions })}</div>
         {#each exam.questions ?? [] as q, i}
           {@const corrects = correctAnswers(q)}
           <div class="teacher-q-card">
@@ -633,7 +633,7 @@
               <div class="q-num-badge">{i + 1}</div>
               <div class="q-content">{q.content}</div>
               <span class="q-type {q.question_type === 'multiple' ? 'multi' : 'single'}">
-                {q.question_type === 'multiple' ? 'Nhiều đáp án' : '1 đáp án'}
+                {q.question_type === 'multiple' ? $t('examDetail.multiAnswer') : $t('examDetail.singleAnswer')}
               </span>
             </div>
             {#if q.image_url}
@@ -649,13 +649,13 @@
             </ul>
             {#if q.explanation}
               <button class="expl-toggle" onclick={() => toggleExpl(i)}>
-                {expandedExpl.has(i) ? '▲ Ẩn giải thích' : '▼ Xem giải thích'}
+                {expandedExpl.has(i) ? '▲ ' + $t('examDetail.hideExplanation') : '▼ ' + $t('examDetail.viewExplanation')}
               </button>
               {#if expandedExpl.has(i)}
                 <div class="expl-box">{@html marked(q.explanation)}</div>
               {/if}
             {/if}
-            <div style="font-size:0.75rem; color:var(--muted); margin-top:0.5rem">{q.points} điểm</div>
+            <div style="font-size:0.75rem; color:var(--muted); margin-top:0.5rem">{$t('examDetail.pointsCount', { n: q.points })}</div>
           </div>
         {/each}
       </div>
@@ -664,15 +664,15 @@
     <!-- History (student, allow_retake) -->
     {#if !isTeacher && exam.allow_retake && mySubmissions.length > 0}
       <div class="section">
-        <div class="section-title">Lịch sử làm bài ({mySubmissions.length} lần)</div>
+        <div class="section-title">{$t('examDetail.historyTitle', { n: mySubmissions.length })}</div>
         <div class="history-card">
           <table class="history-table">
             <thead>
               <tr>
-                <th>Lần</th>
-                <th>Điểm</th>
-                <th>Kết quả</th>
-                <th>Thời gian nộp</th>
+                <th>{$t('examDetail.thAttempt')}</th>
+                <th>{$t('dashboard.thScore')}</th>
+                <th>{$t('dashboard.thResult')}</th>
+                <th>{$t('dashboard.thSubmittedAt')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -682,11 +682,11 @@
                 <tr>
                   <td style="font-weight:600">{mySubmissions.length - i}</td>
                   <td>{sub.score}/{sub.total_points} <span style="color:var(--muted);font-size:0.82rem">({sub.percentage?.toFixed(1)}%)</span></td>
-                  <td class="{subPassed ? 'h-pass' : 'h-fail'}">{subPassed ? '✓ Đạt' : '✗ Chưa đạt'}</td>
+                  <td class="{subPassed ? 'h-pass' : 'h-fail'}">{subPassed ? '✓ ' + $t('dashboard.pass') : '✗ ' + $t('dashboard.fail')}</td>
                   <td style="color:var(--muted); font-size:0.82rem">{fmtDate(sub.submitted_at)}</td>
                   <td>
                     {#if subPassed}
-                      <a href="/exams/{exam.id}/result?submissionId={sub.id}" class="h-link">Xem →</a>
+                      <a href="/exams/{exam.id}/result?submissionId={sub.id}" class="h-link">{$t('common.view')} →</a>
                     {/if}
                   </td>
                 </tr>
@@ -707,10 +707,10 @@
     <div class="action-card">
       <!-- Header: credit cost / price -->
       <div class="action-header">
-        <div class="action-title">Chi phí làm bài</div>
+        <div class="action-title">{$t('examDetail.costTitle')}</div>
         <div class="action-price">
           💳 {creditCost}
-          <span>credit / lần</span>
+          <span>{$t('examDetail.creditPerAttempt')}</span>
         </div>
       </div>
 
@@ -718,22 +718,22 @@
         <!-- Stats -->
         <div class="stats-grid">
           <div class="stat-item">
-            <div class="stat-label">Câu hỏi</div>
+            <div class="stat-label">{$t('examDetail.statQuestions')}</div>
             <div class="stat-value">{totalQuestions}</div>
           </div>
           <div class="stat-item">
-            <div class="stat-label">Thời gian</div>
-            <div class="stat-value">{exam.time_limit} phút</div>
+            <div class="stat-label">{$t('examDetail.statTime')}</div>
+            <div class="stat-value">{$t('exams.minutes', { n: exam.time_limit })}</div>
           </div>
           {#if exam.passing_score != null}
             <div class="stat-item">
-              <div class="stat-label">Điểm đạt</div>
+              <div class="stat-label">{$t('examDetail.statPassScore')}</div>
               <div class="stat-value">{exam.passing_score}%</div>
             </div>
           {/if}
           <div class="stat-item">
-            <div class="stat-label">Chế độ</div>
-            <div class="stat-value" style="font-size:0.82rem">{exam.allow_retake ? 'Thực hành' : 'Chính thức'}</div>
+            <div class="stat-label">{$t('examDetail.statMode')}</div>
+            <div class="stat-value" style="font-size:0.82rem">{exam.allow_retake ? $t('exams.practiceMode') : $t('examDetail.officialExam')}</div>
           </div>
         </div>
 
@@ -742,27 +742,27 @@
           {#if mySubmission}
             <div class="status-strip {hasPassed ? 'passed' : 'failed'}">
               <span class="status-strip-icon">{hasPassed ? '🏆' : '📝'}</span>
-              <span>{hasPassed ? 'Đã đạt' : 'Chưa đạt'} · {mySubmission.percentage?.toFixed(1)}%</span>
+              <span>{hasPassed ? $t('examDetail.passedShort') : $t('examDetail.failedShort')} · {mySubmission.percentage?.toFixed(1)}%</span>
             </div>
           {:else}
             <div class="status-strip pending">
               <span class="status-strip-icon">📋</span>
-              <span>Chưa làm bài</span>
+              <span>{$t('examDetail.notTakenYet')}</span>
             </div>
           {/if}
 
           {#if myCredits !== null}
             <div class="credit-row">
-              <span style="color:var(--muted)">Số dư của bạn</span>
+              <span style="color:var(--muted)">{$t('examDetail.yourBalance')}</span>
               {#if hasEnoughCredits}
-                <span class="credit-ok">💳 {myCredits} credit</span>
+                <span class="credit-ok">💳 {$t('examDetail.creditAmount', { n: myCredits })}</span>
               {:else}
                 <span class="credit-bad">💳 {myCredits} / {creditCost}</span>
               {/if}
             </div>
             {#if !hasEnoughCredits}
               <p style="font-size:0.8rem; color:var(--danger); text-align:center; margin-top:-0.25rem">
-                Cần thêm {creditCost - myCredits} credit để làm bài
+                {$t('examDetail.needMoreCredit', { n: creditCost - myCredits })}
               </p>
             {/if}
           {/if}
@@ -774,14 +774,14 @@
         {#if $user?.role === 'student' && isScheduledLocked}
           <div class="countdown-banner">
             <div class="countdown-banner-icon">🔒</div>
-            <div class="countdown-banner-title">Đề thi chưa mở</div>
+            <div class="countdown-banner-title">{$t('examDetail.notOpenYetTitle')}</div>
             <div class="countdown-banner-datetime">
-              Mở lúc {new Date(exam.scheduled_at).toLocaleString('vi-VN', {weekday:'short', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'})}
+              {$t('examDetail.opensAt')} {new Date(exam.scheduled_at).toLocaleString(localeCode($locale), {weekday:'short', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'})}
             </div>
             {#if scheduledCountdown}
               <div class="countdown-banner-timer">{scheduledCountdown}</div>
             {:else}
-              <div class="countdown-banner-timer">Đang mở...</div>
+              <div class="countdown-banner-timer">{$t('exams.opening')}</div>
             {/if}
           </div>
         {/if}
@@ -789,44 +789,44 @@
         <!-- Action buttons -->
         {#if $user?.role === 'student'}
           {#if isScheduledLocked}
-            <button class="btn-block btn-primary" disabled>🔒 Chưa đến giờ mở</button>
+            <button class="btn-block btn-primary" disabled>🔒 {$t('examDetail.notOpenYetShort')}</button>
           {:else if !mySubmission}
             {#if hasEnoughCredits}
-              <a href="/exams/{exam.id}/take" class="btn-block btn-primary">▶ Bắt đầu làm bài</a>
+              <a href="/exams/{exam.id}/take" class="btn-block btn-primary">▶ {$t('examDetail.startExam')}</a>
             {:else}
-              <button class="btn-block btn-primary" disabled>Không đủ credit</button>
+              <button class="btn-block btn-primary" disabled>{$t('examDetail.insufficientCredit')}</button>
             {/if}
           {:else}
-            <a href="/exams/{exam.id}/result?submissionId={mySubmission.id}" class="btn-block btn-success">Xem kết quả chi tiết</a>
+            <a href="/exams/{exam.id}/result?submissionId={mySubmission.id}" class="btn-block btn-success">{$t('examDetail.viewDetailedResult')}</a>
             {#if canStart}
               {#if hasEnoughCredits}
-                <a href="/exams/{exam.id}/take" class="btn-block btn-outline">↺ Làm lại</a>
+                <a href="/exams/{exam.id}/take" class="btn-block btn-outline">↺ {$t('dashboard.retake')}</a>
               {:else}
-                <button class="btn-block btn-outline" disabled>Không đủ credit để làm lại</button>
+                <button class="btn-block btn-outline" disabled>{$t('examDetail.insufficientCreditRetake')}</button>
               {/if}
             {/if}
           {/if}
 
         {:else}
           <!-- Teacher / Admin actions -->
-          <a href="/exams/{exam.id}/take" class="btn-block btn-ghost">👁 Xem trước</a>
+          <a href="/exams/{exam.id}/take" class="btn-block btn-ghost">👁 {$t('examDetail.preview')}</a>
           {#if exam.created_by === $user?.id || $user?.role === 'admin'}
-            <a href="/exams/{exam.id}/edit" class="btn-block btn-outline">✏️ Sửa đề thi</a>
+            <a href="/exams/{exam.id}/edit" class="btn-block btn-outline">✏️ {$t('examDetail.editExam')}</a>
           {/if}
           <button
             class="btn-block {exam.is_published ? 'btn-ghost' : 'btn-success'}"
             onclick={togglePublish}
             disabled={publishing}
           >
-            {publishing ? 'Đang xử lý...' : exam.is_published ? '⬇ Gỡ xuất bản' : '🚀 Xuất bản'}
+            {publishing ? $t('common.processing') : exam.is_published ? '⬇ ' + $t('examDetail.unpublish') : '🚀 ' + $t('examDetail.publish')}
           </button>
         {/if}
 
         <p style="font-size:0.75rem; color:var(--muted); text-align:center; margin-top: -0.25rem">
           {#if $user?.role === 'student'}
-            Credit được trừ ngay khi bắt đầu làm bài
+            {$t('examDetail.creditDeductedNote')}
           {:else}
-            * Role mới của student có hiệu lực sau khi đăng nhập lại
+            {$t('examDetail.roleChangeNote')}
           {/if}
         </p>
       </div>
@@ -837,28 +837,28 @@
 
 <!-- ── Comments ─────────────────────────────────────────────────────────────── -->
 <div class="comments-wrap" id="comments">
-  <div class="section-title">Bình luận ({commentCount})</div>
+  <div class="section-title">{$t('examDetail.commentsTitle', { n: commentCount })}</div>
 
   {#if $user}
     <div class="comment-composer">
       <textarea
         bind:value={newComment}
-        placeholder="Chia sẻ suy nghĩ của bạn về đề thi này..."
+        placeholder={$t('examDetail.commentPlaceholder')}
         rows="3"
         maxlength="2000"
       ></textarea>
       <div class="composer-actions">
         <button class="btn-primary" onclick={postComment} disabled={postingComment || !newComment.trim()}>
-          {postingComment ? 'Đang gửi...' : 'Gửi bình luận'}
+          {postingComment ? $t('examDetail.posting') : $t('examDetail.postComment')}
         </button>
       </div>
     </div>
   {/if}
 
   {#if commentsLoading}
-    <p style="color:var(--muted); padding:1rem 0">Đang tải bình luận...</p>
+    <p style="color:var(--muted); padding:1rem 0">{$t('examDetail.loadingComments')}</p>
   {:else if comments.length === 0}
-    <p style="color:var(--muted); padding:1rem 0">Chưa có bình luận nào. Hãy là người đầu tiên!</p>
+    <p style="color:var(--muted); padding:1rem 0">{$t('examDetail.noCommentsYet')}</p>
   {:else}
     <div class="comment-list">
       {#each comments as c (c.id)}
@@ -872,23 +872,23 @@
           </div>
           <div class="comment-body">
             <div class="comment-meta">
-              <span class="comment-author">{c.full_name ?? 'Người dùng'}</span>
-              <span class="comment-date">{fmtDate(c.created_at)}{c.updated_at !== c.created_at ? ' (đã sửa)' : ''}</span>
+              <span class="comment-author">{c.full_name ?? $t('examDetail.anonymousUser')}</span>
+              <span class="comment-date">{fmtDate(c.created_at)}{c.updated_at !== c.created_at ? ' ' + $t('examDetail.edited') : ''}</span>
             </div>
             {#if editingId === c.id}
               <textarea bind:value={editContent} rows="3" maxlength="2000"></textarea>
               <div class="composer-actions">
-                <button class="btn-primary" onclick={() => saveEdit(c)}>Lưu</button>
-                <button class="btn-ghost" onclick={() => (editingId = null)}>Huỷ</button>
+                <button class="btn-primary" onclick={() => saveEdit(c)}>{$t('common.save')}</button>
+                <button class="btn-ghost" onclick={() => (editingId = null)}>{$t('common.cancel')}</button>
               </div>
             {:else}
               <div class="comment-content">{c.content}</div>
               {#if canModerate(c)}
                 <div class="comment-tools">
                   {#if c.user_id === $user?.id}
-                    <button onclick={() => startEdit(c)}>Sửa</button>
+                    <button onclick={() => startEdit(c)}>{$t('common.edit')}</button>
                   {/if}
-                  <button class="danger" onclick={() => deleteComment(c)}>Xoá</button>
+                  <button class="danger" onclick={() => deleteComment(c)}>{$t('common.delete')}</button>
                 </div>
               {/if}
             {/if}
@@ -903,13 +903,13 @@
           class="btn-ghost"
           disabled={commentPage <= 1}
           onclick={() => loadComments(exam.id, commentPage - 1)}
-        >← Trước</button>
-        <span>Trang {commentPage} / {commentTotalPages}</span>
+        >← {$t('examDetail.prevPage')}</button>
+        <span>{$t('examDetail.pageOf', { page: commentPage, total: commentTotalPages })}</span>
         <button
           class="btn-ghost"
           disabled={commentPage >= commentTotalPages}
           onclick={() => loadComments(exam.id, commentPage + 1)}
-        >Sau →</button>
+        >{$t('examDetail.nextPage')} →</button>
       </div>
     {/if}
   {/if}

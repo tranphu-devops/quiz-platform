@@ -6,6 +6,7 @@
   import { examApi, collectionApi } from '$lib/api'
   import BadgePicker from '$lib/components/BadgePicker.svelte'
   import PageHeader from '$lib/components/ui/PageHeader.svelte'
+  import { t } from '$lib/i18n'
 
   let title = $state('')
   let description = $state('')
@@ -26,7 +27,7 @@
         collectionApi.get(id),
         examApi.list()
       ])
-      if (!colRes.ok) { error = 'Không tìm thấy bộ đề'; return }
+      if (!colRes.ok) { error = $t('collectionForm.notFound'); return }
       const col = await colRes.json()
       title = col.title
       description = col.description ?? ''
@@ -38,7 +39,7 @@
         myExams = all.filter(e => e.created_by === $user.id)
       }
     } catch {
-      error = 'Không thể kết nối server'
+      error = $t('imageUpload.connectionError')
     } finally {
       loading = false
     }
@@ -51,8 +52,8 @@
   }
 
   async function save() {
-    if (!title.trim()) { error = 'Tên bộ đề không được để trống'; return }
-    if (selectedExamIds.length === 0) { error = 'Cần chọn ít nhất 1 đề thi'; return }
+    if (!title.trim()) { error = $t('collectionForm.titleRequired'); return }
+    if (selectedExamIds.length === 0) { error = $t('collectionForm.examRequired'); return }
     error = ''
     saving = true
     try {
@@ -65,12 +66,12 @@
       })
       if (!res.ok) {
         const d = await res.json()
-        error = d.error ?? 'Lỗi cập nhật'
+        error = d.error ?? $t('collectionForm.updateError')
         return
       }
       goto('/collections')
     } catch {
-      error = 'Không thể kết nối server'
+      error = $t('imageUpload.connectionError')
     } finally {
       saving = false
     }
@@ -110,30 +111,30 @@
   .btn-save:disabled { opacity: 0.55; cursor: default; transform: none; }
 </style>
 
-<a href="/collections" class="back-btn">← Quay lại</a>
-<PageHeader title="Sửa bộ đề" />
+<a href="/collections" class="back-btn">← {$t('common.back')}</a>
+<PageHeader title={$t('collectionForm.editTitle')} />
 
 {#if loading}
-  <p style="color:var(--muted)">Đang tải...</p>
+  <p style="color:var(--muted)">{$t('common.loading')}</p>
 {:else if error && !title}
   <p style="color:var(--danger)">{error}</p>
 {:else}
 <div class="layout">
   <div>
     <div class="card">
-      <h2>📋 Thông tin bộ đề</h2>
+      <h2>📋 {$t('collectionForm.infoTitle')}</h2>
       <div class="form-row">
-        <label for="title">Tên bộ đề *</label>
+        <label for="title">{$t('collectionForm.nameLabel')} *</label>
         <input id="title" type="text" bind:value={title} />
       </div>
       <div class="form-row">
-        <label for="desc">Mô tả</label>
+        <label for="desc">{$t('collectionForm.descLabel')}</label>
         <textarea id="desc" bind:value={description}></textarea>
       </div>
     </div>
 
     <div class="card">
-      <h2>📝 Đề thi trong bộ ({selectedExamIds.length} đã chọn)</h2>
+      <h2>📝 {$t('collectionForm.examsInCollection', { n: selectedExamIds.length })}</h2>
       <div class="exam-list">
         {#each myExams as exam}
           <div class="exam-item {selectedExamIds.includes(exam.id) ? 'selected' : ''}"
@@ -142,7 +143,7 @@
             <input class="exam-check" type="checkbox" checked={selectedExamIds.includes(exam.id)} tabindex="-1" />
             <div>
               <div class="exam-title">{exam.title}</div>
-              <div class="exam-meta">{exam.time_limit} phút{exam.is_published ? '' : ' · Nháp'}</div>
+              <div class="exam-meta">{$t('exams.minutes', { n: exam.time_limit })}{exam.is_published ? '' : ' · ' + $t('examForm.publishDraft')}</div>
             </div>
           </div>
         {/each}
@@ -152,25 +153,25 @@
 
   <div>
     <div class="card">
-      <h2>🏅 Huy hiệu hoàn thành</h2>
-      <BadgePicker bind:value={badgeUrl} label="huy hiệu" />
+      <h2>🏅 {$t('collectionForm.badgeTitle')}</h2>
+      <BadgePicker bind:value={badgeUrl} label={$t('badgePicker.defaultLabel')} />
     </div>
 
     <div class="card">
-      <h2>⚙️ Trạng thái</h2>
+      <h2>⚙️ {$t('collectionForm.statusTitle')}</h2>
       <div class="toggle-row">
         <label class="toggle">
           <input type="checkbox" bind:checked={isPublished} />
           <div class="toggle-track"></div>
           <div class="toggle-thumb"></div>
         </label>
-        <span style="font-size:0.9rem">{isPublished ? 'Đang xuất bản' : 'Đang ẩn (nháp)'}</span>
+        <span style="font-size:0.9rem">{isPublished ? $t('collectionForm.statusPublished') : $t('collectionForm.statusHidden')}</span>
       </div>
     </div>
 
     {#if error}<p class="error">{error}</p>{/if}
     <button class="btn-save" onclick={save} disabled={saving}>
-      {saving ? 'Đang lưu...' : '✓ Lưu thay đổi'}
+      {saving ? $t('common.saving') : $t('examForm.saveChanges')}
     </button>
   </div>
 </div>

@@ -1,25 +1,26 @@
 <script>
   import PageHeader from '$lib/components/ui/PageHeader.svelte'
   import Card from '$lib/components/ui/Card.svelte'
+  import { t } from '$lib/i18n'
 
   const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost'
 
-  const curlCreate = `curl -X POST ${base}/api/exams/exams \\
+  const curlCreate = $derived(`curl -X POST ${base}/api/exams/exams \\
   -H "X-API-Key: qz_live_xxxxxxxx..." \\
   -H "Content-Type: application/json" \\
   -d '{
-    "title": "Đề thi tạo qua API",
-    "description": "<p>Mô tả có thể chứa HTML cơ bản</p>",
+    "title": "${$t('apiDocs.sampleExamTitle')}",
+    "description": "<p>${$t('apiDocs.sampleExamDesc')}</p>",
     "time_limit": 30,
     "passing_score": 70,
     "tags": ["aws", "demo"]
-  }'`
+  }'`)
 
-  const curlAddQuestion = `curl -X POST ${base}/api/exams/exams/<EXAM_ID>/questions \\
+  const curlAddQuestion = $derived(`curl -X POST ${base}/api/exams/exams/<EXAM_ID>/questions \\
   -H "X-API-Key: qz_live_xxxxxxxx..." \\
   -H "Content-Type: application/json" \\
   -d '{
-    "content": "Dịch vụ nào là serverless compute của AWS?",
+    "content": "${$t('apiDocs.sampleQuestion')}",
     "question_type": "single",
     "options": [
       { "key": "A", "text": "Amazon EC2" },
@@ -29,65 +30,62 @@
     ],
     "correct_answer": "B",
     "points": 1,
-    "explanation": "Lambda chạy code không cần quản lý server.",
+    "explanation": "${$t('apiDocs.sampleExplanation')}",
     "image_url": null
-  }'`
+  }'`)
 
-  const curlPublish = `curl -X PUT ${base}/api/exams/exams/<EXAM_ID> \\
+  const curlPublish = $derived(`curl -X PUT ${base}/api/exams/exams/<EXAM_ID> \\
   -H "X-API-Key: qz_live_xxxxxxxx..." \\
   -H "Content-Type: application/json" \\
-  -d '{ "is_published": true }'`
+  -d '{ "is_published": true }'`)
 
-  const curlUpload = `curl -X POST ${base}/api/users/upload \\
+  const curlUpload = $derived(`curl -X POST ${base}/api/users/upload \\
   -H "X-API-Key: qz_live_xxxxxxxx..." \\
   -F "file=@/path/to/image.jpg" \\
   -F "type=exam-cover"
 
-# Dùng URL trả về làm cover_image_url / image_url:
-# { "url": "https://..." }`
+# ${$t('apiDocs.uploadResponseComment')}
+# { "url": "https://..." }`)
 
-  const endpoints = [
-    { m: 'POST',   p: '/api/users/upload',                      d: 'Upload ảnh lên S3 — trả về URL (dùng cho cover_image_url, image_url).' },
-    { m: 'POST',   p: '/api/exams/exams',                       d: 'Tạo đề thi mới (bạn là chủ sở hữu).' },
-    { m: 'GET',    p: '/api/exams/exams?creator_id=<YOUR_ID>',  d: 'Liệt kê đề thi (kèm bản nháp của chính bạn).' },
-    { m: 'GET',    p: '/api/exams/exams/:id',                   d: 'Xem chi tiết một đề thi.' },
-    { m: 'PUT',    p: '/api/exams/exams/:id',                   d: 'Cập nhật đề thi (kể cả is_published để publish).' },
-    { m: 'DELETE', p: '/api/exams/exams/:id',                   d: 'Xoá đề thi.' },
-    { m: 'POST',   p: '/api/exams/exams/:id/questions',         d: 'Thêm câu hỏi vào đề.' },
-    { m: 'PUT',    p: '/api/exams/exams/:id/questions/:qid',    d: 'Sửa câu hỏi.' },
-    { m: 'DELETE', p: '/api/exams/exams/:id/questions/:qid',    d: 'Xoá câu hỏi.' },
-  ]
+  const endpoints = $derived([
+    { m: 'POST',   p: '/api/users/upload',                      d: $t('apiDocs.epUpload') },
+    { m: 'POST',   p: '/api/exams/exams',                       d: $t('apiDocs.epCreateExam') },
+    { m: 'GET',    p: '/api/exams/exams?creator_id=<YOUR_ID>',  d: $t('apiDocs.epListExams') },
+    { m: 'GET',    p: '/api/exams/exams/:id',                   d: $t('apiDocs.epGetExam') },
+    { m: 'PUT',    p: '/api/exams/exams/:id',                   d: $t('apiDocs.epUpdateExam') },
+    { m: 'DELETE', p: '/api/exams/exams/:id',                   d: $t('apiDocs.epDeleteExam') },
+    { m: 'POST',   p: '/api/exams/exams/:id/questions',         d: $t('apiDocs.epAddQuestion') },
+    { m: 'PUT',    p: '/api/exams/exams/:id/questions/:qid',    d: $t('apiDocs.epUpdateQuestion') },
+    { m: 'DELETE', p: '/api/exams/exams/:id/questions/:qid',    d: $t('apiDocs.epDeleteQuestion') },
+  ])
 </script>
 
 <svelte:head><title>API Docs · QuizPlatform</title></svelte:head>
 
-<PageHeader title="API dành cho giáo viên" subtitle="Quản lý đề thi bằng chương trình qua API key" />
+<PageHeader title={$t('apiDocs.pageTitle')} subtitle={$t('apiDocs.pageSubtitle')} />
 
 <div class="docs">
-  <Card title="1. Xác thực">
+  <Card title={$t('apiDocs.section1Title')}>
     <p>
-      Mọi request đính kèm header <code>X-API-Key</code> với key bạn tạo ở
-      <a href="/profile">trang Hồ sơ → API Access</a>. Không cần đăng nhập hay lấy JWT —
-      key chính là thông tin xác thực, hoạt động bất kể bạn đăng ký bằng Google hay email.
+      {@html $t('apiDocs.authIntro')}
     </p>
     <pre><code>X-API-Key: qz_live_xxxxxxxxxxxxxxxxxxxx</code></pre>
     <ul class="notes">
-      <li>Key được lưu dưới dạng băm (SHA-256); phần plaintext chỉ hiện <strong>một lần</strong> khi tạo.</li>
-      <li>Thu hồi key bất cứ lúc nào ở trang Hồ sơ — có hiệu lực ngay lập tức.</li>
-      <li>Key chỉ thao tác được trên đề thi <strong>do chính bạn tạo</strong> (trừ admin). Gọi lên đề của người khác → <code>403</code>.</li>
-      <li>Key sai hoặc đã thu hồi → <code>401</code>.</li>
+      <li>{@html $t('apiDocs.authNote1')}</li>
+      <li>{$t('apiDocs.authNote2')}</li>
+      <li>{@html $t('apiDocs.authNote3')}</li>
+      <li>{$t('apiDocs.authNote4')}</li>
     </ul>
   </Card>
 
-  <Card title="2. Base URL & giới hạn">
+  <Card title={$t('apiDocs.section2Title')}>
     <p>Base URL: <code>{base}/api/exams</code></p>
     <p class="notes">
-      Chịu giới hạn tần suất chung của Nginx (khoảng 2 request/giây, cho phép burst).
-      Với thao tác import hàng loạt, hãy thêm độ trễ nhỏ giữa các request để tránh <code>429</code>.
+      {@html $t('apiDocs.rateLimitNote')}
     </p>
   </Card>
 
-  <Card title="3. Các endpoint">
+  <Card title={$t('apiDocs.section3Title')}>
     <div class="ep-table">
       {#each endpoints as e}
         <div class="ep-row">
@@ -99,33 +97,33 @@
     </div>
   </Card>
 
-  <Card title="4. Ví dụ — tạo đề thi">
+  <Card title={$t('apiDocs.section4Title')}>
     <pre><code>{curlCreate}</code></pre>
-    <p class="notes">Phản hồi <code>201</code> trả về đối tượng đề thi kèm <code>id</code>. Dùng <code>id</code> đó cho các bước sau.</p>
+    <p class="notes">{@html $t('apiDocs.createExamNote')}</p>
   </Card>
 
-  <Card title="5. Ví dụ — thêm câu hỏi">
+  <Card title={$t('apiDocs.section5Title')}>
     <pre><code>{curlAddQuestion}</code></pre>
     <ul class="notes">
-      <li><code>question_type</code>: <code>single</code> (1 đáp án) hoặc <code>multiple</code> (nhiều đáp án).</li>
-      <li>Với <code>multiple</code>, gửi <code>correct_answer</code> là mảng, ví dụ <code>["A","C"]</code>.</li>
-      <li>Ảnh câu hỏi: upload file trước qua <code>POST /api/users/upload</code> (xem mục 6), rồi dùng URL trả về làm <code>image_url</code>. Hoặc truyền thẳng URL công khai có sẵn.</li>
+      <li>{@html $t('apiDocs.addQuestionNote1')}</li>
+      <li>{@html $t('apiDocs.addQuestionNote2')}</li>
+      <li>{@html $t('apiDocs.addQuestionNote3')}</li>
     </ul>
   </Card>
 
-  <Card title="6. Ví dụ — upload ảnh lên S3">
+  <Card title={$t('apiDocs.section6Title')}>
     <pre><code>{curlUpload}</code></pre>
     <ul class="notes">
-      <li>Field <code>type</code>: <code>exam-cover</code> (ảnh bìa đề thi) hoặc <code>question</code> (ảnh câu hỏi) hoặc <code>avatar</code>.</li>
-      <li>Định dạng chấp nhận: <code>image/jpeg</code>, <code>image/png</code>, <code>image/webp</code>, <code>image/gif</code> (admin có thể thay đổi).</li>
-      <li>Kích thước tối đa mặc định: 5 MB.</li>
-      <li>Trả về <code>{"{ url: \"https://...\" }"}</code> — dùng URL này cho <code>cover_image_url</code> hoặc <code>image_url</code> trong các API khác.</li>
+      <li>{@html $t('apiDocs.uploadNote1')}</li>
+      <li>{@html $t('apiDocs.uploadNote2')}</li>
+      <li>{$t('apiDocs.uploadNote3')}</li>
+      <li>{@html $t('apiDocs.uploadNote4')}</li>
     </ul>
   </Card>
 
-  <Card title="7. Ví dụ — publish đề thi">
+  <Card title={$t('apiDocs.section7Title')}>
     <pre><code>{curlPublish}</code></pre>
-    <p class="notes">Đặt <code>is_published: true</code> để học viên có thể thấy và làm bài.</p>
+    <p class="notes">{@html $t('apiDocs.publishNote')}</p>
   </Card>
 </div>
 

@@ -8,6 +8,7 @@
   import Card from '$lib/components/ui/Card.svelte'
   import Button from '$lib/components/ui/Button.svelte'
   import Input from '$lib/components/ui/Input.svelte'
+  import { t, locale, localeCode } from '$lib/i18n'
 
   let full_name       = $state('')
   let avatar_url      = $state('')
@@ -36,12 +37,12 @@
   let inboxReports = $state([])
   let respondingId = $state(null)
   let respondText  = $state('')
-  const REPORT_CAT_LABEL = {
-    question_wrong: 'Câu hỏi sai',
-    answer_wrong:   'Đáp án sai',
-    image_issue:    'Hình ảnh lỗi',
-    other:          'Khác'
-  }
+  const REPORT_CAT_LABEL = $derived({
+    question_wrong: $t('profile.reportCatQuestionWrong'),
+    answer_wrong:   $t('profile.reportCatAnswerWrong'),
+    image_issue:    $t('profile.reportCatImageIssue'),
+    other:          $t('profile.reportCatOther')
+  })
   const isStaff = $derived($user?.role === 'teacher' || $user?.role === 'admin')
 
   let upgradeLoading      = $state(false)
@@ -110,16 +111,16 @@
   async function createKey() {
     keyError = ''; createdKey = ''; copiedKey = false
     const name = newKeyName.trim()
-    if (!name) { keyError = 'Nhập tên cho key'; return }
+    if (!name) { keyError = $t('profile.enterKeyName'); return }
     keyLoading = true
     try {
       const res = await apiKeyApi.create(name)
       const d = await res.json()
-      if (!res.ok) { keyError = d.error ?? 'Lỗi tạo key'; return }
+      if (!res.ok) { keyError = d.error ?? $t('profile.createKeyError'); return }
       createdKey = d.key
       newKeyName = ''
       apiKeys = [{ ...d, key: undefined }, ...apiKeys]
-    } catch { keyError = 'Không thể kết nối server' } finally { keyLoading = false }
+    } catch { keyError = $t('imageUpload.connectionError') } finally { keyLoading = false }
   }
 
   async function revokeKey(id) {
@@ -132,7 +133,7 @@
   }
 
   function fmtDate(s) {
-    return s ? new Date(s).toLocaleString('vi-VN') : '—'
+    return s ? new Date(s).toLocaleString(localeCode($locale)) : '—'
   }
 
   function startRespond(r) {
@@ -171,9 +172,9 @@
         linkedin_url: linkedin_url || null,
         website_url: website_url || null
       })
-      if (!res.ok) { const d = await res.json(); error = d.error ?? 'Lỗi cập nhật'; return }
+      if (!res.ok) { const d = await res.json(); error = d.error ?? $t('profile.updateError'); return }
       success = true
-    } catch { error = 'Không thể kết nối server' } finally { saving = false }
+    } catch { error = $t('imageUpload.connectionError') } finally { saving = false }
   }
 
   async function upgradeToTeacher() {
@@ -181,10 +182,10 @@
     try {
       const res = await userApi.upgradeToTeacher()
       const d = await res.json()
-      if (!res.ok) { upgradeError = d.error ?? 'Lỗi nâng cấp'; return }
+      if (!res.ok) { upgradeError = d.error ?? $t('profile.upgradeError'); return }
       credits = d.new_balance
       upgradeSuccess = true
-    } catch { upgradeError = 'Không thể kết nối server' } finally { upgradeLoading = false }
+    } catch { upgradeError = $t('imageUpload.connectionError') } finally { upgradeLoading = false }
   }
 
   let insufficientCredits = $derived(credits !== null && credits < teacherUpgradeCost)
@@ -197,7 +198,7 @@
   }
 </script>
 
-<PageHeader title="Hồ sơ cá nhân" subtitle="Quản lý thông tin tài khoản và cài đặt cá nhân" />
+<PageHeader title={$t('profile.pageTitle')} subtitle={$t('profile.pageSubtitle')} />
 
     <div class="profile-layout">
 
@@ -205,57 +206,57 @@
       <div class="profile-col">
 
         <!-- Avatar + thông tin cơ bản -->
-        <Card title="Thông tin cơ bản">
+        <Card title={$t('profile.basicInfoTitle')}>
           {#if error}<p class="ix-error">{error}</p>{/if}
-          {#if success}<p class="ix-success">Đã lưu thành công!</p>{/if}
+          {#if success}<p class="ix-success">{$t('profile.savedSuccess')}</p>{/if}
 
           <div class="form-stack">
             <div class="avatar-section">
-              <ImageUpload bind:value={avatar_url} type="avatar" label="ảnh đại diện" previewClass="preview-avatar-lg" />
+              <ImageUpload bind:value={avatar_url} type="avatar" label={$t('profile.avatarLabel')} previewClass="preview-avatar-lg" />
               <div class="avatar-meta">
-                <span class="role-badge" style={roleBadgeStyle($user?.role)}>{$user?.role ?? ''}</span>
+                <span class="role-badge" style={roleBadgeStyle($user?.role)}>{$user?.role ? $t(`roles.${$user.role}`) : ''}</span>
                 <span class="avatar-email">{$user?.email ?? ''}</span>
               </div>
             </div>
 
             <Input
               id="fname"
-              label="Họ và tên"
+              label={$t('profile.fullNameLabel')}
               type="text"
               bind:value={full_name}
-              placeholder="Nhập họ tên..."
+              placeholder={$t('profile.fullNamePlaceholder')}
             />
 
             <div>
               <Button onclick={save} loading={saving} disabled={saving}>
-                Lưu thay đổi
+                {$t('common.save')}
               </Button>
             </div>
           </div>
         </Card>
 
         <!-- Credits & nâng cấp -->
-        <Card title="Credits & Nâng cấp" subtitle="Số dư credit và tuỳ chọn nâng cấp tài khoản.">
+        <Card title={$t('profile.creditsTitle')} subtitle={$t('profile.creditsSubtitle')}>
           <div class="credits-display">
             <div class="credits-num">{credits ?? '—'}</div>
-            <div class="credits-lbl">credits hiện tại</div>
+            <div class="credits-lbl">{$t('profile.creditsCurrentLbl')}</div>
           </div>
 
           {#if $user?.role === 'student'}
             {#if upgradeSuccess}
               <div class="ix-success" style="margin-top:16px">
-                Nâng cấp thành công! Vui lòng đăng xuất và đăng nhập lại để kích hoạt role Teacher.
+                {$t('profile.upgradeSuccessMsg')}
               </div>
             {:else}
               <div class="upgrade-box">
-                <div class="upgrade-title">Nâng cấp lên Teacher</div>
+                <div class="upgrade-title">{$t('profile.upgradeTitle')}</div>
                 <p class="upgrade-desc">
-                  Tạo và quản lý bài thi của riêng bạn. Chi phí:
-                  <strong style="color:var(--ix-cta-green-bg)">{teacherUpgradeCost} credit</strong>
+                  {$t('profile.upgradeDesc')}
+                  <strong style="color:var(--ix-cta-green-bg)">{$t('examDetail.creditAmount', { n: teacherUpgradeCost })}</strong>
                 </p>
                 {#if upgradeError}<p class="ix-error">{upgradeError}</p>{/if}
                 {#if insufficientCredits}
-                  <p class="ix-note">Bạn cần thêm {teacherUpgradeCost - credits} credit để nâng cấp.</p>
+                  <p class="ix-note">{$t('profile.needMoreCreditsUpgrade', { n: teacherUpgradeCost - credits })}</p>
                 {/if}
                 <Button
                   variant="cta"
@@ -263,12 +264,12 @@
                   disabled={upgradeLoading || insufficientCredits}
                   loading={upgradeLoading}
                 >
-                  Mua gói Teacher ({teacherUpgradeCost} credit)
+                  {$t('profile.buyTeacherPackage', { n: teacherUpgradeCost })}
                 </Button>
               </div>
             {/if}
           {:else}
-            <p class="ix-note" style="margin-top:12px">Tài khoản <strong>{$user?.role}</strong> — không cần nâng cấp.</p>
+            <p class="ix-note" style="margin-top:12px">{@html $t('profile.accountNoUpgrade', { role: $t(`roles.${$user?.role}`) })}</p>
           {/if}
         </Card>
 
@@ -278,35 +279,35 @@
       <div class="profile-col">
 
         <!-- Thông tin cá nhân + mạng xã hội -->
-        <Card title="Thông tin cá nhân" subtitle="Thông tin hiển thị trên trang hồ sơ công khai của bạn.">
+        <Card title={$t('profile.personalInfoTitle')} subtitle={$t('profile.personalInfoSubtitle')}>
           <div class="form-stack">
             <div class="field-group">
-              <label class="ix-label" for="bio">Giới thiệu bản thân</label>
-              <textarea id="bio" class="ix-textarea" rows="3" bind:value={bio} placeholder="Viết vài dòng giới thiệu về bản thân..."></textarea>
+              <label class="ix-label" for="bio">{$t('profile.bioLabel')}</label>
+              <textarea id="bio" class="ix-textarea" rows="3" bind:value={bio} placeholder={$t('profile.bioPlaceholder')}></textarea>
             </div>
 
             <div class="two-col">
               <div class="field-group">
-                <label class="ix-label" for="birth_year">Năm sinh</label>
+                <label class="ix-label" for="birth_year">{$t('profile.birthYearLabel')}</label>
                 <input id="birth_year" class="ix-input" type="number" min="1940" max="2010" bind:value={birth_year} placeholder="1990" />
               </div>
               <div class="field-group">
-                <label class="ix-label" for="gender">Giới tính</label>
+                <label class="ix-label" for="gender">{$t('profile.genderLabel')}</label>
                 <select id="gender" class="ix-input ix-select" bind:value={gender}>
-                  <option value="">-- Không hiển thị --</option>
-                  <option value="male">Nam</option>
-                  <option value="female">Nữ</option>
-                  <option value="other">Khác</option>
+                  <option value="">{$t('profile.genderHidden')}</option>
+                  <option value="male">{$t('profile.genderMale')}</option>
+                  <option value="female">{$t('profile.genderFemale')}</option>
+                  <option value="other">{$t('profile.genderOther')}</option>
                 </select>
               </div>
             </div>
 
             <div class="field-group">
-              <label class="ix-label" for="interests">Sở thích / Lĩnh vực</label>
-              <input id="interests" class="ix-input" type="text" bind:value={interests} placeholder="Lập trình, AWS, DevOps, ..." />
+              <label class="ix-label" for="interests">{$t('profile.interestsLabel')}</label>
+              <input id="interests" class="ix-input" type="text" bind:value={interests} placeholder={$t('profile.interestsPlaceholder')} />
             </div>
 
-            <div class="social-section-label">Mạng xã hội</div>
+            <div class="social-section-label">{$t('profile.socialLabel')}</div>
 
             <div class="social-grid">
               <div class="field-group">
@@ -334,7 +335,7 @@
                 <input id="linkedin_url" class="ix-input" type="url" bind:value={linkedin_url} placeholder="https://linkedin.com/in/username" />
               </div>
               <div class="field-group social-full">
-                <label class="ix-label" for="website_url"><span class="social-icon">🌐</span> Website / Blog</label>
+                <label class="ix-label" for="website_url"><span class="social-icon">🌐</span> {$t('profile.websiteLabel')}</label>
                 <input id="website_url" class="ix-input" type="url" bind:value={website_url} placeholder="https://yoursite.com" />
               </div>
             </div>
@@ -344,12 +345,12 @@
         <!-- Huy hiệu (student only) -->
         {#if $user?.role === 'student'}
           <Card
-            title="Huy hiệu đã đạt được"
-            subtitle={badges.length > 0 ? `${badges.length} huy hiệu` : 'Chưa có huy hiệu nào'}
+            title={$t('profile.badgesTitle')}
+            subtitle={badges.length > 0 ? $t('profile.badgesCount', { n: badges.length }) : $t('profile.noBadgesYet')}
           >
             {#if badges.length === 0}
               <p class="badges-empty">
-                Hoàn thành tất cả đề thi trong một bộ đề để nhận huy hiệu!
+                {$t('profile.badgesEmptyHint')}
               </p>
             {:else}
               <div class="badges-grid">
@@ -363,7 +364,7 @@
                       {/if}
                     </div>
                     <div class="badge-name">{b.collection_title}</div>
-                    <div class="badge-date">{new Date(b.earned_at).toLocaleDateString('vi-VN')}</div>
+                    <div class="badge-date">{new Date(b.earned_at).toLocaleDateString(localeCode($locale))}</div>
                   </div>
                 {/each}
               </div>
@@ -374,11 +375,11 @@
         <!-- Teacher/admin: report inbox -->
         {#if isStaff}
           <Card
-            title="Báo lỗi cần xử lý"
-            subtitle={openInboxCount > 0 ? `${openInboxCount} báo lỗi chưa xử lý` : 'Không có báo lỗi mới'}
+            title={$t('profile.inboxTitle')}
+            subtitle={openInboxCount > 0 ? $t('profile.inboxOpenCount', { n: openInboxCount }) : $t('profile.inboxEmpty')}
           >
             {#if inboxReports.length === 0}
-              <p class="reports-empty">Chưa có báo lỗi nào về đề thi của bạn.</p>
+              <p class="reports-empty">{$t('profile.inboxEmptyHint')}</p>
             {:else}
               <div class="reports-list">
                 {#each inboxReports as r (r.id)}
@@ -386,24 +387,24 @@
                     <div class="report-row-head">
                       <span class="report-cat">{REPORT_CAT_LABEL[r.category] ?? r.category}</span>
                       <span class="report-status {r.status}">
-                        {r.status === 'open' ? '⏳ Chưa xử lý' : '✅ Đã xử lý'}
+                        {r.status === 'open' ? '⏳ ' + $t('profile.statusOpen') : '✅ ' + $t('profile.statusResolved')}
                       </span>
                     </div>
-                    <div class="report-exam">Đề: <strong>{r.exam_title ?? '—'}</strong> · bởi {r.reporter_name ?? 'Người dùng'}</div>
+                    <div class="report-exam">{$t('profile.examLabel')}: <strong>{r.exam_title ?? '—'}</strong> · {$t('profile.byUser', { name: r.reporter_name ?? $t('examDetail.anonymousUser') })}</div>
                     <div class="report-desc">{r.description}</div>
                     {#if r.response}
-                      <div class="report-response"><strong>Phản hồi:</strong> {r.response}</div>
+                      <div class="report-response"><strong>{$t('profile.responseLabel')}:</strong> {r.response}</div>
                     {/if}
                     {#if respondingId === r.id}
-                      <textarea class="report-textarea" bind:value={respondText} rows="3" placeholder="Nhập phản hồi..."></textarea>
+                      <textarea class="report-textarea" bind:value={respondText} rows="3" placeholder={$t('profile.responsePlaceholder')}></textarea>
                       <div class="report-row-actions">
-                        <Button variant="secondary" onclick={() => (respondingId = null)}>Huỷ</Button>
-                        <Button variant="primary" onclick={() => submitRespond(r)}>Gửi phản hồi</Button>
+                        <Button variant="secondary" onclick={() => (respondingId = null)}>{$t('common.cancel')}</Button>
+                        <Button variant="primary" onclick={() => submitRespond(r)}>{$t('profile.sendResponse')}</Button>
                       </div>
                     {:else}
                       <div class="report-row-actions">
                         <Button variant="secondary" onclick={() => startRespond(r)}>
-                          {r.status === 'open' ? 'Trả lời' : 'Sửa phản hồi'}
+                          {r.status === 'open' ? $t('profile.reply') : $t('profile.editResponse')}
                         </Button>
                       </div>
                     {/if}
@@ -416,34 +417,33 @@
 
         <!-- Teacher/admin: API access (programmatic exam management) -->
         {#if isStaff}
-          <Card title="API Access" subtitle="Tạo API key để quản lý đề thi bằng chương trình">
+          <Card title="API Access" subtitle={$t('profile.apiAccessSubtitle')}>
             <p class="api-help">
-              Dùng key với header <code>X-API-Key</code> để gọi API tạo/sửa đề thi.
-              Xem hướng dẫn tại <a href="/api-docs">tài liệu API</a>.
+              {@html $t('profile.apiHelpText')}
             </p>
 
             <div class="api-create">
-              <Input bind:value={newKeyName} placeholder="Tên key (vd: script-import)" />
+              <Input bind:value={newKeyName} placeholder={$t('profile.keyNamePlaceholder')} />
               <Button variant="primary" onclick={createKey} disabled={keyLoading}>
-                {keyLoading ? 'Đang tạo...' : 'Tạo key'}
+                {keyLoading ? $t('profile.creatingKey') : $t('profile.createKey')}
               </Button>
             </div>
             {#if keyError}<p class="ix-error">{keyError}</p>{/if}
 
             {#if createdKey}
               <div class="api-new-key">
-                <p class="api-warn">⚠️ Key chỉ hiện <strong>một lần</strong>. Hãy sao chép và lưu lại ngay:</p>
+                <p class="api-warn">{@html $t('profile.keyOnceWarning')}</p>
                 <div class="api-key-box">
                   <code>{createdKey}</code>
                   <Button variant="secondary" onclick={copyCreatedKey}>
-                    {copiedKey ? 'Đã copy ✓' : 'Copy'}
+                    {copiedKey ? $t('profile.copied') : $t('common.copy')}
                   </Button>
                 </div>
               </div>
             {/if}
 
             {#if apiKeys.length === 0}
-              <p class="reports-empty">Chưa có API key nào.</p>
+              <p class="reports-empty">{$t('profile.noApiKeysYet')}</p>
             {:else}
               <div class="api-key-list">
                 {#each apiKeys as k (k.id)}
@@ -451,14 +451,14 @@
                     <div class="api-key-meta">
                       <span class="api-key-name">{k.name}</span>
                       <code class="api-key-prefix">{k.key_prefix}…</code>
-                      {#if k.revoked_at}<span class="api-key-tag revoked">Đã thu hồi</span>{/if}
+                      {#if k.revoked_at}<span class="api-key-tag revoked">{$t('profile.revokedTag')}</span>{/if}
                     </div>
                     <div class="api-key-sub">
-                      Tạo: {fmtDate(k.created_at)} · Dùng lần cuối: {fmtDate(k.last_used_at)}
+                      {$t('profile.createdAt')}: {fmtDate(k.created_at)} · {$t('profile.lastUsedAt')}: {fmtDate(k.last_used_at)}
                     </div>
                     {#if !k.revoked_at}
                       <div class="report-row-actions">
-                        <Button variant="secondary" onclick={() => revokeKey(k.id)}>Thu hồi</Button>
+                        <Button variant="secondary" onclick={() => revokeKey(k.id)}>{$t('profile.revoke')}</Button>
                       </div>
                     {/if}
                   </div>
@@ -470,20 +470,20 @@
 
         <!-- My filed reports (tracking) -->
         {#if myReports.length > 0}
-          <Card title="Báo lỗi của tôi" subtitle="Theo dõi trạng thái xử lý">
+          <Card title={$t('profile.myReportsTitle')} subtitle={$t('profile.myReportsSubtitle')}>
             <div class="reports-list">
               {#each myReports as r (r.id)}
                 <div class="report-row {r.status}">
                   <div class="report-row-head">
                     <span class="report-cat">{REPORT_CAT_LABEL[r.category] ?? r.category}</span>
                     <span class="report-status {r.status}">
-                      {r.status === 'open' ? '⏳ Đang chờ' : '✅ Đã trả lời'}
+                      {r.status === 'open' ? '⏳ ' + $t('profile.statusPending') : '✅ ' + $t('profile.statusAnswered')}
                     </span>
                   </div>
-                  <div class="report-exam">Đề: <strong>{r.exam_title ?? '—'}</strong></div>
+                  <div class="report-exam">{$t('profile.examLabel')}: <strong>{r.exam_title ?? '—'}</strong></div>
                   <div class="report-desc">{r.description}</div>
                   {#if r.response}
-                    <div class="report-response"><strong>Phản hồi từ giáo viên:</strong> {r.response}</div>
+                    <div class="report-response"><strong>{$t('profile.teacherResponseLabel')}:</strong> {r.response}</div>
                   {/if}
                 </div>
               {/each}
@@ -498,14 +498,13 @@
 {#if showUpgradeConfirm}
   <div class="ix-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="ix-modal">
-      <h3 class="ix-modal-title" id="modal-title">Xác nhận nâng cấp</h3>
+      <h3 class="ix-modal-title" id="modal-title">{$t('profile.confirmUpgradeTitle')}</h3>
       <p class="ix-modal-body">
-        Bạn sẽ dùng <strong>{teacherUpgradeCost} credit</strong> để nâng cấp tài khoản lên Teacher.
-        Sau khi nâng cấp, vui lòng đăng xuất và đăng nhập lại để kích hoạt.
+        {@html $t('profile.confirmUpgradeMsg', { n: teacherUpgradeCost })}
       </p>
       <div class="ix-modal-actions">
-        <Button variant="secondary" onclick={() => showUpgradeConfirm = false}>Hủy</Button>
-        <Button variant="success" onclick={upgradeToTeacher} loading={upgradeLoading}>Xác nhận</Button>
+        <Button variant="secondary" onclick={() => showUpgradeConfirm = false}>{$t('common.cancel')}</Button>
+        <Button variant="success" onclick={upgradeToTeacher} loading={upgradeLoading}>{$t('common.confirm')}</Button>
       </div>
     </div>
   </div>

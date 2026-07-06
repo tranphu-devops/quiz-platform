@@ -5,6 +5,7 @@
   import { examApi, collectionApi } from '$lib/api'
   import BadgePicker from '$lib/components/BadgePicker.svelte'
   import PageHeader from '$lib/components/ui/PageHeader.svelte'
+  import { t } from '$lib/i18n'
 
   let title = $state('')
   let description = $state('')
@@ -32,8 +33,8 @@
   }
 
   async function save() {
-    if (!title.trim()) { error = 'Tên bộ đề không được để trống'; return }
-    if (selectedExamIds.length === 0) { error = 'Cần chọn ít nhất 1 đề thi'; return }
+    if (!title.trim()) { error = $t('collectionForm.titleRequired'); return }
+    if (selectedExamIds.length === 0) { error = $t('collectionForm.examRequired'); return }
     error = ''
     saving = true
     try {
@@ -46,12 +47,12 @@
       })
       if (!res.ok) {
         const d = await res.json()
-        error = d.error ?? 'Lỗi tạo bộ đề'
+        error = d.error ?? $t('collectionForm.createError')
         return
       }
       goto('/collections')
     } catch {
-      error = 'Không thể kết nối server'
+      error = $t('imageUpload.connectionError')
     } finally {
       saving = false
     }
@@ -121,28 +122,28 @@
   .btn-save:disabled { opacity: 0.55; cursor: default; transform: none; }
 </style>
 
-<a href="/collections" class="back-btn">← Quay lại</a>
-<PageHeader title="Tạo bộ đề mới" />
+<a href="/collections" class="back-btn">← {$t('common.back')}</a>
+<PageHeader title={$t('collectionForm.createTitle')} />
 
 <div class="layout">
   <!-- Left: main form -->
   <div>
     <div class="card">
-      <h2>📋 Thông tin bộ đề</h2>
+      <h2>📋 {$t('collectionForm.infoTitle')}</h2>
       <div class="form-row">
-        <label for="title">Tên bộ đề *</label>
-        <input id="title" type="text" bind:value={title} placeholder="Ví dụ: AWS Solutions Architect" />
+        <label for="title">{$t('collectionForm.nameLabel')} *</label>
+        <input id="title" type="text" bind:value={title} placeholder={$t('collectionForm.namePlaceholder')} />
       </div>
       <div class="form-row">
-        <label for="desc">Mô tả</label>
-        <textarea id="desc" bind:value={description} placeholder="Mô tả ngắn về bộ đề..."></textarea>
+        <label for="desc">{$t('collectionForm.descLabel')}</label>
+        <textarea id="desc" bind:value={description} placeholder={$t('collectionForm.descPlaceholder')}></textarea>
       </div>
     </div>
 
     <div class="card">
-      <h2>📝 Chọn đề thi ({selectedExamIds.length} đã chọn)</h2>
+      <h2>📝 {$t('collectionForm.selectExamsTitle', { n: selectedExamIds.length })}</h2>
       {#if myExams.length === 0}
-        <p style="color:var(--muted); font-size:0.875rem">Bạn chưa có đề thi nào. <a href="/exams/create" style="color:var(--primary)">Tạo đề thi ngay →</a></p>
+        <p style="color:var(--muted); font-size:0.875rem">{$t('collectionForm.noExamsYet')} <a href="/exams/create" style="color:var(--primary)">{$t('collectionForm.createExamNow')} →</a></p>
       {:else}
         <div class="exam-list">
           {#each myExams as exam}
@@ -153,8 +154,8 @@
               <div>
                 <div class="exam-title">{exam.title}</div>
                 <div class="exam-meta">
-                  {exam.questions_count ?? '?'} câu · {exam.time_limit} phút
-                  {exam.is_published ? '' : ' · Nháp'}
+                  {$t('collectionForm.examMeta', { n: exam.questions_count ?? '?', min: exam.time_limit })}
+                  {exam.is_published ? '' : ' · ' + $t('examForm.publishDraft')}
                 </div>
               </div>
             </div>
@@ -167,31 +168,31 @@
   <!-- Right: badge + publish -->
   <div>
     <div class="card">
-      <h2>🏅 Huy hiệu hoàn thành</h2>
+      <h2>🏅 {$t('collectionForm.badgeTitle')}</h2>
       <p style="font-size:0.82rem; color:var(--muted); margin-bottom:0.75rem">
-        Student sẽ nhận huy hiệu này khi hoàn thành tất cả đề thi trong bộ.
+        {$t('collectionForm.badgeHint')}
       </p>
-      <BadgePicker bind:value={badgeUrl} label="huy hiệu" />
+      <BadgePicker bind:value={badgeUrl} label={$t('badgePicker.defaultLabel')} />
     </div>
 
     <div class="card">
-      <h2>⚙️ Cài đặt</h2>
+      <h2>⚙️ {$t('collectionForm.settingsTitle')}</h2>
       <div class="toggle-row">
         <label class="toggle">
           <input type="checkbox" bind:checked={isPublished} />
           <div class="toggle-track"></div>
           <div class="toggle-thumb"></div>
         </label>
-        <span style="font-size:0.9rem">Xuất bản ngay</span>
+        <span style="font-size:0.9rem">{$t('examForm.publishNow')}</span>
       </div>
       <p style="font-size:0.78rem; color:var(--muted); margin-top:0.5rem">
-        Chỉ bộ đề đã xuất bản mới hiển thị với student và kích hoạt tặng huy hiệu.
+        {$t('collectionForm.publishHint')}
       </p>
     </div>
 
     {#if error}<p class="error">{error}</p>{/if}
     <button class="btn-save" onclick={save} disabled={saving}>
-      {saving ? 'Đang lưu...' : '✓ Tạo bộ đề'}
+      {saving ? $t('common.saving') : $t('collectionForm.createBtn')}
     </button>
   </div>
 </div>

@@ -5,6 +5,7 @@
   import { onMount } from 'svelte'
   import { page } from '$app/stores'
   import { marked } from 'marked'
+  import { t } from '$lib/i18n'
 
   let submission = $state(null)
   let exam = $state(null)
@@ -12,12 +13,12 @@
   let error = $state('')
 
   // ── Report a problem ──────────────────────────────────────────────────────
-  const REPORT_CATEGORIES = [
-    { value: 'question_wrong', label: 'Câu hỏi sai / khó hiểu' },
-    { value: 'answer_wrong',   label: 'Đáp án sai' },
-    { value: 'image_issue',    label: 'Hình ảnh lỗi / thiếu' },
-    { value: 'other',          label: 'Khác' }
-  ]
+  const REPORT_CATEGORIES = $derived([
+    { value: 'question_wrong', label: $t('examResult.reportCatQuestionWrong') },
+    { value: 'answer_wrong',   label: $t('examResult.reportCatAnswerWrong') },
+    { value: 'image_issue',    label: $t('examResult.reportCatImageIssue') },
+    { value: 'other',          label: $t('examResult.reportCatOther') }
+  ])
   let showReport = $state(false)
   let reportCategory = $state('question_wrong')
   let reportDescription = $state('')
@@ -37,10 +38,10 @@
         reportDescription = ''
       } else {
         const err = await res.json().catch(() => ({}))
-        reportError = err.error ?? 'Không gửi được báo cáo'
+        reportError = err.error ?? $t('examResult.reportSendFailed')
       }
     } catch {
-      reportError = 'Không thể kết nối server'
+      reportError = $t('imageUpload.connectionError')
     } finally {
       reportSubmitting = false
     }
@@ -52,22 +53,22 @@
     if (!submissionId) { goto('/exams'); return }
     try {
       const res = await submissionApi.get(submissionId)
-      if (!res.ok) { error = 'Không tìm thấy kết quả'; return }
+      if (!res.ok) { error = $t('examResult.notFound'); return }
       submission = await res.json()
       const examRes = await examApi.get(submission.exam_id)
       if (examRes.ok) exam = await examRes.json()
     } catch {
-      error = 'Không thể tải kết quả'
+      error = $t('examResult.loadFailed')
     } finally {
       loading = false
     }
   })
 
   function grade(pct) {
-    if (pct >= 90) return { label: 'Xuất sắc!',  color: '#16a34a', bg: '#dcfce7', ring: '#22c55e' }
-    if (pct >= 70) return { label: 'Tốt',         color: '#1d4ed8', bg: '#dbeafe', ring: '#6366f1' }
-    if (pct >= 50) return { label: 'Trung bình',  color: '#92400e', bg: '#fef9c3', ring: '#f59e0b' }
-    return           { label: 'Chưa đạt',         color: '#dc2626', bg: '#fee2e2', ring: '#ef4444' }
+    if (pct >= 90) return { label: $t('examResult.gradeExcellent'),  color: '#16a34a', bg: '#dcfce7', ring: '#22c55e' }
+    if (pct >= 70) return { label: $t('examResult.gradeGood'),         color: '#1d4ed8', bg: '#dbeafe', ring: '#6366f1' }
+    if (pct >= 50) return { label: $t('examResult.gradeAverage'),  color: '#92400e', bg: '#fef9c3', ring: '#f59e0b' }
+    return           { label: $t('examResult.gradeFail'),         color: '#dc2626', bg: '#fee2e2', ring: '#ef4444' }
   }
 
   const hasPassed = $derived(
@@ -245,7 +246,7 @@
 </style>
 
 {#if loading}
-  <div style="text-align:center;padding:4rem 0;color:var(--muted)">Đang tải kết quả...</div>
+  <div style="text-align:center;padding:4rem 0;color:var(--muted)">{$t('examResult.loadingResult')}</div>
 {:else if error}
   <p class="error">{error}</p>
 {:else if submission}
@@ -253,12 +254,12 @@
 <div class="result-hero">
   {#if hasPassed}
     <div class="celebrate">🎉</div>
-    <h1>Chúc mừng!</h1>
-    <p class="subtitle">Bạn đã hoàn thành xuất sắc bài thi này.</p>
+    <h1>{$t('examResult.congrats')}</h1>
+    <p class="subtitle">{$t('examResult.congratsSub')}</p>
   {:else}
     <div class="celebrate">💪</div>
-    <h1>Kết quả bài thi</h1>
-    <p class="subtitle">Tiếp tục cố gắng, bạn sẽ làm được!</p>
+    <h1>{$t('examResult.resultTitle')}</h1>
+    <p class="subtitle">{$t('examResult.keepTryingSub')}</p>
   {/if}
 
   <div class="score-ring-wrap">
@@ -271,41 +272,41 @@
   <div class="stats-row">
     <div class="stat-item">
       <div class="val">{submission.score}</div>
-      <div class="lbl">Điểm đạt</div>
+      <div class="lbl">{$t('examResult.scoreEarned')}</div>
     </div>
     <div class="stat-item">
       <div class="val">{submission.total_points}</div>
-      <div class="lbl">Tổng điểm</div>
+      <div class="lbl">{$t('examResult.totalPoints')}</div>
     </div>
     {#if exam?.passing_score != null}
     <div class="stat-item">
       <div class="val">{exam.passing_score}%</div>
-      <div class="lbl">Điểm đạt yêu cầu</div>
+      <div class="lbl">{$t('examResult.requiredScore')}</div>
     </div>
     {/if}
   </div>
 
   {#if hasPassed}
-    <div class="pass-banner">✓ Bạn đã vượt qua bài kiểm tra!</div>
+    <div class="pass-banner">✓ {$t('examResult.passBanner')}</div>
   {:else}
     <div class="fail-banner">
-      <strong>Chưa đạt yêu cầu</strong>
-      Cần đạt {exam?.passing_score ?? submission.results_detail?.passing_score}% để qua. Hãy ôn lại và thử lại nhé!
+      <strong>{$t('examResult.failTitle')}</strong>
+      {$t('examResult.failMsg', { pct: exam?.passing_score ?? submission.results_detail?.passing_score })}
     </div>
   {/if}
 
   <div class="actions">
     {#if hasPassed}
-      <a href="/exams/{submission.exam_id}" class="btn-outline">← Về đề thi</a>
+      <a href="/exams/{submission.exam_id}" class="btn-outline">← {$t('examResult.backToExam')}</a>
     {/if}
-    <a href="/exams" class="btn-primary">Xem tất cả đề</a>
+    <a href="/exams" class="btn-primary">{$t('examResult.viewAllExams')}</a>
     {#if !hasPassed}
-      <a href="/exams/{submission.exam_id}/take" class="btn-retry">Làm lại</a>
+      <a href="/exams/{submission.exam_id}/take" class="btn-retry">{$t('dashboard.retake')}</a>
     {/if}
   </div>
 
   <button class="report-link" onclick={() => { showReport = true; reportDone = false; reportError = '' }}>
-    ⚠ Báo lỗi đề thi này
+    ⚠ {$t('examResult.reportThisExam')}
   </button>
 </div>
 
@@ -315,16 +316,16 @@
     {#if reportDone}
       <div class="report-success">
         <div class="report-success-icon">✅</div>
-        <h3>Đã gửi báo cáo</h3>
-        <p>Cảm ơn bạn! Giáo viên sẽ xem xét. Bạn có thể theo dõi trạng thái trong trang cá nhân.</p>
-        <button class="btn-primary" onclick={() => (showReport = false)}>Đóng</button>
+        <h3>{$t('examResult.reportSent')}</h3>
+        <p>{$t('examResult.reportSentMsg')}</p>
+        <button class="btn-primary" onclick={() => (showReport = false)}>{$t('common.close')}</button>
       </div>
     {:else}
-      <h3>Báo lỗi đề thi</h3>
-      <p class="report-sub">Giúp chúng tôi cải thiện chất lượng đề thi.</p>
+      <h3>{$t('examResult.reportModalTitle')}</h3>
+      <p class="report-sub">{$t('examResult.reportModalSub')}</p>
 
       <label class="report-field">
-        <span>Loại vấn đề</span>
+        <span>{$t('examResult.reportCategoryLabel')}</span>
         <select bind:value={reportCategory}>
           {#each REPORT_CATEGORIES as c}
             <option value={c.value}>{c.label}</option>
@@ -333,21 +334,21 @@
       </label>
 
       <label class="report-field">
-        <span>Mô tả chi tiết</span>
+        <span>{$t('examResult.reportDescLabel')}</span>
         <textarea
           bind:value={reportDescription}
           rows="4"
           maxlength="4000"
-          placeholder="Mô tả cụ thể vấn đề bạn gặp phải (câu nào, sai chỗ nào...)"
+          placeholder={$t('examResult.reportDescPlaceholder')}
         ></textarea>
       </label>
 
       {#if reportError}<p class="report-err">{reportError}</p>{/if}
 
       <div class="report-actions">
-        <button class="btn-outline" onclick={() => (showReport = false)}>Huỷ</button>
+        <button class="btn-outline" onclick={() => (showReport = false)}>{$t('common.cancel')}</button>
         <button class="btn-primary" onclick={submitReport} disabled={reportSubmitting || !reportDescription.trim()}>
-          {reportSubmitting ? 'Đang gửi...' : 'Gửi báo cáo'}
+          {reportSubmitting ? $t('examResult.sending') : $t('examResult.sendReport')}
         </button>
       </div>
     {/if}
@@ -356,18 +357,18 @@
 {/if}
 
 {#if hasPassed && submission.results_detail?.show_explanation && submission.results_detail?.questions?.length}
-<h2 class="review-header">Xem lại bài làm</h2>
+<h2 class="review-header">{$t('examResult.reviewHeader')}</h2>
 {#each submission.results_detail.questions as q, i}
 {@const corrects = q.correct_answer.split(',').filter(Boolean)}
 <div class="q-card">
   <div class="q-head">
     <span class="q-icon">{q.is_correct ? '✅' : '❌'}</span>
-    <span class="q-num">Câu {i + 1}</span>
-    <span class="q-pts">{q.earned}/{q.points} điểm</span>
+    <span class="q-num">{$t('examTake.questionN', { n: i + 1 })}</span>
+    <span class="q-pts">{$t('examResult.earnedOfPoints', { earned: q.earned, points: q.points })}</span>
   </div>
   <p class="q-text">{q.content}</p>
   {#if q.question_type === 'multiple'}
-    <p class="multi-hint">Đáp án đúng: {corrects.join(', ')}</p>
+    <p class="multi-hint">{$t('examResult.correctAnswerIs', { keys: corrects.join(', ') })}</p>
   {/if}
   <ul class="options">
     {#each q.options as opt}
@@ -377,7 +378,7 @@
   </ul>
   {#if q.explanation}
     <div class="expl-box">
-      <p class="expl-title">Giải thích</p>
+      <p class="expl-title">{$t('examDetail.explanationLabel')}</p>
       {@html marked(q.explanation)}
     </div>
   {/if}
@@ -386,8 +387,8 @@
 
 {:else if !hasPassed}
 <div class="locked-box">
-  <strong>🔒 Chưa đạt — không xem được bài làm</strong>
-  <p>Cần đạt {exam?.passing_score ?? submission.results_detail?.passing_score}% để mở khoá xem lại. Hãy làm lại bài!</p>
+  <strong>🔒 {$t('examResult.lockedTitle')}</strong>
+  <p>{$t('examResult.lockedMsg', { pct: exam?.passing_score ?? submission.results_detail?.passing_score })}</p>
 </div>
 {/if}
 {/if}

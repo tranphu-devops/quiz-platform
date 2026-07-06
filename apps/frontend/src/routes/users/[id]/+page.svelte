@@ -5,6 +5,7 @@
   import { user } from '$lib/stores/auth'
   import { userApi, examApi } from '$lib/api'
   import { htmlToText } from '$lib/sanitizeHtml'
+  import { t, locale, localeCode } from '$lib/i18n'
 
   let profile   = $state(null)
   let exams     = $state([])
@@ -26,19 +27,19 @@
 
   function fmtJoined(date) {
     if (!date) return ''
-    return new Date(date).toLocaleDateString('vi-VN', { year: 'numeric', month: 'long' })
+    return new Date(date).toLocaleDateString(localeCode($locale), { year: 'numeric', month: 'long' })
   }
 
   function roleBadge(role) {
-    if (role === 'admin')   return { label: 'Admin',   color: '#dc2626', bg: 'rgba(220,38,38,0.1)' }
-    if (role === 'teacher') return { label: 'Giáo viên', color: '#b45309', bg: 'rgba(217,119,6,0.1)' }
-    return { label: 'Học viên', color: '#2563eb', bg: 'rgba(37,99,235,0.1)' }
+    if (role === 'admin')   return { label: $t('roles.admin'),   color: '#dc2626', bg: 'rgba(220,38,38,0.1)' }
+    if (role === 'teacher') return { label: $t('roles.teacher'), color: '#b45309', bg: 'rgba(217,119,6,0.1)' }
+    return { label: $t('roles.student'), color: '#2563eb', bg: 'rgba(37,99,235,0.1)' }
   }
 
   function genderLabel(g) {
-    if (g === 'male') return 'Nam'
-    if (g === 'female') return 'Nữ'
-    if (g === 'other') return 'Khác'
+    if (g === 'male') return $t('profile.genderMale')
+    if (g === 'female') return $t('profile.genderFemale')
+    if (g === 'other') return $t('profile.genderOther')
     return null
   }
 
@@ -50,10 +51,10 @@
         userApi.getPublicProfile(userId),
         examApi.listByCreator(userId)
       ])
-      if (!profileRes.ok) { error = 'Không tìm thấy người dùng'; return }
+      if (!profileRes.ok) { error = $t('usersPublic.notFound'); return }
       profile = await profileRes.json()
       if (examRes.ok) exams = await examRes.json()
-    } catch { error = 'Không thể kết nối server' } finally { loading = false }
+    } catch { error = $t('imageUpload.connectionError') } finally { loading = false }
   })
 
   const SOCIAL = [
@@ -75,7 +76,7 @@
 </script>
 
 {#if loading}
-  <div class="loading-wrap">Đang tải...</div>
+  <div class="loading-wrap">{$t('common.loading')}</div>
 {:else if error}
   <div class="error-wrap">{error}</div>
 {:else if profile}
@@ -118,7 +119,7 @@
             <span class="meta-chip">✨ {profile.interests}</span>
           {/if}
           {#if profile.joined_at}
-            <span class="meta-chip">📅 Tham gia {fmtJoined(profile.joined_at)}</span>
+            <span class="meta-chip">📅 {$t('usersPublic.joined', { date: fmtJoined(profile.joined_at) })}</span>
           {/if}
         </div>
 
@@ -139,12 +140,12 @@
   <!-- ── Exams ───────────────────────────────────────────────────────────── -->
   <section class="exams-section">
     <div class="section-heading">
-      Đề thi đã tạo
+      {$t('usersPublic.examsCreated')}
       <span class="count-pill">{exams.length}</span>
     </div>
 
     {#if exams.length === 0}
-      <p class="empty">Chưa có đề thi nào được công bố.</p>
+      <p class="empty">{$t('usersPublic.noExamsPublished')}</p>
     {:else}
       <div class="exam-grid">
         {#each exams as exam}
@@ -164,12 +165,12 @@
                 <p class="exam-desc">{htmlToText(exam.description)}</p>
               {/if}
               <div class="exam-meta">
-                <span>{exam.time_limit} phút</span>
+                <span>{$t('exams.minutes', { n: exam.time_limit })}</span>
                 {#if exam.passing_score != null}
-                  <span>Đạt ≥{exam.passing_score}%</span>
+                  <span>{$t('exams.passThreshold', { pct: exam.passing_score })}</span>
                 {/if}
                 {#if exam.submission_count > 0}
-                  <span>{exam.submission_count} lượt thi</span>
+                  <span>{$t('exams.attemptsCount', { n: exam.submission_count })}</span>
                 {/if}
               </div>
             </div>

@@ -7,6 +7,7 @@
   import Card from '$lib/components/ui/Card.svelte'
   import Button from '$lib/components/ui/Button.svelte'
   import Input from '$lib/components/ui/Input.svelte'
+  import { t, locale, localeCode } from '$lib/i18n'
 
   let tab = $state('users')
 
@@ -29,15 +30,15 @@
 
   async function submitCreate() {
     createError = ''
-    if (!createForm.email || !createForm.password) { createError = 'Email và mật khẩu là bắt buộc'; return }
+    if (!createForm.email || !createForm.password) { createError = $t('admin.emailPasswordRequired'); return }
     createLoading = true
     try {
       const res = await userApi.adminCreateUser(createForm)
       const d = await res.json()
-      if (!res.ok) { createError = d.error ?? 'Lỗi tạo tài khoản'; return }
+      if (!res.ok) { createError = d.error ?? $t('admin.createAccountError'); return }
       users = [{ ...d, created_at: new Date().toISOString(), last_sign_in_at: null }, ...users]
       closeCreate()
-    } catch { createError = 'Không thể kết nối server' } finally { createLoading = false }
+    } catch { createError = $t('imageUpload.connectionError') } finally { createLoading = false }
   }
 
   // ── Settings tab ───────────────────────────────────────────────────────────
@@ -80,7 +81,7 @@
   }
 
   async function deleteCollection(id) {
-    if (!confirm('Xoá bộ đề này?')) return
+    if (!confirm($t('collections.confirmDelete'))) return
     const res = await collectionApi.remove(id)
     if (res.ok) collections = collections.filter(c => c.id !== id)
   }
@@ -101,36 +102,36 @@
     settingsError = ''; settingsSuccess = false; settingsSaving = true
     try {
       const res = await userApi.updateSettings(settings)
-      if (!res.ok) { const d = await res.json(); settingsError = d.error ?? 'Lỗi lưu settings'; return }
+      if (!res.ok) { const d = await res.json(); settingsError = d.error ?? $t('admin.saveSettingsError'); return }
       settingsSuccess = true
-    } catch { settingsError = 'Không thể kết nối server' } finally { settingsSaving = false }
+    } catch { settingsError = $t('imageUpload.connectionError') } finally { settingsSaving = false }
   }
 
   async function saveCreditSettings() {
     creditError = ''; creditSuccess = false; creditSaving = true
     try {
       const res = await userApi.updateSettings(creditSettings)
-      if (!res.ok) { const d = await res.json(); creditError = d.error ?? 'Lỗi lưu cài đặt'; return }
+      if (!res.ok) { const d = await res.json(); creditError = d.error ?? $t('admin.saveConfigError'); return }
       creditSuccess = true
-    } catch { creditError = 'Không thể kết nối server' } finally { creditSaving = false }
+    } catch { creditError = $t('imageUpload.connectionError') } finally { creditSaving = false }
   }
 
   async function loadUsers() {
     loading = true; error = ''
     try {
       const res = await userApi.adminListUsers()
-      if (!res.ok) { error = `Lỗi ${res.status}`; return }
+      if (!res.ok) { error = $t('admin.errorStatus', { status: res.status }); return }
       users = await res.json()
-    } catch { error = 'Không thể tải danh sách người dùng' } finally { loading = false }
+    } catch { error = $t('admin.loadUsersError') } finally { loading = false }
   }
 
   async function changeRole(id, role) {
     updating = { ...updating, [id]: true }
     try {
       const res = await userApi.adminUpdateRole(id, role)
-      if (!res.ok) { const data = await res.json(); alert(data.error ?? 'Lỗi cập nhật role'); return }
+      if (!res.ok) { const data = await res.json(); alert(data.error ?? $t('admin.updateRoleError')); return }
       users = users.map(u => u.id === id ? { ...u, role } : u)
-    } catch { alert('Không thể cập nhật role') } finally {
+    } catch { alert($t('admin.updateRoleFailed')) } finally {
       const next = { ...updating }; delete next[id]; updating = next
     }
   }
@@ -139,14 +140,14 @@
   function cancelEditCredits(id) { const next = { ...editingCredits }; delete next[id]; editingCredits = next }
   async function saveUserCredits(u) {
     const val = parseInt(editingCredits[u.id], 10)
-    if (isNaN(val) || val < 0) { alert('Giá trị không hợp lệ'); return }
+    if (isNaN(val) || val < 0) { alert($t('admin.invalidValue')); return }
     savingCredits = { ...savingCredits, [u.id]: true }
     try {
       const res = await userApi.adminUpdateCredits(u.id, val)
-      if (!res.ok) { const d = await res.json(); alert(d.error ?? 'Lỗi'); return }
+      if (!res.ok) { const d = await res.json(); alert(d.error ?? $t('common.error')); return }
       users = users.map(x => x.id === u.id ? { ...x, credits: val } : x)
       cancelEditCredits(u.id)
-    } catch { alert('Không thể cập nhật') } finally {
+    } catch { alert($t('admin.updateFailed')) } finally {
       const next = { ...savingCredits }; delete next[u.id]; savingCredits = next
     }
   }
@@ -160,7 +161,7 @@
 
   function fmtDate(iso) {
     if (!iso) return '—'
-    return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    return new Date(iso).toLocaleDateString(localeCode($locale), { day: '2-digit', month: '2-digit', year: 'numeric' })
   }
 
   // ── Icon strings ───────────────────────────────────────────────────────────
@@ -178,13 +179,13 @@
   let totalBanned  = $derived(users.filter(u => u.role === 'banned').length)
 </script>
 
-<PageHeader title="Quản trị" />
+<PageHeader title={$t('nav.admin')} />
 
 <div class="tab-nav">
-  <button class="tab-btn" class:active={tab === 'users'}       onclick={() => tab = 'users'}>Người dùng</button>
-  <button class="tab-btn" class:active={tab === 'collections'} onclick={() => { tab = 'collections'; loadCollections() }}>Bộ đề</button>
-  <button class="tab-btn" class:active={tab === 'settings'}    onclick={() => tab = 'settings'}>Cài đặt upload</button>
-  <button class="tab-btn" class:active={tab === 'credits'}     onclick={() => tab = 'credits'}>Credits</button>
+  <button class="tab-btn" class:active={tab === 'users'}       onclick={() => tab = 'users'}>{$t('admin.tabUsers')}</button>
+  <button class="tab-btn" class:active={tab === 'collections'} onclick={() => { tab = 'collections'; loadCollections() }}>{$t('nav.collections')}</button>
+  <button class="tab-btn" class:active={tab === 'settings'}    onclick={() => tab = 'settings'}>{$t('admin.tabUploadSettings')}</button>
+  <button class="tab-btn" class:active={tab === 'credits'}     onclick={() => tab = 'credits'}>{$t('admin.tabCredits')}</button>
 </div>
 
 <div class="admin-content">
@@ -194,36 +195,36 @@
       {#if error}
         <p class="ix-error">{error}</p>
       {:else if loading}
-        <p class="ix-loading">Đang tải...</p>
+        <p class="ix-loading">{$t('common.loading')}</p>
       {:else}
         <!-- Stats row -->
         <div class="stats-row">
           <div class="stat-item">
             <span class="stat-num">{totalUsers}</span>
-            <span class="stat-lbl">Tổng người dùng</span>
+            <span class="stat-lbl">{$t('admin.totalUsers')}</span>
           </div>
           <div class="stat-sep"></div>
           <div class="stat-item">
             <span class="stat-num">{totalTeacher}</span>
-            <span class="stat-lbl">Giáo viên</span>
+            <span class="stat-lbl">{$t('roles.teacher')}</span>
           </div>
           <div class="stat-sep"></div>
           <div class="stat-item">
             <span class="stat-num">{totalStudent}</span>
-            <span class="stat-lbl">Học sinh</span>
+            <span class="stat-lbl">{$t('roles.student')}</span>
           </div>
           {#if totalBanned > 0}
             <div class="stat-sep"></div>
             <div class="stat-item">
               <span class="stat-num" style="color: var(--danger)">{totalBanned}</span>
-              <span class="stat-lbl">Bị khoá</span>
+              <span class="stat-lbl">{$t('roles.banned')}</span>
             </div>
           {/if}
         </div>
 
         <!-- Create user bar -->
         <div class="create-user-bar">
-          <Button onclick={openCreate}>+ Tạo tài khoản</Button>
+          <Button onclick={openCreate}>+ {$t('admin.createAccount')}</Button>
         </div>
 
         <!-- Users table -->
@@ -232,14 +233,14 @@
             <table class="ix-table">
               <thead>
                 <tr>
-                  <th>EMAIL</th>
-                  <th>HỌ TÊN</th>
-                  <th>VAI TRÒ</th>
-                  <th>CREDITS</th>
-                  <th>NGÀY TẠO</th>
-                  <th>ĐĂNG NHẬP</th>
-                  <th>ĐỔI ROLE</th>
-                  <th>THAO TÁC</th>
+                  <th>{$t('admin.thEmail')}</th>
+                  <th>{$t('admin.thFullName')}</th>
+                  <th>{$t('admin.thRole')}</th>
+                  <th>{$t('admin.thCredits')}</th>
+                  <th>{$t('admin.thCreatedAt')}</th>
+                  <th>{$t('admin.thLastLogin')}</th>
+                  <th>{$t('admin.thChangeRole')}</th>
+                  <th>{$t('admin.thActions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -249,7 +250,7 @@
                     <td class="td-email">{u.email}</td>
                     <td class="td-name">{u.full_name ?? '—'}</td>
                     <td>
-                      <span class="role-pill" style="background:{rc.bg};color:{rc.text}">{u.role}</span>
+                      <span class="role-pill" style="background:{rc.bg};color:{rc.text}">{$t(`roles.${u.role}`)}</span>
                     </td>
                     <td>
                       {#if editingCredits[u.id] !== undefined}
@@ -259,18 +260,18 @@
                             type="number"
                             min="0"
                             bind:value={editingCredits[u.id]}
-                            aria-label="Số credits mới"
+                            aria-label={$t('admin.newCreditsAria')}
                           />
                           <button
                             class="icon-btn icon-btn--green"
                             onclick={() => saveUserCredits(u)}
                             disabled={savingCredits[u.id]}
-                            aria-label="Lưu"
+                            aria-label={$t('common.save')}
                           >{@html I.check}</button>
                           <button
                             class="icon-btn"
                             onclick={() => cancelEditCredits(u.id)}
-                            aria-label="Hủy"
+                            aria-label={$t('common.cancel')}
                           >{@html I.x}</button>
                         </div>
                       {:else}
@@ -279,7 +280,7 @@
                           <button
                             class="icon-btn"
                             onclick={() => startEditCredits(u)}
-                            aria-label="Sửa credits"
+                            aria-label={$t('admin.editCreditsAria')}
                           >{@html I.edit}</button>
                         </div>
                       {/if}
@@ -292,16 +293,16 @@
                         value={u.role}
                         disabled={updating[u.id]}
                         onchange={(e) => changeRole(u.id, e.target.value)}
-                        aria-label="Đổi role cho {u.email}"
+                        aria-label={$t('admin.changeRoleAria', { email: u.email })}
                       >
-                        <option value="student">student</option>
-                        <option value="teacher">teacher</option>
-                        <option value="admin">admin</option>
-                        <option value="banned">banned</option>
+                        <option value="student">{$t('roles.student')}</option>
+                        <option value="teacher">{$t('roles.teacher')}</option>
+                        <option value="admin">{$t('roles.admin')}</option>
+                        <option value="banned">{$t('roles.banned')}</option>
                       </select>
                     </td>
                     <td>
-                      <a href="/admin/users/{u.id}/edit" class="edit-user-link">Sửa</a>
+                      <a href="/admin/users/{u.id}/edit" class="edit-user-link">{$t('common.edit')}</a>
                     </td>
                   </tr>
                 {/each}
@@ -309,32 +310,32 @@
             </table>
           </div>
         </Card>
-        <p class="ix-note">* Role mới có hiệu lực khi người dùng đăng nhập lại.</p>
+        <p class="ix-note">{$t('admin.roleNote')}</p>
       {/if}
     {/if}
 
     <!-- ── COLLECTIONS TAB ─────────────────────────────────────────────── -->
     {#if tab === 'collections'}
       {#if collectionsLoading}
-        <p class="ix-loading">Đang tải...</p>
+        <p class="ix-loading">{$t('common.loading')}</p>
       {:else if collections.length === 0}
-        <p class="ix-loading">Chưa có bộ đề nào.</p>
+        <p class="ix-loading">{$t('admin.noCollectionsYet')}</p>
       {:else}
         <!-- Stats row -->
         <div class="stats-row" style="margin-bottom:20px">
           <div class="stat-item">
             <span class="stat-num">{collections.length}</span>
-            <span class="stat-lbl">Tổng bộ đề</span>
+            <span class="stat-lbl">{$t('admin.totalCollections')}</span>
           </div>
           <div class="stat-sep"></div>
           <div class="stat-item">
             <span class="stat-num">{collections.filter(c => c.is_published).length}</span>
-            <span class="stat-lbl">Đã xuất bản</span>
+            <span class="stat-lbl">{$t('examDetail.publishedBadge')}</span>
           </div>
           <div class="stat-sep"></div>
           <div class="stat-item">
             <span class="stat-num">{collections.reduce((s,c) => s + (c.badge_count ?? 0), 0)}</span>
-            <span class="stat-lbl">Huy hiệu đã trao</span>
+            <span class="stat-lbl">{$t('admin.badgesAwarded')}</span>
           </div>
         </div>
 
@@ -343,11 +344,11 @@
             <table class="ix-table">
               <thead>
                 <tr>
-                  <th>BỘ ĐỀ</th>
-                  <th>ĐỀ THI</th>
-                  <th>HUY HIỆU</th>
-                  <th>TRẠNG THÁI</th>
-                  <th>THAO TÁC</th>
+                  <th>{$t('admin.thCollection')}</th>
+                  <th>{$t('admin.thExams')}</th>
+                  <th>{$t('admin.thBadges')}</th>
+                  <th>{$t('admin.thStatus')}</th>
+                  <th>{$t('admin.thActions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -374,26 +375,26 @@
                     <td class="td-num">{col.badge_count ?? 0}</td>
                     <td>
                       <span class="status-pill" class:published={col.is_published}>
-                        {col.is_published ? 'Xuất bản' : 'Nháp'}
+                        {col.is_published ? $t('examDetail.publishedBadge') : $t('examDetail.draftBadge')}
                       </span>
                     </td>
                     <td>
                       <div class="row-actions">
-                        <a href="/collections/{col.id}/edit" class="action-btn" aria-label="Sửa bộ đề">
-                          {@html I.edit} Sửa
+                        <a href="/collections/{col.id}/edit" class="action-btn" aria-label={$t('admin.editCollectionAria')}>
+                          {@html I.edit} {$t('common.edit')}
                         </a>
                         <button
                           class="action-btn"
                           onclick={() => toggleCollectionPublish(col)}
-                          aria-label="{col.is_published ? 'Gỡ xuất bản' : 'Xuất bản'} bộ đề"
+                          aria-label={$t('admin.togglePublishAria', { action: col.is_published ? $t('examDetail.unpublish') : $t('examDetail.publish') })}
                         >
                           {@html I.publish}
-                          {col.is_published ? 'Gỡ' : 'Xuất bản'}
+                          {col.is_published ? $t('admin.unpublishShort') : $t('examDetail.publish')}
                         </button>
                         <button
                           class="action-btn action-btn--danger"
                           onclick={() => deleteCollection(col.id)}
-                          aria-label="Xoá bộ đề"
+                          aria-label={$t('admin.deleteCollectionAria')}
                         >
                           {@html I.trash}
                         </button>
@@ -411,36 +412,36 @@
     <!-- ── SETTINGS TAB ────────────────────────────────────────────────── -->
     {#if tab === 'settings'}
       <div class="settings-wrap">
-        <Card title="Cài đặt upload" subtitle="Giới hạn kích thước và định dạng file ảnh người dùng có thể upload.">
+        <Card title={$t('admin.uploadSettingsTitle')} subtitle={$t('admin.uploadSettingsSubtitle')}>
           {#if settingsLoading}
-            <p class="ix-loading">Đang tải...</p>
+            <p class="ix-loading">{$t('common.loading')}</p>
           {:else}
             {#if settingsError}<p class="ix-error">{settingsError}</p>{/if}
-            {#if settingsSuccess}<p class="ix-success">Đã lưu cài đặt!</p>{/if}
+            {#if settingsSuccess}<p class="ix-success">{$t('admin.settingsSaved')}</p>{/if}
 
             <div class="form-stack">
               <Input
                 id="max_size"
-                label="Dung lượng tối đa (MB)"
+                label={$t('admin.maxSizeLabel')}
                 type="number"
                 bind:value={settings.upload_max_size_mb}
                 min="1"
                 max="50"
                 step="1"
-                hint="Áp dụng cho tất cả loại ảnh upload"
+                hint={$t('admin.maxSizeHint')}
                 style="width:120px"
               />
               <Input
                 id="allowed_types"
-                label="Loại file cho phép (MIME types, cách nhau bằng dấu phẩy)"
+                label={$t('admin.allowedTypesLabel')}
                 type="text"
                 bind:value={settings.upload_allowed_types}
                 placeholder="image/jpeg,image/png,image/webp,image/gif"
-                hint="Ví dụ: image/jpeg,image/png,image/webp,image/gif"
+                hint={$t('admin.allowedTypesHint')}
               />
               <div>
                 <Button onclick={saveSettings} loading={settingsSaving} disabled={settingsSaving}>
-                  Lưu cài đặt
+                  {$t('admin.saveSettings')}
                 </Button>
               </div>
             </div>
@@ -452,47 +453,47 @@
     <!-- ── CREDITS TAB ─────────────────────────────────────────────────── -->
     {#if tab === 'credits'}
       <div class="settings-wrap">
-        <Card title="Cấu hình Credits" subtitle="Điều chỉnh số credits mặc định và chi phí nâng cấp tài khoản.">
+        <Card title={$t('admin.creditConfigTitle')} subtitle={$t('admin.creditConfigSubtitle')}>
           {#if settingsLoading}
-            <p class="ix-loading">Đang tải...</p>
+            <p class="ix-loading">{$t('common.loading')}</p>
           {:else}
             {#if creditError}<p class="ix-error">{creditError}</p>{/if}
-            {#if creditSuccess}<p class="ix-success">Đã lưu cài đặt credit!</p>{/if}
+            {#if creditSuccess}<p class="ix-success">{$t('admin.creditSettingsSaved')}</p>{/if}
 
             <div class="form-stack">
               <Input
                 id="default_credits"
-                label="Credit mặc định cho user mới"
+                label={$t('admin.defaultCreditsLabel')}
                 type="number"
                 bind:value={creditSettings.default_credits}
                 min="0"
                 step="1"
-                hint="Số credit được cấp khi tạo tài khoản mới"
+                hint={$t('admin.defaultCreditsHint')}
                 style="width:120px"
               />
               <Input
                 id="teacher_upgrade_cost"
-                label="Credit để nâng cấp lên Teacher"
+                label={$t('admin.teacherUpgradeCostLabel')}
                 type="number"
                 bind:value={creditSettings.teacher_upgrade_cost}
                 min="0"
                 step="1"
-                hint="Student cần số credit này để mua gói Teacher"
+                hint={$t('admin.teacherUpgradeCostHint')}
                 style="width:120px"
               />
               <Input
                 id="default_exam_cost"
-                label="Credit mặc định mỗi bài thi"
+                label={$t('admin.defaultExamCostLabel')}
                 type="number"
                 bind:value={creditSettings.default_exam_cost}
                 min="0"
                 step="1"
-                hint="Áp dụng khi giáo viên không cài đặt giá riêng"
+                hint={$t('admin.defaultExamCostHint')}
                 style="width:120px"
               />
               <div>
                 <Button onclick={saveCreditSettings} loading={creditSaving} disabled={creditSaving}>
-                  Lưu cài đặt
+                  {$t('admin.saveSettings')}
                 </Button>
               </div>
             </div>
@@ -505,10 +506,10 @@
 <!-- ── Create user modal ──────────────────────────────────────────────── -->
 {#if showCreate}
   <div class="modal-overlay" onclick={closeCreate} role="presentation">
-    <div class="modal-box" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Tạo tài khoản mới">
+    <div class="modal-box" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={$t('admin.createAccountModalTitle')}>
       <div class="modal-header">
-        <h2>Tạo tài khoản mới</h2>
-        <button class="modal-close" onclick={closeCreate} aria-label="Đóng">✕</button>
+        <h2>{$t('admin.createAccountModalTitle')}</h2>
+        <button class="modal-close" onclick={closeCreate} aria-label={$t('common.close')}>✕</button>
       </div>
 
       <div class="modal-body">
@@ -522,28 +523,28 @@
         </div>
 
         <div class="form-row">
-          <label for="c-password">Mật khẩu <span class="req">*</span></label>
-          <Input id="c-password" type="password" bind:value={createForm.password} placeholder="Tối thiểu 8 ký tự" />
+          <label for="c-password">{$t('admin.passwordLabel')} <span class="req">*</span></label>
+          <Input id="c-password" type="password" bind:value={createForm.password} placeholder={$t('admin.passwordPlaceholder')} />
         </div>
 
         <div class="form-row">
-          <label for="c-fullname">Họ tên</label>
-          <Input id="c-fullname" type="text" bind:value={createForm.full_name} placeholder="Nguyễn Văn A" />
+          <label for="c-fullname">{$t('admin.thFullName')}</label>
+          <Input id="c-fullname" type="text" bind:value={createForm.full_name} placeholder={$t('admin.fullNamePlaceholder')} />
         </div>
 
         <div class="form-row">
-          <label for="c-role">Vai trò</label>
+          <label for="c-role">{$t('admin.roleLabel')}</label>
           <select id="c-role" class="modal-select" bind:value={createForm.role}>
-            <option value="student">Student</option>
-            <option value="teacher">Teacher</option>
+            <option value="student">{$t('roles.student')}</option>
+            <option value="teacher">{$t('roles.teacher')}</option>
           </select>
         </div>
       </div>
 
       <div class="modal-footer">
-        <Button variant="ghost" onclick={closeCreate} disabled={createLoading}>Huỷ</Button>
+        <Button variant="ghost" onclick={closeCreate} disabled={createLoading}>{$t('common.cancel')}</Button>
         <Button onclick={submitCreate} disabled={createLoading}>
-          {createLoading ? 'Đang tạo...' : 'Tạo tài khoản'}
+          {createLoading ? $t('admin.creatingAccount') : $t('admin.createAccount')}
         </Button>
       </div>
     </div>

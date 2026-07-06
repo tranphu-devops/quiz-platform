@@ -1,9 +1,11 @@
 <script>
   import { marked } from 'marked'
+  import { t } from '$lib/i18n'
 
-  let { value = $bindable(''), placeholder = 'Nhập nội dung markdown...', rows = 5 } = $props()
+  let { value = $bindable(''), placeholder = '', rows = 5 } = $props()
 
   let mode = $state('write')
+  const effectivePlaceholder = $derived(placeholder || $t('markdownEditor.placeholder'))
   const html = $derived(marked(value || ''))
 </script>
 
@@ -24,17 +26,17 @@
 
 <div class="md-editor">
   <div class="tabs">
-    <button type="button" class="tab" class:active={mode === 'write'} onclick={() => mode = 'write'}>Soạn thảo</button>
-    <button type="button" class="tab" class:active={mode === 'preview'} onclick={() => mode = 'preview'}>Xem trước</button>
+    <button type="button" class="tab" class:active={mode === 'write'} onclick={() => mode = 'write'}>{$t('markdownEditor.write')}</button>
+    <button type="button" class="tab" class:active={mode === 'preview'} onclick={() => mode = 'preview'}>{$t('markdownEditor.preview')}</button>
   </div>
   {#if mode === 'write'}
-    <textarea bind:value {rows} {placeholder}></textarea>
+    <textarea bind:value {rows} placeholder={effectivePlaceholder}></textarea>
   {:else}
     <div class="preview">
       {#if value}
         {@html html}
       {:else}
-        <span class="empty">Chưa có nội dung</span>
+        <span class="empty">{$t('markdownEditor.empty')}</span>
       {/if}
     </div>
   {/if}

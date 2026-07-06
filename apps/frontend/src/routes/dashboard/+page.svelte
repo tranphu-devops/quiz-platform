@@ -3,6 +3,7 @@
   import { user, session } from '$lib/stores/auth'
   import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
+  import { t, locale, localeCode } from '$lib/i18n'
 
   let loading = $state(true)
   let error = $state('')
@@ -52,7 +53,7 @@
           if (uRes.ok) { const users = await uRes.json(); userMap = Object.fromEntries(users.map(u => [u.id, u])) }
         }
       }
-    } catch { error = 'Không thể tải dữ liệu' }
+    } catch { error = $t('common.loadError') }
     finally  { loading = false }
   })
 
@@ -62,7 +63,7 @@
   }
 
   function fmtDate(s) {
-    return new Date(s).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
+    return new Date(s).toLocaleString(localeCode($locale), { dateStyle: 'short', timeStyle: 'short' })
   }
 
   function timeRemaining(expiresAt) {
@@ -199,7 +200,7 @@
 </style>
 
 {#if loading}
-  <div style="color:var(--muted);padding:2rem 0">Đang tải...</div>
+  <div style="color:var(--muted);padding:2rem 0">{$t('common.loading')}</div>
 {:else if error}
   <p class="error">{error}</p>
 {:else}
@@ -207,20 +208,20 @@
 <!-- ── STUDENT ─────────────────────────────────────────────────────────────── -->
 {#if $user.role === 'student'}
 <div class="page-header">
-  <h1 class="greeting">Xin chào, <span>{$session?.user?.user_metadata?.full_name?.split(' ').pop() || 'bạn'}!</span></h1>
-  <span class="role-pill student">🎓 Học sinh</span>
+  <h1 class="greeting">{$t('dashboard.greeting')}, <span>{$session?.user?.user_metadata?.full_name?.split(' ').pop() || $t('dashboard.you')}!</span></h1>
+  <span class="role-pill student">🎓 {$t('roles.student')}</span>
 </div>
 
 <div class="stats">
   <div class="stat">
     <div class="stat-icon">📝</div>
     <div class="stat-num indigo">{studentRows.length}</div>
-    <div class="stat-label">Đề đã thi</div>
+    <div class="stat-label">{$t('dashboard.examsTaken')}</div>
   </div>
   <div class="stat">
     <div class="stat-icon">✅</div>
     <div class="stat-num green">{studentPassed}</div>
-    <div class="stat-label">Đã pass</div>
+    <div class="stat-label">{$t('dashboard.passed')}</div>
     {#if studentRows.length > 0}
       <div class="stat-bar"><div class="stat-bar-fill" style="width:{Math.round(studentPassed/studentRows.length*100)}%"></div></div>
     {/if}
@@ -228,20 +229,20 @@
   <div class="stat">
     <div class="stat-icon">⏳</div>
     <div class="stat-num red">{studentRows.length - studentPassed}</div>
-    <div class="stat-label">Chưa pass</div>
+    <div class="stat-label">{$t('dashboard.notPassed')}</div>
   </div>
   {#if inProgressSubs.length > 0}
   <div class="stat">
     <div class="stat-icon">▶️</div>
     <div class="stat-num amber">{inProgressSubs.length}</div>
-    <div class="stat-label">Đang thi dở</div>
+    <div class="stat-label">{$t('dashboard.inProgress')}</div>
   </div>
   {/if}
 </div>
 
 {#if inProgressSubs.length > 0}
 <div class="section-header">
-  <span class="section-title">Bài thi đang làm dở</span>
+  <span class="section-title">{$t('dashboard.inProgressSection')}</span>
 </div>
 <div class="ip-cards">
   {#each inProgressSubs as sub}
@@ -249,25 +250,25 @@
   <div class="ip-card">
     <div class="ip-icon">📋</div>
     <div class="ip-body">
-      <div class="ip-title">{exam?.title ?? 'Đề thi'}</div>
-      <div class="ip-meta">Còn lại: <span class="ip-timer">{timeRemaining(sub.expires_at)}</span></div>
+      <div class="ip-title">{exam?.title ?? $t('dashboard.examFallback')}</div>
+      <div class="ip-meta">{$t('dashboard.timeLeft')}: <span class="ip-timer">{timeRemaining(sub.expires_at)}</span></div>
     </div>
-    <a href="/exams/{sub.exam_id}/take" class="btn btn-amber">Tiếp tục →</a>
+    <a href="/exams/{sub.exam_id}/take" class="btn btn-amber">{$t('dashboard.continue')} →</a>
   </div>
   {/each}
 </div>
 {/if}
 
 <div class="section-header">
-  <span class="section-title">Bài thi của bạn</span>
-  <a href="/exams" class="section-link">Xem tất cả đề →</a>
+  <span class="section-title">{$t('dashboard.yourExams')}</span>
+  <a href="/exams" class="section-link">{$t('dashboard.viewAllExams')} →</a>
 </div>
 <div class="table-wrap">
   {#if studentRows.length === 0}
-    <p class="empty">Bạn chưa tham gia bài thi nào. <a href="/exams">Xem danh sách đề →</a></p>
+    <p class="empty">{$t('dashboard.noSubmissionsYet')} <a href="/exams">{$t('dashboard.browseExams')} →</a></p>
   {:else}
     <table>
-      <thead><tr><th>Đề thi</th><th>Điểm</th><th>%</th><th>Kết quả</th><th>Ngày nộp</th><th></th></tr></thead>
+      <thead><tr><th>{$t('dashboard.thExam')}</th><th>{$t('dashboard.thScore')}</th><th>%</th><th>{$t('dashboard.thResult')}</th><th>{$t('dashboard.thSubmittedAt')}</th><th></th></tr></thead>
       <tbody>
         {#each studentRows as sub}
         {@const exam = examMap[sub.exam_id]}
@@ -276,13 +277,13 @@
           <td><a href="/exams/{sub.exam_id}" class="link">{exam?.title ?? '—'}</a></td>
           <td>{sub.score}/{sub.total_points}</td>
           <td>{sub.percentage?.toFixed(1)}%</td>
-          <td class="{passed ? 'pass' : 'fail'}">{passed ? '✓ Đạt' : '✗ Chưa đạt'}</td>
+          <td class="{passed ? 'pass' : 'fail'}">{passed ? '✓ ' + $t('dashboard.pass') : '✗ ' + $t('dashboard.fail')}</td>
           <td style="color:var(--muted);font-size:0.83rem">{fmtDate(sub.submitted_at)}</td>
           <td>
             {#if passed}
-              <a href="/exams/{sub.exam_id}/result?submissionId={sub.id}" class="btn btn-indigo">Xem KQ</a>
+              <a href="/exams/{sub.exam_id}/result?submissionId={sub.id}" class="btn btn-indigo">{$t('dashboard.viewResult')}</a>
             {:else}
-              <a href="/exams/{sub.exam_id}/take" class="btn btn-gray">Làm lại</a>
+              <a href="/exams/{sub.exam_id}/take" class="btn btn-gray">{$t('dashboard.retake')}</a>
             {/if}
           </td>
         </tr>
@@ -296,38 +297,38 @@
 {:else if $user.role === 'teacher'}
 {@const teacherSubs = allSubs.filter(s => myExams.some(e => e.id === s.exam_id))}
 <div class="page-header">
-  <h1 class="greeting">Xin chào, <span>{$session?.user?.user_metadata?.full_name?.split(' ').pop() || 'giáo viên'}!</span></h1>
-  <span class="role-pill teacher">👨‍🏫 Giáo viên</span>
+  <h1 class="greeting">{$t('dashboard.greeting')}, <span>{$session?.user?.user_metadata?.full_name?.split(' ').pop() || $t('roles.teacher')}!</span></h1>
+  <span class="role-pill teacher">👨‍🏫 {$t('roles.teacher')}</span>
 </div>
 
 <div class="stats">
   <div class="stat">
     <div class="stat-icon">📚</div>
     <div class="stat-num indigo">{myExams.length}</div>
-    <div class="stat-label">Đề đã tạo</div>
+    <div class="stat-label">{$t('dashboard.examsCreated')}</div>
   </div>
   <div class="stat">
     <div class="stat-icon">✅</div>
     <div class="stat-num green">{myExams.filter(e => e.is_published).length}</div>
-    <div class="stat-label">Đã xuất bản</div>
+    <div class="stat-label">{$t('dashboard.published')}</div>
   </div>
   <div class="stat">
     <div class="stat-icon">👥</div>
     <div class="stat-num indigo">{teacherSubs.length}</div>
-    <div class="stat-label">Lượt thi</div>
+    <div class="stat-label">{$t('dashboard.attempts')}</div>
   </div>
 </div>
 
 <div class="section-header">
-  <span class="section-title">Đề thi của bạn</span>
-  <a href="/exams/create" class="section-link">＋ Tạo đề mới</a>
+  <span class="section-title">{$t('dashboard.yourExamsCreated')}</span>
+  <a href="/exams/create" class="section-link">＋ {$t('dashboard.createNewExam')}</a>
 </div>
 <div class="table-wrap">
   {#if myExams.length === 0}
-    <p class="empty">Bạn chưa tạo đề thi nào. <a href="/exams/create">Tạo đề thi →</a></p>
+    <p class="empty">{$t('dashboard.noExamsCreated')} <a href="/exams/create">{$t('dashboard.createExamLink')} →</a></p>
   {:else}
     <table>
-      <thead><tr><th>Tên đề</th><th>Lượt thi</th><th>Tỷ lệ pass</th><th>Trạng thái</th><th></th></tr></thead>
+      <thead><tr><th>{$t('dashboard.thExamName')}</th><th>{$t('dashboard.attempts')}</th><th>{$t('dashboard.passRate')}</th><th>{$t('dashboard.thStatus')}</th><th></th></tr></thead>
       <tbody>
         {#each myExams as exam}
         {@const s = examStats(exam.id)}
@@ -347,14 +348,14 @@
           </td>
           <td style="font-size:0.83rem">
             {#if exam.is_published}
-              <span style="color:#15803d">✓ Xuất bản</span>
+              <span style="color:#15803d">✓ {$t('dashboard.publishedStatus')}</span>
             {:else}
-              <span style="color:var(--muted)">Nháp</span>
+              <span style="color:var(--muted)">{$t('dashboard.draftStatus')}</span>
             {/if}
           </td>
           <td style="display:flex;gap:0.4rem">
-            <a href="/exams/{exam.id}" class="btn btn-indigo">Xem</a>
-            <a href="/exams/{exam.id}/edit" class="btn btn-gray">Sửa</a>
+            <a href="/exams/{exam.id}" class="btn btn-indigo">{$t('common.view')}</a>
+            <a href="/exams/{exam.id}/edit" class="btn btn-gray">{$t('common.edit')}</a>
           </td>
         </tr>
         {/each}
@@ -374,22 +375,22 @@
   <div class="stat">
     <div class="stat-icon">📚</div>
     <div class="stat-num indigo">{adminStats.exams}</div>
-    <div class="stat-label">Tổng đề thi</div>
+    <div class="stat-label">{$t('dashboard.totalExams')}</div>
   </div>
   <div class="stat">
     <div class="stat-icon">👥</div>
     <div class="stat-num indigo">{adminStats.users}</div>
-    <div class="stat-label">Người dùng</div>
+    <div class="stat-label">{$t('dashboard.users')}</div>
   </div>
   <div class="stat">
     <div class="stat-icon">🎯</div>
     <div class="stat-num indigo">{adminStats.totalSubs}</div>
-    <div class="stat-label">Lượt thi</div>
+    <div class="stat-label">{$t('dashboard.attempts')}</div>
   </div>
   <div class="stat">
     <div class="stat-icon">📈</div>
     <div class="stat-num green">{adminStats.totalSubs > 0 ? Math.round(adminStats.passed / adminStats.totalSubs * 100) : 0}%</div>
-    <div class="stat-label">Tỷ lệ pass</div>
+    <div class="stat-label">{$t('dashboard.passRate')}</div>
     {#if adminStats.totalSubs > 0}
       <div class="stat-bar"><div class="stat-bar-fill" style="width:{Math.round(adminStats.passed/adminStats.totalSubs*100)}%"></div></div>
     {/if}
@@ -397,15 +398,15 @@
 </div>
 
 <div class="section-header">
-  <span class="section-title">Tất cả đề thi</span>
-  <a href="/admin" class="section-link">Quản lý →</a>
+  <span class="section-title">{$t('dashboard.allExams')}</span>
+  <a href="/admin" class="section-link">{$t('dashboard.manage')} →</a>
 </div>
 <div class="table-wrap">
   {#if myExams.length === 0}
-    <p class="empty">Chưa có đề thi nào.</p>
+    <p class="empty">{$t('dashboard.noExamsYet')}</p>
   {:else}
     <table>
-      <thead><tr><th>Tên đề</th><th>Tác giả</th><th>Lượt thi</th><th>Tỷ lệ pass</th><th>XB</th><th></th></tr></thead>
+      <thead><tr><th>{$t('dashboard.thExamName')}</th><th>{$t('dashboard.thAuthor')}</th><th>{$t('dashboard.attempts')}</th><th>{$t('dashboard.passRate')}</th><th>{$t('dashboard.thPublished')}</th><th></th></tr></thead>
       <tbody>
         {#each myExams as exam}
         {@const s = examStats(exam.id)}
@@ -429,7 +430,7 @@
             {:else}—{/if}
           </td>
           <td style="font-size:0.85rem">{exam.is_published ? '✓' : '—'}</td>
-          <td><a href="/exams/{exam.id}" class="btn btn-indigo">Xem</a></td>
+          <td><a href="/exams/{exam.id}" class="btn btn-indigo">{$t('common.view')}</a></td>
         </tr>
         {/each}
       </tbody>

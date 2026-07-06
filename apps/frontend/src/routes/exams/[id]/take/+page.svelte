@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation'
   import { onMount, onDestroy } from 'svelte'
   import { page } from '$app/stores'
+  import { t } from '$lib/i18n'
 
   let exam = $state(null)
   let answers = $state({})
@@ -126,7 +127,7 @@
     _examId = id
     try {
       const res = await examApi.get(id)
-      if (!res.ok) { error = 'Không tìm thấy đề thi'; loading = false; return }
+      if (!res.ok) { error = $t('examDetail.notFound'); loading = false; return }
       exam = randomizeExam(await res.json())
 
       if ($user.role === 'student' && !exam.allow_retake) {
@@ -203,7 +204,7 @@
 
       await _beginExam(id, saved)
     } catch {
-      error = 'Không thể kết nối server'
+      error = $t('imageUpload.connectionError')
     } finally {
       loading = false
     }
@@ -217,7 +218,7 @@
       const startRes = await submissionApi.start(id)
       if (startRes.status === 402) {
         const d = await startRes.json()
-        creditError = d.error ?? 'Không đủ credit để làm bài này'
+        creditError = d.error ?? $t('examTake.insufficientCreditMsg')
         loading = false; return
       }
       if (startRes.status === 423) {
@@ -226,16 +227,16 @@
           sessionConflict = true
           loading = false; return
         }
-        limitError = d.error ?? 'Đề thi chưa mở. Vui lòng quay lại sau.'
+        limitError = d.error ?? $t('examTake.notOpenMsg')
         loading = false; return
       }
       if (startRes.status === 429) {
         const d = await startRes.json()
-        limitError = d.error ?? 'Không thể bắt đầu bài thi lúc này'
+        limitError = d.error ?? $t('examTake.cannotStartNow')
         loading = false; return
       }
       if (!startRes.ok) {
-        error = 'Lỗi khi kiểm tra credit. Vui lòng thử lại.'
+        error = $t('examTake.creditCheckError')
         loading = false; return
       }
       const startData = await startRes.json()
@@ -245,7 +246,7 @@
       sessionId = startData.session_id ?? null
       await _beginExam(id, null)
     } catch {
-      error = 'Không thể kết nối server'
+      error = $t('imageUpload.connectionError')
       loading = false
     }
   }
@@ -291,7 +292,7 @@
     showConfirm = false
     // No active submission means the credit/start gate never ran — never grade for free.
     if (!submissionId) {
-      error = 'Phiên làm bài không hợp lệ. Vui lòng bắt đầu lại đề thi.'
+      error = $t('examTake.invalidSession')
       return
     }
     clearInterval(timer); clearInterval(heartbeatTimer); submitting = true
@@ -312,7 +313,7 @@
       clearSession(exam.id)
       goto(`/exams/${exam.id}/result?submissionId=${data.id}`, { replaceState: true })
     } catch {
-      error = 'Lỗi khi nộp bài'; submitting = false
+      error = $t('examTake.submitError'); submitting = false
     }
   }
 </script>
@@ -634,69 +635,67 @@
   <div class="session-conflict-wrap">
     <div class="session-conflict-card">
       <div class="session-conflict-icon">🔒</div>
-      <div class="session-conflict-title">Bài thi đang mở trên thiết bị khác</div>
+      <div class="session-conflict-title">{$t('examTake.sessionConflictTitle')}</div>
       <div class="session-conflict-msg">
-        Tài khoản này đang làm bài thi trên một thiết bị hoặc trình duyệt khác.<br>
-        Mỗi tài khoản chỉ được phép làm bài trên một thiết bị tại một thời điểm.<br><br>
-        Nếu thiết bị đó gặp sự cố hoặc bị đóng, vui lòng thử lại sau vài phút.
+        {@html $t('examTake.sessionConflictMsg')}
       </div>
-      <button class="btn-back" onclick={() => goto(`/exams/${_examId}`)}>Quay lại đề thi</button>
+      <button class="btn-back" onclick={() => goto(`/exams/${_examId}`)}>{$t('examTake.backToExam')}</button>
     </div>
   </div>
 {:else if loading}
-  <div style="text-align:center;padding:4rem 0;color:var(--muted)">Đang tải đề thi...</div>
+  <div style="text-align:center;padding:4rem 0;color:var(--muted)">{$t('examForm.loadingExam')}</div>
 {:else if creditError}
   <div class="credit-error-wrap">
     <div class="credit-error-icon">💳</div>
-    <div class="credit-error-title">Không đủ credit</div>
+    <div class="credit-error-title">{$t('examDetail.insufficientCredit')}</div>
     <div class="credit-error-msg">{creditError}</div>
-    <button class="btn-back" onclick={() => history.back()}>Quay lại</button>
+    <button class="btn-back" onclick={() => history.back()}>{$t('common.back')}</button>
   </div>
 {:else if limitError}
   <div class="credit-error-wrap">
     <div class="credit-error-icon">⏳</div>
-    <div class="credit-error-title">Không thể bắt đầu</div>
+    <div class="credit-error-title">{$t('examTake.cannotStartTitle')}</div>
     <div class="credit-error-msg">{limitError}</div>
-    <button class="btn-back" onclick={() => history.back()}>Quay lại</button>
+    <button class="btn-back" onclick={() => history.back()}>{$t('common.back')}</button>
   </div>
 {:else if showStartConfirm && exam}
   <div class="start-confirm-wrap">
     <div class="start-confirm-card">
       <div class="start-confirm-icon">📋</div>
       <h2 class="start-confirm-title">{exam.title}</h2>
-      <p class="start-confirm-sub">Bạn sắp bắt đầu bài thi. Thông tin quan trọng:</p>
+      <p class="start-confirm-sub">{$t('examTake.aboutToStart')}</p>
       <div class="start-confirm-info">
         <div class="info-row">
-          <span class="info-label">Thời gian</span>
-          <span class="info-val">{exam.time_limit ?? 30} phút</span>
+          <span class="info-label">{$t('examDetail.statTime')}</span>
+          <span class="info-val">{$t('exams.minutes', { n: exam.time_limit ?? 30 })}</span>
         </div>
         <div class="info-row">
-          <span class="info-label">Số câu hỏi</span>
-          <span class="info-val">{exam.question_count ?? exam.questions?.length ?? '?'} câu</span>
+          <span class="info-label">{$t('examDetail.statQuestions')}</span>
+          <span class="info-val">{$t('examForm.questionsCount', { n: exam.question_count ?? exam.questions?.length ?? '?' })}</span>
         </div>
         {#if exam.passing_score != null}
         <div class="info-row">
-          <span class="info-label">Điểm đậu</span>
+          <span class="info-label">{$t('examTake.passScoreLabel')}</span>
           <span class="info-val">{exam.passing_score}%</span>
         </div>
         {/if}
         <div class="info-row highlight">
-          <span class="info-label">💳 Chi phí</span>
-          <span class="info-val credit-cost">{exam.credit_cost ?? 10} credit</span>
+          <span class="info-label">💳 {$t('examTake.costLabel')}</span>
+          <span class="info-val credit-cost">{$t('examDetail.creditAmount', { n: exam.credit_cost ?? 10 })}</span>
         </div>
         {#if currentCredits !== null}
         <div class="info-row">
-          <span class="info-label">Số dư hiện tại</span>
-          <span class="info-val {currentCredits < (exam.credit_cost ?? 10) ? 'text-danger' : ''}">{currentCredits} credit</span>
+          <span class="info-label">{$t('examTake.currentBalance')}</span>
+          <span class="info-val {currentCredits < (exam.credit_cost ?? 10) ? 'text-danger' : ''}">{$t('examDetail.creditAmount', { n: currentCredits })}</span>
         </div>
         {/if}
       </div>
-      <p class="start-confirm-note">Sau khi bắt đầu, credit sẽ bị trừ và đồng hồ đếm ngược sẽ chạy. Mỗi câu trả lời được tự động lưu khi bạn chuyển sang câu tiếp theo.</p>
+      <p class="start-confirm-note">{$t('examTake.startNote')}</p>
       <div class="start-confirm-actions">
-        <button class="btn-back" onclick={() => history.back()}>Huỷ</button>
+        <button class="btn-back" onclick={() => history.back()}>{$t('common.cancel')}</button>
         <button class="btn-start" onclick={handleConfirmStart}
           disabled={currentCredits !== null && currentCredits < (exam.credit_cost ?? 10)}>
-          {currentCredits !== null && currentCredits < (exam.credit_cost ?? 10) ? 'Không đủ credit' : 'Xác nhận bắt đầu →'}
+          {currentCredits !== null && currentCredits < (exam.credit_cost ?? 10) ? $t('examDetail.insufficientCredit') : $t('examTake.confirmStart')}
         </button>
       </div>
     </div>
@@ -709,7 +708,7 @@
   <span class="exam-title">{exam.title}</span>
   <div class="top-right">
     {#if myCredits !== null}
-      <span class="credit-badge">💳 {myCredits} credit còn lại</span>
+      <span class="credit-badge">💳 {$t('examTake.creditsRemaining', { n: myCredits })}</span>
     {/if}
     <span class="timer {isUrgent ? 'urgent' : ''}">{formatTime(timeLeft)}</span>
   </div>
@@ -717,7 +716,7 @@
 
 <div class="progress-wrap">
   <div class="progress-meta">
-    <span>{answeredCount}/{totalCount} câu đã trả lời</span>
+    <span>{$t('examTake.answeredOf', { answered: answeredCount, total: totalCount })}</span>
     <span class="pct {pct === 100 ? 'done' : ''}">{pct}%</span>
   </div>
   <div class="bar-track">
@@ -730,15 +729,15 @@
     {#if currentQ}
     <div class="q-card">
       <div class="q-header">
-        <span class="q-label">Câu {currentIdx + 1}</span>
-        <span class="q-points">{currentQ.points} điểm</span>
+        <span class="q-label">{$t('examTake.questionN', { n: currentIdx + 1 })}</span>
+        <span class="q-points">{$t('examTake.pointsFull', { n: currentQ.points })}</span>
       </div>
       <p class="q-content">{currentQ.content}</p>
       {#if currentQ.image_url}
-        <img src={currentQ.image_url} alt="Hình minh họa" class="q-image" />
+        <img src={currentQ.image_url} alt={$t('examTake.illustrationAlt')} class="q-image" />
       {/if}
       {#if currentQ.question_type === 'multiple'}
-        <span class="multi-hint">Chọn {currentQ.correct_count ?? '?'} đáp án đúng</span>
+        <span class="multi-hint">{$t('examTake.selectNCorrect', { n: currentQ.correct_count ?? '?' })}</span>
       {/if}
       <ul class="options">
         {#each currentQ.options as opt}
@@ -768,16 +767,16 @@
     {/if}
 
     <div class="nav-row">
-      <button class="btn btn-prev" disabled={currentIdx === 0} onclick={() => currentIdx--}>← Câu trước</button>
+      <button class="btn btn-prev" disabled={currentIdx === 0} onclick={() => currentIdx--}>← {$t('examTake.prevQuestion')}</button>
       <span class="q-counter">{currentIdx + 1} / {totalCount}</span>
-      <button class="btn btn-next" disabled={currentIdx === totalCount - 1} onclick={goNext}>Câu sau →</button>
+      <button class="btn btn-next" disabled={currentIdx === totalCount - 1} onclick={goNext}>{$t('examTake.nextQuestion')} →</button>
     </div>
     {#if error}<p class="error">{error}</p>{/if}
   </div>
 
   <div class="sidebar">
     <div class="sidebar-card">
-      <div class="sidebar-title">Danh sách câu hỏi</div>
+      <div class="sidebar-title">{$t('examTake.questionListTitle')}</div>
       <div class="q-grid">
         {#each exam.questions ?? [] as q, i}
           <button
@@ -787,12 +786,12 @@
         {/each}
       </div>
       <div class="legend">
-        <div class="legend-item"><div class="legend-dot current"></div>Đang làm</div>
-        <div class="legend-item"><div class="legend-dot answered"></div>Đã trả lời</div>
-        <div class="legend-item"><div class="legend-dot empty"></div>Chưa trả lời</div>
+        <div class="legend-item"><div class="legend-dot current"></div>{$t('examTake.legendCurrent')}</div>
+        <div class="legend-item"><div class="legend-dot answered"></div>{$t('examTake.legendAnswered')}</div>
+        <div class="legend-item"><div class="legend-dot empty"></div>{$t('examTake.legendUnanswered')}</div>
       </div>
       <button class="btn-submit" onclick={requestSubmit} disabled={submitting}>
-        {submitting ? 'Đang nộp...' : 'Nộp bài'}
+        {submitting ? $t('examTake.submitting') : $t('examTake.submitExam')}
       </button>
     </div>
   </div>
@@ -803,19 +802,19 @@
   {#if showNote}
     <div class="note-panel">
       <div class="note-panel-head">
-        <span class="note-panel-title">📝 Ghi chú nháp</span>
-        <button class="note-panel-close" onclick={() => (showNote = false)} aria-label="Ẩn ghi chú">✕</button>
+        <span class="note-panel-title">📝 {$t('examTake.noteTitle')}</span>
+        <button class="note-panel-close" onclick={() => (showNote = false)} aria-label={$t('examTake.hideNote')}>✕</button>
       </div>
       <textarea
         class="note-panel-area"
         bind:value={note}
-        placeholder="Ghi chú dùng chung cho cả bài thi — giữ nguyên khi bạn chuyển câu..."
+        placeholder={$t('examTake.notePlaceholder')}
       ></textarea>
-      <p class="note-panel-hint">Chỉ hỗ trợ khi làm bài · sẽ mất khi tải lại trang (F5), không được lưu.</p>
+      <p class="note-panel-hint">{$t('examTake.noteHint')}</p>
     </div>
   {/if}
   <button class="note-fab {showNote ? 'active' : ''}" onclick={() => (showNote = !showNote)}>
-    {#if showNote}✕ Ẩn ghi chú{:else}📝 Ghi chú{#if note.trim()}<span class="note-fab-dot"></span>{/if}{/if}
+    {#if showNote}✕ {$t('examTake.hideNote')}{:else}📝 {$t('examTake.noteTitle')}{#if note.trim()}<span class="note-fab-dot"></span>{/if}{/if}
   </button>
 </div>
 {/if}
@@ -824,12 +823,12 @@
 {@const unanswered = (exam?.questions ?? []).filter(q => !isAnswered(q)).length}
 <div class="overlay" role="dialog" aria-modal="true">
   <div class="modal">
-    <h3>Xác nhận nộp bài</h3>
-    <p>Còn <strong>{unanswered} câu chưa trả lời</strong>. Những câu này sẽ bị tính 0 điểm. Bạn có chắc muốn nộp?</p>
+    <h3>{$t('examTake.confirmSubmitTitle')}</h3>
+    <p>{@html $t('examTake.confirmSubmitMsg', { n: unanswered })}</p>
     <div class="modal-actions">
-      <button class="btn-outline" onclick={() => showConfirm = false}>Làm tiếp</button>
+      <button class="btn-outline" onclick={() => showConfirm = false}>{$t('examTake.keepGoing')}</button>
       <button class="btn-confirm" onclick={submitExam} disabled={submitting}>
-        {submitting ? 'Đang nộp...' : 'Xác nhận nộp'}
+        {submitting ? $t('examTake.submitting') : $t('examTake.confirmSubmit')}
       </button>
     </div>
   </div>

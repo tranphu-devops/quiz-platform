@@ -1,17 +1,20 @@
 <script>
   import { uploadApi } from '$lib/api'
+  import { t } from '$lib/i18n'
 
   let {
     value = $bindable(''),
     type = 'avatar',
-    label = 'Ảnh',
-    placeholder = 'Chưa có ảnh',
+    label = '',
+    placeholder = '',
     previewClass = ''
   } = $props()
 
   let uploading = $state(false)
   let error = $state('')
   let fileInput
+
+  const displayLabel = $derived(label || $t('imageUpload.defaultLabel'))
 
   async function handleFile(e) {
     const file = e.target.files?.[0]
@@ -22,10 +25,10 @@
     try {
       const res = await uploadApi.upload(file, type, oldUrl)
       const data = await res.json()
-      if (!res.ok) { error = data.error ?? 'Upload thất bại'; return }
+      if (!res.ok) { error = data.error ?? $t('imageUpload.uploadFailed'); return }
       value = data.url
     } catch {
-      error = 'Không thể kết nối server'
+      error = $t('imageUpload.connectionError')
     } finally {
       uploading = false
       if (fileInput) fileInput.value = ''
@@ -64,10 +67,10 @@
   {#if value}
     <img
       src={value}
-      alt={label}
+      alt={displayLabel}
       class={previewClass || (type === 'avatar' ? 'preview-avatar' : 'preview')}
     />
-    <button type="button" class="btn-clear" onclick={() => { value = '' }}>Xoá ảnh</button>
+    <button type="button" class="btn-clear" onclick={() => { value = '' }}>{$t('imageUpload.remove')}</button>
   {/if}
 
   <div
@@ -85,9 +88,9 @@
       bind:this={fileInput}
     />
     {#if uploading}
-      <span class="uploading">Đang tải lên...</span>
+      <span class="uploading">{$t('imageUpload.uploading')}</span>
     {:else}
-      <span class="hint">{value ? 'Nhấn hoặc kéo thả để thay ảnh' : `Nhấn hoặc kéo thả ${label}`}</span>
+      <span class="hint">{value ? $t('imageUpload.hintReplace') : $t('imageUpload.hintUpload', { label: displayLabel })}</span>
     {/if}
   </div>
 

@@ -8,6 +8,7 @@
   import RichTextEditor from '$lib/components/RichTextEditor.svelte'
   import { sanitizeHtml, isHtmlEmpty } from '$lib/sanitizeHtml'
   import ImageUpload from '$lib/components/ImageUpload.svelte'
+  import { t, locale, localeCode } from '$lib/i18n'
 
   // ── Loading ──────────────────────────────────────────────────────────────────
   let loading = $state(true)
@@ -56,19 +57,19 @@
   let saveError = $state('')
 
   const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-  const STEPS = [
-    { n: 1, label: 'Thông tin' },
-    { n: 2, label: 'Import' },
-    { n: 3, label: 'Câu hỏi' },
-    { n: 4, label: 'Xác nhận' }
-  ]
+  const STEPS = $derived([
+    { n: 1, label: $t('examForm.stepInfo') },
+    { n: 2, label: $t('examForm.stepImport') },
+    { n: 3, label: $t('examForm.stepQuestions') },
+    { n: 4, label: $t('examForm.stepConfirm') }
+  ])
 
   onMount(async () => {
     if (!$user || $user.role === 'student') { goto('/exams'); return }
     const id = $page.params.id
     try {
       const res = await examApi.get(id)
-      if (!res.ok) { loadError = 'Không tìm thấy đề thi'; return }
+      if (!res.ok) { loadError = $t('examDetail.notFound'); return }
       exam = await res.json()
 
       if ($user.role === 'teacher' && exam.created_by !== $user.id) {
@@ -114,7 +115,7 @@
       })
       collapsed = new Set(questions.map((_, i) => i))
     } catch {
-      loadError = 'Không thể kết nối server'
+      loadError = $t('imageUpload.connectionError')
     } finally {
       loading = false
     }
@@ -123,15 +124,15 @@
   // ── Step navigation ───────────────────────────────────────────────────────────
   function goNext() {
     if (step === 1) {
-      if (!title.trim()) { step1Error = 'Vui lòng nhập tiêu đề'; return }
+      if (!title.trim()) { step1Error = $t('examForm.titleRequired'); return }
       step1Error = ''
     }
     if (step === 3) {
       for (let i = 0; i < questions.length; i++) {
         const q = questions[i]
-        if (!q.content.trim()) { step3Error = `Câu ${i + 1}: Chưa nhập nội dung`; return }
+        if (!q.content.trim()) { step3Error = $t('examForm.questionMissingContent', { n: i + 1 }); return }
         if (q.question_type === 'multiple' && q.correctKeys.length === 0) {
-          step3Error = `Câu ${i + 1}: Chưa chọn đáp án đúng`; return
+          step3Error = $t('examForm.questionMissingCorrect', { n: i + 1 }); return
         }
       }
       step3Error = ''
@@ -144,11 +145,11 @@
 
   // ── Tags ──────────────────────────────────────────────────────────────────────
   function addTag() {
-    const t = tagInput.trim()
-    if (!t || tags.includes(t) || tags.length >= 5) { tagInput = ''; return }
-    tags = [...tags, t]; tagInput = ''
+    const tag = tagInput.trim()
+    if (!tag || tags.includes(tag) || tags.length >= 5) { tagInput = ''; return }
+    tags = [...tags, tag]; tagInput = ''
   }
-  function removeTag(t) { tags = tags.filter(x => x !== t) }
+  function removeTag(tag) { tags = tags.filter(x => x !== tag) }
   function handleTagKeydown(e) {
     if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag() }
   }
@@ -157,18 +158,18 @@
   function parseImportJSON(text) {
     let raw
     try { raw = JSON.parse(text) } catch (e) {
-      importError = `JSON không hợp lệ: ${e.message}`; importResult = null; return
+      importError = $t('examForm.invalidJson', { msg: e.message }); importResult = null; return
     }
     const list = Array.isArray(raw) ? raw : raw.questions
     if (!Array.isArray(list)) {
-      importError = 'File phải có trường "questions" là mảng'; importResult = null; return
+      importError = $t('examForm.jsonMustHaveQuestions'); importResult = null; return
     }
     const parsed = [], errors = []
     for (let i = 0; i < list.length; i++) {
-      const item = list[i], idx = `Câu ${i + 1}`
-      if (!item.content) { errors.push(`${idx}: thiếu "content"`); continue }
+      const item = list[i], idx = $t('examForm.questionN', { n: i + 1 })
+      if (!item.content) { errors.push(`${idx}: ${$t('examForm.missingContentField')}`); continue }
       if (!Array.isArray(item.options) || item.options.length < 2) {
-        errors.push(`${idx}: "options" phải ≥ 2 phần tử`); continue
+        errors.push(`${idx}: ${$t('examForm.optionsMustBeArray')}`); continue
       }
       const type = item.type === 'multiple' ? 'multiple' : 'single'
       const ca = item.correct_answer
@@ -192,7 +193,7 @@
 
   function handleFileInput(file) {
     if (!file || !file.name.endsWith('.json')) {
-      importError = 'Vui lòng chọn file .json'; importResult = null; return
+      importError = $t('examForm.pleaseChooseJson'); importResult = null; return
     }
     const reader = new FileReader()
     reader.onload = e => parseImportJSON(e.target.result)
@@ -294,7 +295,7 @@
       }
       goto(`/exams/${exam.id}`)
     } catch {
-      saveError = 'Lỗi khi lưu đề thi, vui lòng thử lại'
+      saveError = $t('examForm.saveError')
     } finally {
       saving = false
     }
@@ -471,7 +472,7 @@
 {#if loading}
   <div class="loading-wrap">
     <div class="loading-spinner">⟳</div>
-    <p style="margin-top:1rem">Đang tải đề thi...</p>
+    <p style="margin-top:1rem">{$t('examForm.loadingExam')}</p>
   </div>
 {:else if loadError}
   <p class="error-msg">{loadError}</p>
@@ -479,7 +480,7 @@
 
 <!-- ── Wizard header ─────────────────────────────────────────────────────────── -->
 <div class="wizard-header">
-  <h1>Sửa đề thi</h1>
+  <h1>{$t('examForm.editTitle')}</h1>
   <div class="step-track">
     {#each STEPS as s}
       <div
@@ -499,41 +500,41 @@
 
 <!-- Publish mode selector -->
 <div class="publish-mode-card">
-  <div class="pub-mode-title">📅 Xuất bản</div>
+  <div class="pub-mode-title">📅 {$t('examForm.publishTitle')}</div>
   <div class="pub-mode-options">
     <label class="pub-mode-opt" class:selected={publish_mode === 'draft'}>
       <input type="radio" bind:group={publish_mode} value="draft" />
       <div class="pub-mode-icon">📝</div>
       <div>
-        <div class="pub-mode-label">Lưu nháp</div>
-        <div class="pub-mode-sub">Chỉ bạn thấy</div>
+        <div class="pub-mode-label">{$t('examForm.publishDraft')}</div>
+        <div class="pub-mode-sub">{$t('examForm.publishDraftSub')}</div>
       </div>
     </label>
     <label class="pub-mode-opt" class:selected={publish_mode === 'now'}>
       <input type="radio" bind:group={publish_mode} value="now" />
       <div class="pub-mode-icon">🚀</div>
       <div>
-        <div class="pub-mode-label">Xuất bản ngay</div>
-        <div class="pub-mode-sub">Học sinh thấy ngay</div>
+        <div class="pub-mode-label">{$t('examForm.publishNow')}</div>
+        <div class="pub-mode-sub">{$t('examForm.publishNowSub')}</div>
       </div>
     </label>
     <label class="pub-mode-opt" class:selected={publish_mode === 'scheduled'}>
       <input type="radio" bind:group={publish_mode} value="scheduled" />
       <div class="pub-mode-icon">🔒</div>
       <div>
-        <div class="pub-mode-label">Theo lịch</div>
-        <div class="pub-mode-sub">Hiện nhưng khoá đến giờ</div>
+        <div class="pub-mode-label">{$t('examForm.publishScheduled')}</div>
+        <div class="pub-mode-sub">{$t('examForm.publishScheduledSub')}</div>
       </div>
     </label>
   </div>
   {#if publish_mode === 'scheduled'}
     <div class="pub-schedule-row">
-      <label for="scheduled_at_edit">Mở bài thi lúc:</label>
+      <label for="scheduled_at_edit">{$t('examForm.opensAtLabel')}</label>
       <input id="scheduled_at_edit" type="datetime-local" bind:value={scheduled_at_input}
         min={minScheduledAt()} style="width:auto" />
       {#if scheduled_at_input}
         <span class="pub-schedule-preview">
-          → Đề thi hiển thị nhưng khoá đến {new Date(scheduled_at_input).toLocaleString('vi-VN')}
+          → {$t('examForm.schedulePreview', { datetime: new Date(scheduled_at_input).toLocaleString(localeCode($locale)) })}
         </span>
       {/if}
     </div>
@@ -541,74 +542,74 @@
 </div>
 
 <div class="card">
-  <div class="card-title">📋 Thông tin cơ bản</div>
+  <div class="card-title">📋 {$t('examForm.basicInfo')}</div>
   {#if step1Error}<p class="error-msg">{step1Error}</p>{/if}
 
   <div class="form-row">
-    <label for="title">Tiêu đề *</label>
-    <input id="title" type="text" bind:value={title} placeholder="Nhập tiêu đề đề thi..." />
+    <label for="title">{$t('examForm.titleLabel')} *</label>
+    <input id="title" type="text" bind:value={title} placeholder={$t('examForm.titlePlaceholder')} />
   </div>
   <div class="form-row">
-    <label for="desc">Mô tả ngắn</label>
-    <RichTextEditor bind:value={description} placeholder="Mô tả nội dung đề thi... (dùng thanh công cụ để in đậm, gạch đầu dòng, chèn link)" />
+    <label for="desc">{$t('examForm.descLabel')}</label>
+    <RichTextEditor bind:value={description} placeholder={$t('examForm.descPlaceholder')} />
   </div>
   <div class="form-row">
-    <label>Ảnh bìa</label>
-    <ImageUpload bind:value={cover_image_url} type="exam-cover" label="ảnh bìa" />
+    <label>{$t('examForm.coverImage')}</label>
+    <ImageUpload bind:value={cover_image_url} type="exam-cover" label={$t('examForm.coverImageLabel')} />
   </div>
 
   <div class="row2">
     <div class="form-row">
-      <label for="time">Thời gian làm bài (phút)</label>
+      <label for="time">{$t('examForm.timeLimitLabel')}</label>
       <input id="time" type="number" bind:value={time_limit} min="1" max="300" style="width:100px" />
     </div>
     <div class="form-row">
-      <label for="passing">Điểm đạt (%)</label>
-      <input id="passing" type="number" bind:value={passing_score} min="0" max="100" step="0.5" placeholder="Ví dụ: 70" style="width:120px" />
-      <p class="hint">Để trống nếu không yêu cầu điểm tối thiểu</p>
+      <label for="passing">{$t('examForm.passingScoreLabel')}</label>
+      <input id="passing" type="number" bind:value={passing_score} min="0" max="100" step="0.5" placeholder={$t('examForm.passingScorePlaceholder')} style="width:120px" />
+      <p class="hint">{$t('examForm.passingScoreHint')}</p>
     </div>
   </div>
 
   <div class="row2">
     <div class="form-row">
-      <label for="credit_cost">Credit / lần làm</label>
+      <label for="credit_cost">{$t('examForm.creditCostLabel')}</label>
       <input id="credit_cost" type="number" bind:value={credit_cost} min="0" step="1" style="width:100px" />
     </div>
     <div class="form-row">
-      <label for="exam_mode">Chế độ thi</label>
+      <label for="exam_mode">{$t('examForm.examModeLabel')}</label>
       <select id="exam_mode" bind:value={allow_retake} style="width:auto">
-        <option value={false}>Chính thức (1 lần)</option>
-        <option value={true}>Thực hành (làm lại)</option>
+        <option value={false}>{$t('examForm.modeOfficial')}</option>
+        <option value={true}>{$t('examForm.modePractice')}</option>
       </select>
     </div>
   </div>
 
   <div class="row2">
     <div class="form-row">
-      <label for="cooldown_minutes">Thời gian chờ giữa 2 lần thi (phút)</label>
+      <label for="cooldown_minutes">{$t('examForm.cooldownLabel')}</label>
       <input id="cooldown_minutes" type="number" bind:value={cooldown_minutes} min="0" step="1" style="width:100px" placeholder="0" />
-      <p class="hint">0 = không giới hạn. Ví dụ: 1440 = chờ 24 giờ</p>
+      <p class="hint">{$t('examForm.cooldownHint')}</p>
     </div>
     <div class="form-row">
-      <label for="max_attempts">Số lần thi tối đa</label>
-      <input id="max_attempts" type="number" bind:value={max_attempts} min="1" step="1" style="width:100px" placeholder="Không giới hạn" />
-      <p class="hint">Để trống = không giới hạn số lần thi</p>
+      <label for="max_attempts">{$t('examForm.maxAttemptsLabel')}</label>
+      <input id="max_attempts" type="number" bind:value={max_attempts} min="1" step="1" style="width:100px" placeholder={$t('examForm.maxAttemptsPlaceholder')} />
+      <p class="hint">{$t('examForm.maxAttemptsHint')}</p>
     </div>
   </div>
 
   <div class="form-row">
-    <label>Tags (tối đa 5)</label>
+    <label>{$t('examForm.tagsLabel')}</label>
     <div class="tag-wrap">
-      {#each tags as t}
-        <span class="tag-chip">{t}<button type="button" onclick={() => removeTag(t)}>×</button></span>
+      {#each tags as tag}
+        <span class="tag-chip">{tag}<button type="button" onclick={() => removeTag(tag)}>×</button></span>
       {/each}
       {#if tags.length < 5}
         <input class="tag-input" bind:value={tagInput}
           onkeydown={handleTagKeydown} onblur={addTag}
-          placeholder="Nhập tag, Enter để thêm..." />
+          placeholder={$t('examForm.tagInputPlaceholder')} />
       {/if}
     </div>
-    <p class="hint">Ví dụ: AWS, Cloud, SAA-C03</p>
+    <p class="hint">{$t('examForm.tagsHint')}</p>
   </div>
 
   <div class="form-row">
@@ -619,7 +620,7 @@
         <div class="toggle-thumb"></div>
       </label>
       <span class="toggle-label" onclick={() => show_explanation = !show_explanation}>
-        Hiện giải thích đáp án cho học sinh sau khi nộp bài
+        {$t('examForm.showExplanationLabel')}
       </span>
     </div>
   </div>
@@ -627,10 +628,10 @@
 
 <div class="nav-bar">
   <a href="/exams/{exam.id}" style="text-decoration:none">
-    <button class="btn-back">← Huỷ</button>
+    <button class="btn-back">← {$t('common.cancel')}</button>
   </a>
   <div class="spacer"></div>
-  <button class="btn-next" onclick={goNext}>Tiếp theo: Import / câu hỏi →</button>
+  <button class="btn-next" onclick={goNext}>{$t('examForm.nextImportQuestions')} →</button>
 </div>
 {/if}
 
@@ -638,18 +639,18 @@
 <!-- ════════════════ STEP 2: JSON import ═══════════════════════════════════════ -->
 {#if step === 2}
 <div class="card">
-  <div class="card-title">📥 Tải xuống mẫu JSON</div>
+  <div class="card-title">📥 {$t('examForm.downloadTemplate')}</div>
   <div class="template-box">
-    <p>Tải về file mẫu để xem cấu trúc đúng. Mỗi câu hỏi cần: <code>content</code>, <code>options</code>, <code>correct_answer</code>, <code>type</code>.</p>
+    <p>{@html $t('examForm.templateHint')}</p>
     <a href="/question-template.json" download="question-template.json"
       style="flex-shrink:0; padding:0.55rem 1rem; background:var(--primary); color:#fff; border-radius:var(--radius-btn); font-weight:700; font-size:0.85rem; text-decoration:none; white-space:nowrap">
-      ⬇ Tải mẫu JSON
+      ⬇ {$t('examForm.downloadTemplateBtn')}
     </a>
   </div>
 </div>
 
 <div class="card">
-  <div class="card-title">📤 Import câu hỏi</div>
+  <div class="card-title">📤 {$t('examForm.uploadFile')}</div>
 
   {#if importError}<p class="error-msg">⚠ {importError}</p>{/if}
 
@@ -657,21 +658,21 @@
     <div class="import-result">
       <div class="import-result-icon">✅</div>
       <div style="flex:1">
-        <div class="import-result-title">Đọc được {importResult.count} câu hỏi hợp lệ</div>
+        <div class="import-result-title">{$t('examForm.validQuestionsRead', { n: importResult.count })}</div>
         {#if importResult.errors.length}
           <div class="import-errors">
-            <p style="font-weight:700; margin-bottom:0.3rem">Bỏ qua {importResult.errors.length} câu lỗi:</p>
+            <p style="font-weight:700; margin-bottom:0.3rem">{$t('examForm.skippedQuestions', { n: importResult.errors.length })}</p>
             {#each importResult.errors as e}<p>• {e}</p>{/each}
           </div>
         {/if}
         <div style="margin-top:0.75rem; display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
           <label style="font-size:0.82rem; display:flex; align-items:center; gap:0.4rem; cursor:pointer">
             <input type="radio" bind:group={importReplaceMode} value={true} />
-            Thay thế toàn bộ ({questions.length} câu hiện tại)
+            {$t('examForm.replaceAll', { n: questions.length })}
           </label>
           <label style="font-size:0.82rem; display:flex; align-items:center; gap:0.4rem; cursor:pointer">
             <input type="radio" bind:group={importReplaceMode} value={false} />
-            Thêm vào cuối ({questions.length} câu hiện có)
+            {$t('examForm.appendExisting', { n: questions.length })}
           </label>
         </div>
       </div>
@@ -684,20 +685,20 @@
       ondrop={onDrop}
     >
       <div class="drop-icon">📄</div>
-      <div class="drop-text">Kéo thả file JSON vào đây, hoặc <strong>click để chọn</strong></div>
-      <div class="drop-hint">Chỉ nhận file .json — tối đa 5 MB</div>
+      <div class="drop-text">{@html $t('examForm.dropZoneTextShort')}</div>
+      <div class="drop-hint">{$t('examForm.dropZoneHint')}</div>
     </label>
     <input id="json-file" type="file" accept=".json" class="file-input" onchange={onFileChange} />
   {/if}
 </div>
 
 <div class="nav-bar">
-  <button class="btn-back" onclick={goBack}>← Quay lại</button>
+  <button class="btn-back" onclick={goBack}>← {$t('common.back')}</button>
   <div class="spacer"></div>
-  <button class="btn-skip" onclick={skipImport}>Bỏ qua →</button>
+  <button class="btn-skip" onclick={skipImport}>{$t('examForm.skip')} →</button>
   {#if importResult?.count > 0}
     <button class="btn-next" onclick={applyImport}>
-      Dùng {importResult.count} câu hỏi →
+      {$t('examForm.useNQuestions', { n: importResult.count })} →
     </button>
   {/if}
 </div>
@@ -707,9 +708,9 @@
 <!-- ════════════════ STEP 3: Questions editor ══════════════════════════════════ -->
 {#if step === 3}
 <div class="q-toolbar">
-  <span class="q-count-badge">{questions.length} câu hỏi</span>
-  <button class="btn-collapse" onclick={collapseAll}>Thu gọn tất cả</button>
-  <button class="btn-collapse" onclick={expandAll}>Mở tất cả</button>
+  <span class="q-count-badge">{$t('examForm.questionsCount', { n: questions.length })}</span>
+  <button class="btn-collapse" onclick={collapseAll}>{$t('examForm.collapseAll')}</button>
+  <button class="btn-collapse" onclick={expandAll}>{$t('examForm.expandAll')}</button>
   <div class="spacer"></div>
 </div>
 
@@ -719,45 +720,45 @@
 <div class="q-card">
   <div class="q-head">
     <div class="q-num">{i + 1}</div>
-    <div class="q-preview">{q.content || '(chưa nhập nội dung)'}</div>
-    {#if q._existing}<span class="saved-badge">Đã lưu</span>{/if}
+    <div class="q-preview">{q.content || $t('examForm.noContentYet')}</div>
+    {#if q._existing}<span class="saved-badge">{$t('examForm.savedBadge')}</span>{/if}
     <span class="type-badge {q.question_type === 'multiple' ? 'multi' : 'single'}">
-      {q.question_type === 'multiple' ? 'Nhiều đáp án' : '1 đáp án'}
+      {q.question_type === 'multiple' ? $t('examDetail.multiAnswer') : $t('examDetail.singleAnswer')}
     </span>
     <button class="btn-collapse" onclick={() => toggleCollapse(i)}>
-      {collapsed.has(i) ? '▼ Mở' : '▲ Thu'}
+      {collapsed.has(i) ? '▼ ' + $t('examForm.expand') : '▲ ' + $t('examForm.collapse')}
     </button>
     <button class="btn-remove-q" onclick={() => removeQuestion(i)}>✕</button>
   </div>
 
   {#if !collapsed.has(i)}
   <div class="form-row" style="margin-bottom:0.6rem">
-    <label>Loại câu hỏi</label>
+    <label>{$t('examForm.questionTypeLabel')}</label>
     <select bind:value={q.question_type} style="width:180px">
-      <option value="single">1 đáp án đúng</option>
-      <option value="multiple">Nhiều đáp án đúng</option>
+      <option value="single">{$t('examForm.typeSingleOption')}</option>
+      <option value="multiple">{$t('examForm.typeMultipleOption')}</option>
     </select>
   </div>
   <div class="form-row">
-    <label>Nội dung câu hỏi *</label>
-    <textarea bind:value={q.content} placeholder="Nhập câu hỏi..." style="min-height:60px"></textarea>
+    <label>{$t('examForm.questionContentLabel')} *</label>
+    <textarea bind:value={q.content} placeholder={$t('examForm.questionContentPlaceholder')} style="min-height:60px"></textarea>
   </div>
   <div class="form-row" style="margin-bottom:0.5rem">
-    <label>Ảnh minh hoạ (tuỳ chọn)</label>
-    <ImageUpload bind:value={q.image_url} type="question" label="ảnh câu hỏi" />
+    <label>{$t('examForm.questionImageLabel')}</label>
+    <ImageUpload bind:value={q.image_url} type="question" label={$t('examForm.questionImageAlt')} />
   </div>
 
-  <div class="section-sub">Đáp án</div>
+  <div class="section-sub">{$t('examForm.optionsLabel')}</div>
   <div class="options-grid">
     {#each q.options as opt}
     <div class="opt-row">
       {#if q.question_type === 'multiple'}
         <input type="checkbox" checked={q.correctKeys.includes(opt.key)}
           onchange={() => toggleCorrectKey(q, opt.key)}
-          style="width:auto; flex-shrink:0" title="Đáp án đúng" />
+          style="width:auto; flex-shrink:0" title={$t('examForm.correctAnswerTitle')} />
       {/if}
       <span class="opt-key">{opt.key}.</span>
-      <input type="text" bind:value={opt.text} placeholder="Đáp án {opt.key}" />
+      <input type="text" bind:value={opt.text} placeholder={$t('examForm.optionPlaceholder', { key: opt.key })} />
       {#if q.options.length > 2}
         <button type="button" class="btn-remove-opt" onclick={() => removeOption(q, opt.key)}>✕</button>
       {/if}
@@ -768,13 +769,13 @@
   {#if q.question_type === 'multiple'}
     <p class="correct-hint">
       {q.correctKeys.length > 0
-        ? `✓ Đã chọn ${q.correctKeys.length} đáp án: ${q.correctKeys.sort().join(', ')}`
-        : 'Tích vào ô checkbox để chọn đáp án đúng'}
+        ? $t('examForm.selectedAnswers', { n: q.correctKeys.length, keys: q.correctKeys.sort().join(', ') })
+        : $t('examForm.checkToSelectCorrect')}
     </p>
-    <button type="button" class="btn-add-opt" onclick={() => addOption(q)}>+ Thêm đáp án</button>
+    <button type="button" class="btn-add-opt" onclick={() => addOption(q)}>+ {$t('examForm.addOption')}</button>
   {:else}
     <div class="form-row" style="margin-top:0.5rem">
-      <label>Đáp án đúng</label>
+      <label>{$t('examForm.correctAnswerLabel')}</label>
       <select bind:value={q.correct_answer} style="width:100px">
         {#each q.options as opt}<option value={opt.key}>{opt.key}</option>{/each}
       </select>
@@ -783,25 +784,25 @@
 
   <div class="row2" style="margin-top:0.5rem">
     <div class="form-row" style="margin:0">
-      <label>Điểm</label>
+      <label>{$t('examForm.pointsLabel')}</label>
       <input type="number" bind:value={q.points} min="0.5" step="0.5" style="width:90px" />
     </div>
   </div>
 
   <div class="expl-section">
-    <div class="section-sub">Giải thích (markdown, tuỳ chọn)</div>
-    <MarkdownEditor bind:value={q.explanation} placeholder="Giải thích tại sao đáp án này đúng..." rows={3} />
+    <div class="section-sub">{$t('examForm.explanationSectionLabel')}</div>
+    <MarkdownEditor bind:value={q.explanation} placeholder={$t('examForm.explanationPlaceholder')} rows={3} />
   </div>
   {/if}
 </div>
 {/each}
 
-<button class="q-add-btn" onclick={addQuestion}>+ Thêm câu hỏi</button>
+<button class="q-add-btn" onclick={addQuestion}>+ {$t('examForm.addQuestion')}</button>
 
 <div class="nav-bar">
-  <button class="btn-back" onclick={goBack}>← Quay lại</button>
+  <button class="btn-back" onclick={goBack}>← {$t('common.back')}</button>
   <div class="spacer"></div>
-  <button class="btn-next" onclick={goNext}>Xem lại và lưu →</button>
+  <button class="btn-next" onclick={goNext}>{$t('examForm.reviewAndSaveShort')} →</button>
 </div>
 {/if}
 
@@ -809,41 +810,41 @@
 <!-- ════════════════ STEP 4: Final review ══════════════════════════════════════ -->
 {#if step === 4}
 <div class="card">
-  <div class="card-title">📄 Thông tin đề thi</div>
+  <div class="card-title">📄 {$t('examForm.examInfoTitle')}</div>
   {#if cover_image_url}
     <img src={cover_image_url} alt="" style="width:100%;max-height:140px;object-fit:cover;border-radius:10px;margin-bottom:1rem;border:1px solid var(--border)" />
   {/if}
   <div class="review-grid">
     <div class="review-item">
-      <div class="review-label">Tiêu đề</div>
+      <div class="review-label">{$t('examForm.titleLabel')}</div>
       <div class="review-val">{title}</div>
     </div>
     <div class="review-item">
-      <div class="review-label">Xuất bản</div>
+      <div class="review-label">{$t('examForm.publishTitle')}</div>
       <div class="review-val" style="color:{publish_mode === 'draft' ? 'var(--amber)' : publish_mode === 'scheduled' ? '#7c3aed' : '#16a34a'}">
-        {publish_mode === 'draft' ? '📝 Nháp' : publish_mode === 'scheduled' ? `🔒 ${scheduled_at_input ? new Date(scheduled_at_input).toLocaleString('vi-VN') : '(chưa chọn giờ)'}` : '🚀 Ngay lập tức'}
+        {publish_mode === 'draft' ? '📝 ' + $t('examForm.publishDraft') : publish_mode === 'scheduled' ? '🔒 ' + (scheduled_at_input ? new Date(scheduled_at_input).toLocaleString(localeCode($locale)) : $t('examForm.noTimeChosen')) : '🚀 ' + $t('examForm.immediately')}
       </div>
     </div>
     <div class="review-item">
-      <div class="review-label">Thời gian</div>
-      <div class="review-val">{time_limit} phút</div>
+      <div class="review-label">{$t('examDetail.statTime')}</div>
+      <div class="review-val">{$t('exams.minutes', { n: time_limit })}</div>
     </div>
     <div class="review-item">
-      <div class="review-label">Điểm đạt</div>
-      <div class="review-val">{passing_score !== '' ? `${passing_score}%` : 'Không yêu cầu'}</div>
+      <div class="review-label">{$t('examDetail.statPassScore')}</div>
+      <div class="review-val">{passing_score !== '' ? `${passing_score}%` : $t('examForm.noneRequired')}</div>
     </div>
     <div class="review-item">
-      <div class="review-label">Credit / lần</div>
+      <div class="review-label">{$t('examForm.creditCostLabel')}</div>
       <div class="review-val">💳 {credit_cost}</div>
     </div>
     <div class="review-item">
-      <div class="review-label">Chế độ</div>
-      <div class="review-val">{allow_retake ? 'Thực hành' : 'Chính thức'}</div>
+      <div class="review-label">{$t('examDetail.statMode')}</div>
+      <div class="review-val">{allow_retake ? $t('exams.practiceMode') : $t('examDetail.officialExam')}</div>
     </div>
   </div>
   {#if tags.length}
     <div style="margin-top:0.25rem">
-      {#each tags as t}<span class="review-tag">{t}</span>{/each}
+      {#each tags as tag}<span class="review-tag">{tag}</span>{/each}
     </div>
   {/if}
   {#if !isHtmlEmpty(description)}
@@ -852,17 +853,17 @@
 </div>
 
 <div class="card">
-  <div class="card-title">📝 Câu hỏi ({questions.length})</div>
+  <div class="card-title">📝 {$t('examForm.questionsCount', { n: questions.length })}</div>
   <div class="q-review-list">
     {#each questions as q, i}
     <div class="q-review-item">
       <div class="q-num">{i + 1}</div>
-      <div class="q-review-content">{q.content || '(chưa nhập)'}</div>
-      {#if q._existing}<span class="saved-badge">Đã lưu</span>{/if}
+      <div class="q-review-content">{q.content || $t('examForm.notEntered')}</div>
+      {#if q._existing}<span class="saved-badge">{$t('examForm.savedBadge')}</span>{/if}
       <span class="type-badge {q.question_type === 'multiple' ? 'multi' : 'single'}">
         {q.question_type === 'multiple' ? 'Multi' : 'Single'}
       </span>
-      <div class="q-review-pts">{q.points} đ</div>
+      <div class="q-review-pts">{$t('examForm.pointsShort', { n: q.points })}</div>
     </div>
     {/each}
   </div>
@@ -871,10 +872,10 @@
 {#if saveError}<p class="error-msg">{saveError}</p>{/if}
 
 <div class="nav-bar">
-  <button class="btn-back" onclick={goBack}>← Sửa câu hỏi</button>
+  <button class="btn-back" onclick={goBack}>← {$t('examForm.editQuestions')}</button>
   <div class="spacer"></div>
   <button class="btn-next" onclick={save} disabled={saving}>
-    {saving ? 'Đang lưu...' : '✓ Lưu thay đổi'}
+    {saving ? $t('examForm.savingChanges') : $t('examForm.saveChanges')}
   </button>
 </div>
 {/if}

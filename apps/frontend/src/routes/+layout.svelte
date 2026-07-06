@@ -5,6 +5,8 @@
   import { page } from '$app/stores'
   import { onMount } from 'svelte'
   import Sidebar from '$lib/components/ui/Sidebar.svelte'
+  import LanguageSwitcher from '$lib/components/ui/LanguageSwitcher.svelte'
+  import { t } from '$lib/i18n'
 
   let { children } = $props()
 
@@ -32,7 +34,7 @@
   }
 
   const themeIcon  = $derived(theme === 'dark' ? '☀️' : '🌙')
-  const themeLabel = $derived(theme === 'dark' ? 'Sáng' : 'Tối')
+  const themeLabel = $derived(theme === 'dark' ? $t('layout.themeLight') : $t('layout.themeDark'))
 
   $effect(() => {
     const u = $user
@@ -84,28 +86,28 @@
   // ── Sidebar sections (reactive) ──────────────────────────────────────────────
   let sections = $derived(!$user ? [] : [
     {
-      label: 'ĐIỀU HƯỚNG',
+      label: $t('nav.sectionNav'),
       items: [
-        { icon: I.home,     label: 'Dashboard', href: '/dashboard',    active: $page.url.pathname === '/dashboard' },
-        { icon: I.document, label: 'Đề thi',    href: '/exams',        active: $page.url.pathname.startsWith('/exams') && !$page.url.pathname.startsWith('/exams/create') },
+        { icon: I.home,     label: $t('nav.dashboard'), href: '/dashboard',    active: $page.url.pathname === '/dashboard' },
+        { icon: I.document, label: $t('nav.exams'),    href: '/exams',        active: $page.url.pathname.startsWith('/exams') && !$page.url.pathname.startsWith('/exams/create') },
         ...($user.role !== 'student' ? [
-          { icon: I.plus,   label: 'Tạo đề thi', href: '/exams/create',  active: $page.url.pathname === '/exams/create' },
-          { icon: I.folder, label: 'Bộ đề',       href: '/collections',   active: $page.url.pathname.startsWith('/collections') },
+          { icon: I.plus,   label: $t('nav.createExam'), href: '/exams/create',  active: $page.url.pathname === '/exams/create' },
+          { icon: I.folder, label: $t('nav.collections'),       href: '/collections',   active: $page.url.pathname.startsWith('/collections') },
         ] : []),
       ]
     },
     ...($user.role === 'admin' ? [{
-      label: 'QUẢN TRỊ',
+      label: $t('nav.sectionAdmin'),
       items: [
-        { icon: I.shield, label: 'Quản trị', href: '/admin', active: $page.url.pathname === '/admin' },
+        { icon: I.shield, label: $t('nav.admin'), href: '/admin', active: $page.url.pathname === '/admin' },
       ]
     }] : []),
     {
-      label: 'TÀI KHOẢN',
+      label: $t('nav.sectionAccount'),
       items: [
-        { icon: I.person, label: 'Hồ sơ', href: '/profile', active: $page.url.pathname === '/profile' },
+        { icon: I.person, label: $t('nav.profile'), href: '/profile', active: $page.url.pathname === '/profile' },
         ...($user.role !== 'student' ? [
-          { icon: I.code, label: 'API Docs', href: '/api-docs', active: $page.url.pathname === '/api-docs' },
+          { icon: I.code, label: $t('nav.apiDocs'), href: '/api-docs', active: $page.url.pathname === '/api-docs' },
         ] : []),
       ]
     }
@@ -360,6 +362,13 @@
   .no-auth {
     min-height: 100vh;
     background: var(--bg);
+    position: relative;
+  }
+  .no-auth-lang {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 200;
   }
 
   /* ── App overlay (mobile sidebar backdrop) ─────────────────────────────────── */
@@ -417,9 +426,9 @@
   <div class="banned-screen">
     <div class="banned-card">
       <div class="banned-icon">🚫</div>
-      <h2 class="banned-title">Tài khoản bị khoá</h2>
-      <p class="banned-msg">Tài khoản của bạn đã bị quản trị viên tạm khoá. Vui lòng liên hệ hỗ trợ nếu bạn cho rằng đây là nhầm lẫn.</p>
-      <a href="/login" class="banned-back">Về trang đăng nhập</a>
+      <h2 class="banned-title">{$t('layout.bannedTitle')}</h2>
+      <p class="banned-msg">{$t('layout.bannedMsg')}</p>
+      <a href="/login" class="banned-back">{$t('layout.bannedBack')}</a>
     </div>
   </div>
 
@@ -444,21 +453,27 @@
       mobileOpen={mobileSidebarOpen}
       onMobileClose={() => mobileSidebarOpen = false}
     >
-      <!-- Theme toggle in sidebar extra area -->
+      <!-- Theme + language toggles in sidebar extra area -->
       <div class="sb-theme-row">
-        <span>{theme === 'dark' ? 'Tối 🌙' : 'Sáng ☀️'}</span>
-        <button class="sb-theme-btn" onclick={toggleTheme} aria-label="Chuyển sang {themeLabel}">{themeIcon}</button>
+        <span>{theme === 'dark' ? $t('layout.themeDark') + ' 🌙' : $t('layout.themeLight') + ' ☀️'}</span>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <LanguageSwitcher variant="compact" />
+          <button class="sb-theme-btn" onclick={toggleTheme} aria-label={$t('layout.switchToTheme', { theme: themeLabel })}>{themeIcon}</button>
+        </div>
       </div>
     </Sidebar>
 
     <div class="app-body">
       <!-- Mobile topbar (hamburger + brand + theme) -->
       <div class="app-mobile-bar">
-        <button class="mobile-ham" onclick={() => mobileSidebarOpen = true} aria-label="Mở menu">
+        <button class="mobile-ham" onclick={() => mobileSidebarOpen = true} aria-label={$t('nav.openMenu')}>
           {@html I.menu}
         </button>
         <a href="/dashboard" class="mobile-brand">QuizPlatform</a>
-        <button class="sb-theme-btn" onclick={toggleTheme} aria-label={themeLabel}>{themeIcon}</button>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <LanguageSwitcher variant="compact" />
+          <button class="sb-theme-btn" onclick={toggleTheme} aria-label={themeLabel}>{themeIcon}</button>
+        </div>
       </div>
 
       <main>
@@ -470,6 +485,9 @@
 {:else}
   <!-- Unauthenticated: full-screen, no sidebar -->
   <div class="no-auth">
+    <div class="no-auth-lang">
+      <LanguageSwitcher />
+    </div>
     {@render children()}
   </div>
 {/if}

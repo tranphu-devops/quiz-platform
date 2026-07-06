@@ -4,6 +4,7 @@
   import { user } from '$lib/stores/auth'
   import { collectionApi } from '$lib/api'
   import PageHeader from '$lib/components/ui/PageHeader.svelte'
+  import { t } from '$lib/i18n'
 
   let collections = $state([])
   let loading = $state(true)
@@ -17,20 +18,20 @@
       const res = await collectionApi.list()
       if (res.ok) collections = await res.json()
     } catch {
-      error = 'Không thể tải danh sách bộ đề'
+      error = $t('collections.loadListError')
     } finally {
       loading = false
     }
   })
 
   async function remove(id) {
-    if (!confirm('Xoá bộ đề này? Hành động không thể hoàn tác.')) return
+    if (!confirm($t('collections.confirmDelete'))) return
     deletingId = id
     try {
       const res = await collectionApi.remove(id)
       if (res.ok) collections = collections.filter(c => c.id !== id)
     } catch {
-      alert('Lỗi xoá bộ đề')
+      alert($t('collections.deleteError'))
     } finally {
       deletingId = null
     }
@@ -99,19 +100,19 @@
   .empty h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
 </style>
 
-<PageHeader title="Bộ đề ({collections.length})">
-  <a href="/collections/create" class="btn-create">+ Tạo bộ đề mới</a>
+<PageHeader title={$t('collections.pageTitle', { n: collections.length })}>
+  <a href="/collections/create" class="btn-create">+ {$t('collections.createNew')}</a>
 </PageHeader>
 
 {#if loading}
-  <p style="color:var(--muted)">Đang tải...</p>
+  <p style="color:var(--muted)">{$t('common.loading')}</p>
 {:else if error}
   <p style="color:var(--danger)">{error}</p>
 {:else if collections.length === 0}
   <div class="empty">
     <div style="font-size:3rem;margin-bottom:0.75rem">🗂️</div>
-    <h3>Chưa có bộ đề nào</h3>
-    <p>Tạo bộ đề đầu tiên để nhóm các đề thi và tặng huy hiệu cho student.</p>
+    <h3>{$t('collections.emptyTitle')}</h3>
+    <p>{$t('collections.emptyMsg')}</p>
   </div>
 {:else}
   <div class="grid">
@@ -131,20 +132,20 @@
           </div>
         </div>
         <div class="card-meta">
-          <span class="pill">{col.exams?.length ?? 0} đề thi</span>
+          <span class="pill">{$t('collections.examsCount', { n: col.exams?.length ?? 0 })}</span>
           <span class="pill {col.is_published ? 'published' : ''}">
-            {col.is_published ? '● Đã xuất bản' : '○ Nháp'}
+            {col.is_published ? '● ' + $t('examDetail.publishedBadge') : '○ ' + $t('examDetail.draftBadge')}
           </span>
         </div>
         {#if col.tags?.length}
           <div class="col-tags">
-            {#each col.tags as t}<span class="col-tag">{t}</span>{/each}
+            {#each col.tags as tag}<span class="col-tag">{tag}</span>{/each}
           </div>
         {/if}
         <div class="card-actions">
-          <a href="/collections/{col.id}/edit" class="btn-sm">✏️ Sửa</a>
+          <a href="/collections/{col.id}/edit" class="btn-sm">✏️ {$t('common.edit')}</a>
           <button class="btn-sm danger" onclick={() => remove(col.id)} disabled={deletingId === col.id}>
-            {deletingId === col.id ? '...' : '🗑 Xoá'}
+            {deletingId === col.id ? '...' : '🗑 ' + $t('common.delete')}
           </button>
         </div>
       </div>
