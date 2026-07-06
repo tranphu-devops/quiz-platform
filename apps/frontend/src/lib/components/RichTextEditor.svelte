@@ -1,9 +1,11 @@
 <script>
   import { sanitizeHtml } from '$lib/sanitizeHtml'
+  import { t as t18n } from '$lib/i18n'
 
-  let { value = $bindable(''), placeholder = 'Nhập mô tả...' } = $props()
+  let { value = $bindable(''), placeholder = '' } = $props()
 
   let el = $state(null)
+  const effectivePlaceholder = $derived(placeholder || $t18n('richTextEditor.placeholder'))
 
   // Keep the contenteditable in sync with external value changes (async load,
   // programmatic reset) without clobbering the caret while the user is typing.
@@ -21,36 +23,36 @@
   }
 
   function addLink() {
-    const url = window.prompt('Nhập đường dẫn (URL):', 'https://')
+    const url = window.prompt($t18n('richTextEditor.linkPrompt'), 'https://')
     if (url && /^https?:\/\//i.test(url)) exec('createLink', url)
   }
 
   function onInput() { value = el.innerHTML }
   function onBlur() { value = sanitizeHtml(el.innerHTML); el.innerHTML = value }
 
-  const tools = [
-    { cmd: 'bold', label: 'B', title: 'Đậm', style: 'font-weight:800' },
-    { cmd: 'italic', label: 'I', title: 'Nghiêng', style: 'font-style:italic' },
-    { cmd: 'underline', label: 'U', title: 'Gạch chân', style: 'text-decoration:underline' },
-    { cmd: 'strikeThrough', label: 'S', title: 'Gạch ngang', style: 'text-decoration:line-through' }
-  ]
+  const tools = $derived([
+    { cmd: 'bold', label: 'B', title: $t18n('richTextEditor.bold'), style: 'font-weight:800' },
+    { cmd: 'italic', label: 'I', title: $t18n('richTextEditor.italic'), style: 'font-style:italic' },
+    { cmd: 'underline', label: 'U', title: $t18n('richTextEditor.underline'), style: 'text-decoration:underline' },
+    { cmd: 'strikeThrough', label: 'S', title: $t18n('richTextEditor.strikethrough'), style: 'text-decoration:line-through' }
+  ])
 </script>
 
 <div class="rte">
   <div class="rte-toolbar">
-    {#each tools as t}
-      <button type="button" class="rte-btn" title={t.title} style={t.style}
-        onmousedown={(e) => e.preventDefault()} onclick={() => exec(t.cmd)}>{t.label}</button>
+    {#each tools as tool}
+      <button type="button" class="rte-btn" title={tool.title} style={tool.style}
+        onmousedown={(e) => e.preventDefault()} onclick={() => exec(tool.cmd)}>{tool.label}</button>
     {/each}
     <span class="rte-sep"></span>
-    <button type="button" class="rte-btn" title="Danh sách gạch đầu dòng"
+    <button type="button" class="rte-btn" title={$t18n('richTextEditor.bulletList')}
       onmousedown={(e) => e.preventDefault()} onclick={() => exec('insertUnorderedList')}>• ≡</button>
-    <button type="button" class="rte-btn" title="Danh sách đánh số"
+    <button type="button" class="rte-btn" title={$t18n('richTextEditor.numberedList')}
       onmousedown={(e) => e.preventDefault()} onclick={() => exec('insertOrderedList')}>1. ≡</button>
     <span class="rte-sep"></span>
-    <button type="button" class="rte-btn" title="Chèn liên kết"
+    <button type="button" class="rte-btn" title={$t18n('richTextEditor.insertLink')}
       onmousedown={(e) => e.preventDefault()} onclick={addLink}>🔗</button>
-    <button type="button" class="rte-btn" title="Xoá định dạng"
+    <button type="button" class="rte-btn" title={$t18n('richTextEditor.clearFormat')}
       onmousedown={(e) => e.preventDefault()} onclick={() => exec('removeFormat')}>✕</button>
   </div>
   <div
@@ -60,7 +62,7 @@
     role="textbox"
     tabindex="0"
     aria-multiline="true"
-    data-placeholder={placeholder}
+    data-placeholder={effectivePlaceholder}
     oninput={onInput}
     onblur={onBlur}
   ></div>

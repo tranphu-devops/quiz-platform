@@ -1,20 +1,21 @@
 <script>
   import { page } from '$app/stores'
   import { goto } from '$app/navigation'
+  import { t } from '$lib/i18n'
 
   const status = $derived($page.status ?? 500)
   const isNotFound = $derived(status === 404)
   const is5xx = $derived(status >= 500)
 
   const title = $derived(
-    isNotFound ? 'Không tìm thấy trang'
-    : is5xx    ? 'Máy chủ gặp sự cố'
-    : 'Đã có lỗi xảy ra'
+    isNotFound ? $t('errorPage.notFoundTitle')
+    : is5xx    ? $t('errorPage.serverErrorTitle')
+    : $t('errorPage.genericTitle')
   )
   const subtitle = $derived(
-    isNotFound ? 'Trang bạn tìm không tồn tại, đã bị di chuyển hoặc đường dẫn bị sai.'
-    : is5xx    ? 'Hệ thống đang gặp trục trặc tạm thời. Vui lòng thử lại sau ít phút.'
-    : ($page.error?.message || 'Yêu cầu của bạn không thể hoàn tất.')
+    isNotFound ? $t('errorPage.notFoundSub')
+    : is5xx    ? $t('errorPage.serverErrorSub')
+    : ($page.error?.message || $t('errorPage.genericSub'))
   )
   const emoji = $derived(isNotFound ? '🧭' : is5xx ? '🛠️' : '⚠️')
 </script>
@@ -26,14 +27,14 @@
     <h1 class="err-title">{title}</h1>
     <p class="err-sub">{subtitle}</p>
     <div class="err-actions">
-      <a href="/dashboard" class="err-btn err-btn-primary">← Về trang chủ</a>
+      <a href="/dashboard" class="err-btn err-btn-primary">← {$t('errorPage.home')}</a>
       {#if is5xx}
-        <button class="err-btn err-btn-ghost" onclick={() => location.reload()}>Thử lại</button>
+        <button class="err-btn err-btn-ghost" onclick={() => location.reload()}>{$t('common.tryAgain')}</button>
       {:else}
-        <button class="err-btn err-btn-ghost" onclick={() => history.length > 1 ? history.back() : goto('/dashboard')}>Quay lại</button>
+        <button class="err-btn err-btn-ghost" onclick={() => history.length > 1 ? history.back() : goto('/dashboard')}>{$t('common.back')}</button>
       {/if}
     </div>
-    <a href="/exams" class="err-link">Xem danh sách đề thi</a>
+    <a href="/exams" class="err-link">{$t('errorPage.viewExams')}</a>
   </div>
 </div>
 

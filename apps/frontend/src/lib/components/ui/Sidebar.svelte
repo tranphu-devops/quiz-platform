@@ -1,4 +1,6 @@
 <script>
+  import { t } from '$lib/i18n'
+
   let {
     sections = [],
     userInfo = null,
@@ -12,13 +14,15 @@
 
   const chevronLeft = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2L4 7l5 5"/></svg>`
   const chevronRight = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2l5 5-5 5"/></svg>`
+
+  const roleLabel = $derived(userInfo?.role ? $t(`roles.${userInfo.role}`) : '')
 </script>
 
 <aside
   class="ix-sidebar"
   class:mobile-open={mobileOpen}
   class:collapsed
-  aria-label="Điều hướng"
+  aria-label={$t('sidebar.navLabel')}
 >
   <!-- Brand + collapse toggle -->
   <div class="ix-brand-row">
@@ -29,8 +33,8 @@
     <button
       class="ix-collapse-btn"
       onclick={onToggleCollapse}
-      aria-label={collapsed ? 'Mở sidebar' : 'Thu sidebar'}
-      title={collapsed ? 'Mở rộng' : 'Thu gọn'}
+      aria-label={collapsed ? $t('sidebar.expandAria') : $t('sidebar.collapseAria')}
+      title={collapsed ? $t('sidebar.expand') : $t('sidebar.collapse')}
     >
       {@html collapsed ? chevronRight : chevronLeft}
     </button>
@@ -94,14 +98,14 @@
       {#if !collapsed}
         <div class="ix-user-meta">
           <div class="ix-user-name">{userInfo.name || userInfo.email}</div>
-          <div class="ix-user-role">{userInfo.role}</div>
+          <div class="ix-user-role">{roleLabel}</div>
         </div>
       {/if}
       <button
         class="ix-logout-btn"
         onclick={onLogout}
-        aria-label="Đăng xuất"
-        title="Đăng xuất"
+        aria-label={$t('sidebar.logout')}
+        title={$t('sidebar.logout')}
       >
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M9 2h3a1 1 0 011 1v8a1 1 0 01-1 1H9"/>

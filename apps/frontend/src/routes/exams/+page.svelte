@@ -5,6 +5,7 @@
   import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
   import PageHeader from '$lib/components/ui/PageHeader.svelte'
+  import { t } from '$lib/i18n'
 
   let now = $state(Date.now())
   onMount(() => {
@@ -25,9 +26,9 @@
     const h = Math.floor((s % 86400) / 3600)
     const m = Math.floor((s % 3600) / 60)
     const sec = s % 60
-    if (d > 0) return `${d}ng ${h}h ${m}p`
-    if (h > 0) return `${h}h ${m}p ${sec}s`
-    return `${m}p ${sec < 10 ? '0' : ''}${sec}s`
+    if (d > 0) return $t('exams.countdownDays', { d, h, m })
+    if (h > 0) return $t('exams.countdownHours', { h, m, sec })
+    return $t('exams.countdownMins', { m, sec: `${sec < 10 ? '0' : ''}${sec}` })
   }
 
   let exams = $state([])
@@ -43,11 +44,11 @@
   const allTags = $derived.by(() => {
     const counts = new Map()
     for (const e of exams)
-      for (const t of (e.tags ?? []))
-        counts.set(t, (counts.get(t) ?? 0) + 1)
+      for (const tag of (e.tags ?? []))
+        counts.set(tag, (counts.get(tag) ?? 0) + 1)
     return [...counts.entries()]
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .map(([t]) => t)
+      .map(([tag]) => tag)
   })
 
   // Popularity weight: likes > comments > lượt thi
@@ -70,7 +71,7 @@
     if (!$user) { goto('/login'); return }
     try {
       const examRes = await examApi.list()
-      if (!examRes.ok) { error = 'Không thể tải danh sách đề thi'; return }
+      if (!examRes.ok) { error = $t('exams.loadListError'); return }
       exams = await examRes.json()
 
       if ($user.role === 'student') {
@@ -86,7 +87,7 @@
         }
       }
     } catch {
-      error = 'Không thể kết nối server'
+      error = $t('imageUpload.connectionError')
     } finally {
       loading = false
     }
@@ -112,9 +113,9 @@
   function initial(title) { return (title ?? '?').charAt(0).toUpperCase() }
 
   function fmtMeta(exam) {
-    const parts = [`${exam.time_limit} phút`]
-    if (exam.passing_score != null) parts.push(`Đạt ≥${exam.passing_score}%`)
-    if (exam.allow_retake) parts.push('Thực hành')
+    const parts = [$t('exams.minutes', { n: exam.time_limit })]
+    if (exam.passing_score != null) parts.push($t('exams.passThreshold', { pct: exam.passing_score }))
+    if (exam.allow_retake) parts.push($t('exams.practiceMode'))
     return parts.join(' · ')
   }
 
@@ -125,7 +126,7 @@
   }
 
   async function deleteExam(id) {
-    if (!confirm('Xoá đề thi này?')) return
+    if (!confirm($t('exams.confirmDelete'))) return
     await examApi.remove(id)
     exams = exams.filter(e => e.id !== id)
   }
@@ -333,9 +334,9 @@
   .error { color: var(--danger); }
 </style>
 
-<PageHeader title="Đề thi">
+<PageHeader title={$t('nav.exams')}>
   {#if $user && $user.role !== 'student'}
-    <a href="/exams/create" class="btn-create">+ Tạo đề thi</a>
+    <a href="/exams/create" class="btn-create">+ {$t('exams.createExam')}</a>
   {/if}
 </PageHeader>
 
@@ -359,12 +360,12 @@
   {#if exams.length === 0}
     <div class="empty">
       <div class="empty-icon">📋</div>
-      <h3>Chưa có đề thi nào</h3>
+      <h3>{$t('exams.emptyTitle')}</h3>
       <p>
         {#if $user?.role !== 'student'}
-          Nhấn <strong>Tạo đề thi</strong> để bắt đầu.
+          {@html $t('exams.emptyTeacherHint')}
         {:else}
-          Hiện chưa có đề thi nào được xuất bản.
+          {$t('exams.emptyStudentHint')}
         {/if}
       </p>
     </div>
@@ -372,7 +373,7 @@
     <div class="toolbar">
       {#if allTags.length}
         <div class="tag-filter">
-          <button class="tag-chip {selectedTag === '' ? 'active' : ''}" onclick={() => selectedTag = ''}>Tất cả</button>
+          <button class="tag-chip {selectedTag === '' ? 'active' : ''}" onclick={() => selectedTag = ''}>{$t('common.all')}</button>
           {#each allTags as tag}
             <button class="tag-chip {selectedTag === tag ? 'active' : ''}" onclick={() => selectedTag = tag}>{tag}</button>
           {/each}
@@ -381,10 +382,10 @@
         <div class="tag-filter"></div>
       {/if}
       <div class="sort-wrap">
-        <span class="sort-label">Sắp xếp:</span>
+        <span class="sort-label">{$t('exams.sortBy')}:</span>
         <select class="sort-select" bind:value={sortBy}>
-          <option value="newest">Mới nhất</option>
-          <option value="popular">Phổ biến nhất</option>
+          <option value="newest">{$t('exams.sortNewest')}</option>
+          <option value="popular">{$t('exams.sortPopular')}</option>
         </select>
       </div>
     </div>
@@ -409,22 +410,22 @@
                 <span class="countdown-lock">🔒</span>
                 {#if cd}
                   <span class="countdown-timer">{cd}</span>
-                  <span class="countdown-label">Sắp mở</span>
+                  <span class="countdown-label">{$t('exams.opensSoon')}</span>
                 {:else}
-                  <span class="countdown-label">Đang mở...</span>
+                  <span class="countdown-label">{$t('exams.opening')}</span>
                 {/if}
               </div>
-              <span class="badge scheduled">🔒 Sắp mở</span>
+              <span class="badge scheduled">🔒 {$t('exams.opensSoon')}</span>
             {:else if st !== 'new'}
               <span class="badge {st}">
-                {st === 'passed' ? '✓ Đã pass' : st === 'failed' ? '✗ Chưa đạt' : st === 'published' ? '✓ Xuất bản' : 'Nháp'}
+                {st === 'passed' ? '✓ ' + $t('exams.badgePassed') : st === 'failed' ? '✗ ' + $t('exams.badgeFailed') : st === 'published' ? '✓ ' + $t('exams.badgePublished') : $t('exams.badgeDraft')}
               </span>
             {/if}
           </div>
 
           <div class="card-body">
             <div class="card-title">{exam.title}</div>
-            <div class="card-desc">{htmlToText(exam.description) || 'Không có mô tả'}</div>
+            <div class="card-desc">{htmlToText(exam.description) || $t('exams.noDescription')}</div>
             <div class="card-meta">{fmtMeta(exam)}</div>
             {#if exam.creator_name}
               <div class="card-creator">
@@ -447,12 +448,12 @@
             {/if}
             <div class="card-stats">
               {#if (exam.submission_count ?? 0) > 0}
-                <span class="stat-pill">👥 {exam.submission_count} lượt thi</span>
+                <span class="stat-pill">👥 {$t('exams.attemptsCount', { n: exam.submission_count })}</span>
                 {#if rate !== null}
-                  <span class="stat-pill pass">✓ {rate}% pass</span>
+                  <span class="stat-pill pass">✓ {rate}% {$t('exams.passSuffix')}</span>
                 {/if}
               {:else}
-                <span class="stat-pill">Chưa có lượt thi</span>
+                <span class="stat-pill">{$t('exams.noAttempts')}</span>
               {/if}
               {#if (exam.like_count ?? 0) > 0}
                 <span class="stat-pill like">❤️ {exam.like_count}</span>
@@ -475,10 +476,10 @@
               {/if}
             </div>
             <div class="actions">
-              <a href="/exams/{exam.id}" class="btn btn-primary">Xem</a>
+              <a href="/exams/{exam.id}" class="btn btn-primary">{$t('common.view')}</a>
               {#if $user?.role !== 'student' && (exam.created_by === $user?.id || $user?.role === 'admin')}
-                <a href="/exams/{exam.id}/edit" class="btn btn-ghost">Sửa</a>
-                <button class="btn btn-danger" onclick={() => deleteExam(exam.id)}>Xoá</button>
+                <a href="/exams/{exam.id}/edit" class="btn btn-ghost">{$t('common.edit')}</a>
+                <button class="btn btn-danger" onclick={() => deleteExam(exam.id)}>{$t('common.delete')}</button>
               {/if}
             </div>
           </div>

@@ -1,8 +1,11 @@
 <script>
   import presets from '$lib/badge-presets.json'
   import ImageUpload from './ImageUpload.svelte'
+  import { t } from '$lib/i18n'
 
-  let { value = $bindable(''), label = 'huy hiệu' } = $props()
+  let { value = $bindable(''), label = '' } = $props()
+
+  const displayLabel = $derived(label || $t('badgePicker.defaultLabel'))
 
   let tab = $state('presets')
   let customUrl = $state('')
@@ -62,10 +65,10 @@
 <div class="picker">
   <div class="tabs">
     <button class="tab {tab === 'presets' ? 'active' : ''}" onclick={() => tab = 'presets'}>
-      🎖 50 huy hiệu có sẵn
+      🎖 {$t('badgePicker.presetsTab')}
     </button>
     <button class="tab {tab === 'upload' ? 'active' : ''}" onclick={() => tab = 'upload'}>
-      📤 Tải lên tùy chỉnh
+      📤 {$t('badgePicker.uploadTab')}
     </button>
   </div>
 
@@ -81,13 +84,13 @@
       </div>
     {:else}
       <p style="font-size:0.82rem; color:var(--muted); margin-bottom:0.75rem">
-        Tải lên ảnh huy hiệu riêng (khuyến nghị 64×64 px, PNG/SVG)
+        {$t('badgePicker.uploadHint')}
       </p>
       <ImageUpload bind:value={customUrl} type="exam-cover" label="badge" />
       {#if customUrl && customUrl !== value}
         <button type="button" onclick={applyCustom}
           style="margin-top:0.5rem; padding:0.4rem 0.85rem; background:var(--primary); color:#fff; border:none; border-radius:var(--radius-btn); cursor:pointer; font-size:0.85rem; font-weight:600">
-          Dùng ảnh này
+          {$t('badgePicker.useThisImage')}
         </button>
       {/if}
     {/if}
@@ -97,12 +100,12 @@
       {#if value}
         <img src={value} alt="badge" />
         <div>
-          <div class="preview-name">Huy hiệu đã chọn</div>
-          <div style="font-size:0.75rem;color:var(--muted);">{presets.find(p => p.url === value)?.name ?? 'Tùy chỉnh'}</div>
+          <div class="preview-name">{$t('badgePicker.selected')}</div>
+          <div style="font-size:0.75rem;color:var(--muted);">{presets.find(p => p.url === value)?.name ?? $t('badgePicker.custom')}</div>
         </div>
-        <button type="button" class="clear-btn" onclick={() => value = ''}>✕ Bỏ chọn</button>
+        <button type="button" class="clear-btn" onclick={() => value = ''}>✕ {$t('badgePicker.deselect')}</button>
       {:else}
-        <div class="preview-empty">Chưa chọn {label} — hãy chọn từ thư viện hoặc tải lên</div>
+        <div class="preview-empty">{$t('badgePicker.noneSelected', { label: displayLabel })}</div>
       {/if}
     </div>
   </div>

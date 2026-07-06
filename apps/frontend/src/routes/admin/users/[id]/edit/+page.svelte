@@ -9,6 +9,7 @@
   import Card from '$lib/components/ui/Card.svelte'
   import Button from '$lib/components/ui/Button.svelte'
   import Input from '$lib/components/ui/Input.svelte'
+  import { t } from '$lib/i18n'
 
   const userId = $derived($page.params.id)
 
@@ -45,7 +46,7 @@
       const res = await userApi.adminGetUser(userId)
       if (!res.ok) {
         const d = await res.json()
-        error = d.error ?? 'Không tìm thấy người dùng'
+        error = d.error ?? $t('adminUserEdit.notFound')
         loading = false
         return
       }
@@ -67,7 +68,7 @@
       linkedin_url  = p.linkedin_url ?? ''
       website_url   = p.website_url ?? ''
     } catch {
-      error = 'Không thể tải thông tin người dùng'
+      error = $t('adminUserEdit.loadError')
     } finally {
       loading = false
     }
@@ -86,7 +87,7 @@
       })
       if (!profileRes.ok) {
         const d = await profileRes.json()
-        error = d.error ?? 'Lỗi cập nhật hồ sơ'
+        error = d.error ?? $t('adminUserEdit.profileUpdateError')
         return
       }
 
@@ -94,7 +95,7 @@
       const roleRes = await userApi.adminUpdateRole(userId, role)
       if (!roleRes.ok) {
         const d = await roleRes.json()
-        error = d.error ?? 'Lỗi cập nhật vai trò'
+        error = d.error ?? $t('adminUserEdit.roleUpdateError')
         return
       }
 
@@ -104,7 +105,7 @@
         const credRes = await userApi.adminUpdateCredits(userId, creditsVal)
         if (!credRes.ok) {
           const d = await credRes.json()
-          error = d.error ?? 'Lỗi cập nhật credits'
+          error = d.error ?? $t('adminUserEdit.creditsUpdateError')
           return
         }
       }
@@ -112,7 +113,7 @@
       success = true
       setTimeout(() => success = false, 3000)
     } catch {
-      error = 'Không thể kết nối server'
+      error = $t('imageUpload.connectionError')
     } finally {
       saving = false
     }
@@ -120,59 +121,59 @@
 </script>
 
 <PageHeader
-  title="Chỉnh sửa người dùng"
+  title={$t('adminUserEdit.pageTitle')}
   breadcrumbs={[
     { label: 'Admin', href: '/admin' },
-    { label: 'Người dùng', href: '/admin' },
+    { label: $t('admin.tabUsers'), href: '/admin' },
     { label: targetEmail || userId }
   ]}
 />
 
 <div class="edit-layout">
   {#if loading}
-    <p class="loading-msg">Đang tải...</p>
+    <p class="loading-msg">{$t('common.loading')}</p>
   {:else if error && !targetEmail}
     <div class="error-box">{error}</div>
-    <div style="margin-top:1rem"><Button variant="ghost" onclick={() => goto('/admin')}>← Quay lại Admin</Button></div>
+    <div style="margin-top:1rem"><Button variant="ghost" onclick={() => goto('/admin')}>← {$t('adminUserEdit.backToAdmin')}</Button></div>
   {:else}
     {#if error}
       <div class="error-box">{error}</div>
     {/if}
     {#if success}
-      <div class="success-box">Đã lưu thành công!</div>
+      <div class="success-box">{$t('profile.savedSuccess')}</div>
     {/if}
 
     <div class="two-col">
       <!-- Left column -->
       <div class="col-left">
         <!-- Avatar + basic info -->
-        <Card title="Thông tin cơ bản">
+        <Card title={$t('profile.basicInfoTitle')}>
           <div class="avatar-wrap">
-            <ImageUpload bind:value={avatar_url} type="avatar" label="Ảnh đại diện" />
+            <ImageUpload bind:value={avatar_url} type="avatar" label={$t('adminUserEdit.avatarLabel')} />
           </div>
 
           <div class="field-group">
-            <label for="full_name">Họ tên</label>
-            <Input id="full_name" bind:value={full_name} placeholder="Nguyễn Văn A" />
+            <label for="full_name">{$t('admin.thFullName')}</label>
+            <Input id="full_name" bind:value={full_name} placeholder={$t('admin.fullNamePlaceholder')} />
           </div>
 
           <div class="field-group">
-            <label for="email-ro">Email <span class="readonly-tag">chỉ đọc</span></label>
+            <label for="email-ro">Email <span class="readonly-tag">{$t('adminUserEdit.readonlyTag')}</span></label>
             <Input id="email-ro" value={targetEmail} disabled />
           </div>
         </Card>
 
         <!-- Admin controls -->
-        <Card title="Quyền & Credits">
+        <Card title={$t('adminUserEdit.permissionsTitle')}>
           <div class="field-group">
-            <label for="role-sel">Vai trò</label>
+            <label for="role-sel">{$t('admin.roleLabel')}</label>
             <select id="role-sel" class="field-select" bind:value={role}>
-              <option value="student">Student</option>
-              <option value="teacher">Teacher</option>
-              <option value="admin">Admin</option>
-              <option value="banned">Banned</option>
+              <option value="student">{$t('roles.student')}</option>
+              <option value="teacher">{$t('roles.teacher')}</option>
+              <option value="admin">{$t('roles.admin')}</option>
+              <option value="banned">{$t('roles.banned')}</option>
             </select>
-            <p class="field-hint">Thay đổi có hiệu lực sau lần đăng nhập tiếp theo của người dùng.</p>
+            <p class="field-hint">{$t('adminUserEdit.roleChangeHint')}</p>
           </div>
 
           <div class="field-group">
@@ -185,37 +186,37 @@
       <!-- Right column -->
       <div class="col-right">
         <!-- Personal info -->
-        <Card title="Thông tin cá nhân">
+        <Card title={$t('profile.personalInfoTitle')}>
           <div class="field-group">
-            <label for="bio">Giới thiệu</label>
-            <textarea id="bio" class="field-textarea" bind:value={bio} placeholder="Vài dòng giới thiệu..."></textarea>
+            <label for="bio">{$t('adminUserEdit.bioLabel')}</label>
+            <textarea id="bio" class="field-textarea" bind:value={bio} placeholder={$t('adminUserEdit.bioPlaceholder')}></textarea>
           </div>
 
           <div class="field-row-2">
             <div class="field-group">
-              <label for="birth_year">Năm sinh</label>
+              <label for="birth_year">{$t('profile.birthYearLabel')}</label>
               <Input id="birth_year" type="number" bind:value={birth_year} min="1940" max="2010" placeholder="1990" />
             </div>
 
             <div class="field-group">
-              <label for="gender">Giới tính</label>
+              <label for="gender">{$t('profile.genderLabel')}</label>
               <select id="gender" class="field-select" bind:value={gender}>
-                <option value="">Không hiển thị</option>
-                <option value="male">Nam</option>
-                <option value="female">Nữ</option>
-                <option value="other">Khác</option>
+                <option value="">{$t('adminUserEdit.genderHiddenShort')}</option>
+                <option value="male">{$t('profile.genderMale')}</option>
+                <option value="female">{$t('profile.genderFemale')}</option>
+                <option value="other">{$t('profile.genderOther')}</option>
               </select>
             </div>
           </div>
 
           <div class="field-group">
-            <label for="interests">Sở thích</label>
-            <Input id="interests" bind:value={interests} placeholder="Lập trình, thiết kế, âm nhạc..." />
+            <label for="interests">{$t('adminUserEdit.interestsLabel')}</label>
+            <Input id="interests" bind:value={interests} placeholder={$t('adminUserEdit.interestsPlaceholder')} />
           </div>
         </Card>
 
         <!-- Social links -->
-        <Card title="Mạng xã hội">
+        <Card title={$t('profile.socialLabel')}>
           <div class="social-grid">
             <div class="field-group">
               <label for="facebook_url">Facebook</label>
@@ -223,7 +224,7 @@
             </div>
             <div class="field-group">
               <label for="zalo">Zalo</label>
-              <Input id="zalo" bind:value={zalo} placeholder="Số điện thoại Zalo" />
+              <Input id="zalo" bind:value={zalo} placeholder={$t('adminUserEdit.zaloPlaceholder')} />
             </div>
             <div class="field-group">
               <label for="tiktok_url">TikTok</label>
@@ -242,7 +243,7 @@
               <Input id="linkedin_url" type="url" bind:value={linkedin_url} placeholder="https://linkedin.com/in/..." />
             </div>
             <div class="field-group full-width">
-              <label for="website_url">Website</label>
+              <label for="website_url">{$t('profile.websiteLabel')}</label>
               <Input id="website_url" type="url" bind:value={website_url} placeholder="https://example.com" />
             </div>
           </div>
@@ -252,9 +253,9 @@
 
     <!-- Action bar -->
     <div class="action-bar">
-      <Button variant="ghost" onclick={() => goto('/admin')}>← Quay lại</Button>
+      <Button variant="ghost" onclick={() => goto('/admin')}>← {$t('common.back')}</Button>
       <Button onclick={save} disabled={saving}>
-        {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
+        {saving ? $t('common.saving') : $t('examForm.saveChanges')}
       </Button>
     </div>
   {/if}
