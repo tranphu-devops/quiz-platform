@@ -2,16 +2,20 @@ import { writable, derived } from 'svelte/store'
 import { browser } from '$app/environment'
 import { vi } from './locales/vi.js'
 import { en } from './locales/en.js'
+import { ja } from './locales/ja.js'
 
-const dictionaries = { vi, en }
+const dictionaries = { vi, en, ja }
 
-export const locales = ['vi', 'en']
+export const locales = ['vi', 'en', 'ja']
 
 function getInitialLocale() {
   if (!browser) return 'vi'
   const saved = localStorage.getItem('quiz-lang')
   if (saved && dictionaries[saved]) return saved
-  return navigator.language?.toLowerCase().startsWith('en') ? 'en' : 'vi'
+  const browserLang = navigator.language?.toLowerCase() ?? ''
+  if (browserLang.startsWith('ja')) return 'ja'
+  if (browserLang.startsWith('en')) return 'en'
+  return 'vi'
 }
 
 export const locale = writable(getInitialLocale())
@@ -28,11 +32,13 @@ export function setLocale(next) {
 }
 
 export function toggleLocale() {
-  locale.update((l) => (l === 'vi' ? 'en' : 'vi'))
+  locale.update((l) => locales[(locales.indexOf(l) + 1) % locales.length])
 }
 
+const LOCALE_CODES = { vi: 'vi-VN', en: 'en-US', ja: 'ja-JP' }
+
 export function localeCode(l) {
-  return l === 'en' ? 'en-US' : 'vi-VN'
+  return LOCALE_CODES[l] ?? 'vi-VN'
 }
 
 function resolve(dict, key) {

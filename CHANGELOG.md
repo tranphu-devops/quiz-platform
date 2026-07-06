@@ -7,7 +7,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] — 2026-07-06
 
 ### Added
-- **Hỗ trợ tiếng Anh (i18n)**: quiz app và landing page giờ hỗ trợ chuyển đổi Việt/Anh. Quiz app dùng store `$lib/i18n` (locale lưu ở `localStorage('quiz-lang')`, mặc định theo ngôn ngữ trình duyệt) với nút chuyển ngôn ngữ trong sidebar và trên các trang chưa đăng nhập; toàn bộ text UI, thông báo lỗi, và định dạng ngày/giờ theo locale đã được chuyển sang key dịch. Landing page dùng cơ chế client-side JS thuần (không cần build) với `data-i18n` attributes và nút chuyển ngôn ngữ trên nav.
+- **Hỗ trợ đa ngôn ngữ Việt/Anh/Nhật (i18n)**: quiz app và landing page giờ hỗ trợ chuyển đổi giữa Tiếng Việt, English và 日本語. Quiz app dùng store `$lib/i18n` (locale lưu ở `localStorage('quiz-lang')`, mặc định theo ngôn ngữ trình duyệt) với nút chuyển ngôn ngữ (bấm để chuyển vòng qua 3 ngôn ngữ) trong sidebar và trên các trang chưa đăng nhập; toàn bộ text UI, thông báo lỗi, và định dạng ngày/giờ theo locale đã được chuyển sang key dịch. Landing page dùng cơ chế client-side JS thuần (không cần build) với `data-i18n` attributes và nút chuyển ngôn ngữ trên nav.
+
+### Fixed
+- Landing page hiển thị literal `<br/>` trong tiêu đề CTA cuối trang do thiếu cờ `data-i18n-html` — đã sửa để render đúng thẻ xuống dòng.
 
 ---
 
