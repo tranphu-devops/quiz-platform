@@ -215,7 +215,7 @@
   }
 
   .cover-wrap {
-    position: relative; width: 100%; aspect-ratio: 16/9;
+    position: relative; width: 100%; aspect-ratio: 4/3;
     overflow: hidden; flex-shrink: 0;
   }
   .cover-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -322,7 +322,7 @@
   @media (max-width: 680px)  { .loading-grid { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 420px)  { .loading-grid { grid-template-columns: 1fr; } }
   .skeleton-card { background: var(--surface); border-radius: var(--radius-card); border: 1px solid var(--border); overflow: hidden; }
-  .skeleton-cover { aspect-ratio: 16/9; background: linear-gradient(90deg,#f0eeff,#e9e4ff,#f0eeff); background-size: 200%; animation: shimmer 1.5s infinite; }
+  .skeleton-cover { aspect-ratio: 4/3; background: linear-gradient(90deg,#f0eeff,#e9e4ff,#f0eeff); background-size: 200%; animation: shimmer 1.5s infinite; }
   .skeleton-body { padding: 1rem; display: flex; flex-direction: column; gap: 0.6rem; }
   .skeleton-line { height: 12px; border-radius: 6px; background: linear-gradient(90deg,#f0eeff,#e9e4ff,#f0eeff); background-size: 200%; animation: shimmer 1.5s infinite; }
   @keyframes shimmer { 0%{background-position:200%} 100%{background-position:-200%} }

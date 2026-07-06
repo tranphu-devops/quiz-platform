@@ -227,7 +227,7 @@
   }
   .hero-img {
     position: absolute; inset: 0; width: 100%; height: 100%;
-    object-fit: cover; display: block;
+    object-fit: cover; display: block; opacity: 0.25;
   }
   .hero-overlay {
     position: absolute; inset: 0;
