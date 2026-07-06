@@ -781,7 +781,7 @@
 <div class="card">
   <div class="card-title">📄 {$t('examForm.examInfoTitle')}</div>
   {#if cover_image_url}
-    <img src={cover_image_url} alt="" style="width:100%;max-height:140px;object-fit:cover;border-radius:10px;margin-bottom:1rem;border:1px solid var(--border)" />
+    <img src={cover_image_url} alt="" style="width:100%;max-width:280px;aspect-ratio:4/3;object-fit:cover;border-radius:10px;margin-bottom:1rem;border:1px solid var(--border)" />
   {/if}
   <div class="review-grid">
     <div class="review-item">

@@ -359,7 +359,7 @@
   }
 
   .exam-cover {
-    height: 120px;
+    aspect-ratio: 4/3;
     overflow: hidden;
     flex-shrink: 0;
   }
