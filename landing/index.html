@@ -323,7 +323,7 @@
     <a href="#how" class="nav-hide" data-i18n="nav.how">Cách dùng</a>
     <a href="#faq" class="nav-hide" data-i18n="nav.faq">FAQ</a>
     <button class="lang-switch" onclick="toggleLang()" aria-label="Switch language">
-      <span data-lang-mark="vi">VI</span><span class="lang-sep">/</span><span data-lang-mark="en">EN</span>
+      <span data-lang-mark="vi">VI</span><span class="lang-sep">/</span><span data-lang-mark="en">EN</span><span class="lang-sep">/</span><span data-lang-mark="ja">JA</span>
     </button>
     <a href="https://quiz.phutx.top/login" class="btn-nav" data-i18n="nav.cta">Bắt đầu khám phá</a>
   </div>
@@ -726,7 +726,7 @@
 
 <!-- CTA -->
 <div class="cta-section">
-  <h2 data-i18n="cta.title">Sẵn sàng tổ chức bài thi<br/>công bằng và thông minh?</h2>
+  <h2 data-i18n="cta.title" data-i18n-html="true">Sẵn sàng tổ chức bài thi<br/>công bằng và thông minh?</h2>
   <p data-i18n="cta.desc">Miễn phí để khám phá. Không cần thẻ tín dụng. Chạy trong vài phút.</p>
   <div class="cta-actions">
     <a href="https://quiz.phutx.top/login" class="btn-white" data-i18n="hero.cta">Bắt đầu khám phá →</a>
@@ -987,6 +987,124 @@
       'cta.desc': 'Free to explore. No credit card required. Up and running in minutes.',
       'footer.tagline': 'A smart online testing platform',
       'footer.builtBy': 'Built by',
+    },
+    ja: {
+      'nav.features': '機能', 'nav.security': 'セキュリティ', 'nav.how': '使い方', 'nav.faq': 'FAQ', 'nav.cta': '今すぐ始める',
+      'hero.eyebrow': '✦ 新世代のオンライン試験プラットフォーム',
+      'hero.title': '<em>スマート</em>なオンライン試験、<br/>安全で公平',
+      'hero.desc': '4ステップの試験ウィザード、自動保存される進捗、リアルタイム不正防止、自動バッジ授与 — すべてを1つのプラットフォームで。',
+      'hero.cta': '今すぐ始める →',
+      'mockup.session': '🔒 1台のみ',
+      'mockup.qmeta': '問題 3 / 5 · 1点 · 回答は保存済み',
+      'mockup.question': '99.999999999%の耐久性を持つオブジェクトストレージを提供するAWSサービスはどれですか？',
+      'mockup.autosave': '✓ 自動保存済み',
+      'mockup.prev': '← 前へ',
+      'mockup.next': '次へ →',
+      'trust.1': '1アカウント = 受験中は1台のデバイスのみ',
+      'trust.2': '問題ごとに自動保存、進捗を失いません',
+      'trust.3': '接続切断やタブを閉じても再開可能',
+      'trust.4': 'API レスポンスをエンドツーエンドで暗号化',
+      'trust.5': '時間切れで自動採点',
+      'stats.exams': '作成された試験数', 'stats.submissions': '採点された提出数', 'stats.students': 'アクティブな受講生数', 'stats.badges': '完了バッジ数',
+      'features.tag': '機能',
+      'features.title': '教えることも学ぶことも<br/>効果的にするすべての機能',
+      'features.sub': '試験の作成から結果の分析まで — QuizPlatform がすべてをカバーします。',
+      'features.f1.title': '4ステップの試験作成ウィザード',
+      'features.f1.desc': '基本情報 → JSON インポート → 問題編集 → 確認。時間を80%節約し、単一選択・複数選択問題に対応。',
+      'features.f2.title': 'コレクション &amp; 自動バッジ',
+      'features.f2.desc': '講師は試験をグループ化して学習パスを作成。受講生がすべて完了すると、自動的にプロフィールにバッジが付与されます。',
+      'features.f3.title': 'クレジットシステム',
+      'features.f3.desc': 'クレジットでアクセスを制御。管理者が試験ごとのコストを設定し、受講生は受験前に残高を確認できます。',
+      'features.f4.title': '進捗の自動保存',
+      'features.f4.desc': '次の問題に進むたびに回答が即座にサーバーへ保存されます。タブを閉じても、停電しても、接続が切れても、回答は失われません。',
+      'features.f5.title': '試験の再開',
+      'features.f5.desc': 'どのデバイスからでも再ログイン可能 — 時間が残っていればタイマーは中断した箇所から再開し、回答も完全に復元されます。',
+      'features.f6.title': '時間切れ時の自動採点',
+      'features.f6.desc': 'バックグラウンドの採点サービスが15分ごとに実行され、時間切れの試験を自動採点。受講生が提出ボタンを押さなくても結果は必ず記録されます。',
+      'features.f7.title': 'JSON から問題をインポート',
+      'features.f7.desc': 'Notion や Excel で問題バンクを作成し、一括でインポート。ウィザード内で問題ごとのエラープレビューも確認できます。',
+      'features.f8.title': '予約公開',
+      'features.f8.desc': '試験の公開時刻を設定 — 受講生にはカウントダウンが表示され、開始ボタンは時刻通りに自動的に有効化。サーバーが早期の提出をブロックします。',
+      'features.f9.title': '結果 &amp; 解説を即座に表示',
+      'features.f9.desc': '得点、正答率、問題ごとの分析、Markdown 解説を提出直後に表示。いつでも見返せます。',
+      'features.f10.title': 'コメント・いいね &amp; 報告機能',
+      'features.f10.desc': '受講生は各試験の下で議論し、気に入った試験にいいねをつけ、受験後に問題を報告できます。講師は受信箱で報告を受け取り &amp; 返信できます。',
+      'features.f11.title': 'タグで試験を探す',
+      'features.f11.desc': 'トピック別にフィルタリングし、新着順や人気順で並び替え。各カードにいいね数 &amp; コメント数が表示され、自信を持って試験を選べます。',
+      'features.f12.title': '受験中のメモ機能',
+      'features.f12.desc': '試験全体で共有されるフローティングメモ — 画面を離れずに公式やアウトラインをメモできます。プライベートで、サーバーには送信されません。',
+      'features.f13.title': '公開プロフィール',
+      'features.f13.desc': '試験作成者にはそれぞれ専用のプロフィールページがあります — 自己紹介、ソーシャルリンク、公開済み試験の一覧を受講生が閲覧できます。',
+      'features.newBadge': '新機能',
+      'security.tag': 'セキュリティ &amp; 不正防止',
+      'security.title': '1つの試験は、<br/>1台のデバイスのみ',
+      'security.desc': 'システムはセッションをリアルタイムで追跡します。1台のデバイスが受験中の場合、同じアカウントで別のデバイスからログインしようとすると即座にブロックされます。',
+      'security.check1': '提出ごとに一意のセッショントークン — 共有不可',
+      'security.check2': '30秒ごとのハートビートで切断されたデバイスを検出',
+      'security.check3': 'API レスポンスは AES-256-GCM で暗号化 — ECDH 鍵交換',
+      'security.check4': 'ハートビートが5分間ない場合は自動復旧（クラッシュ・接続断）',
+      'security.cardTitle': '🛡️ 試験セキュリティの状態',
+      'security.row1.title': '専有セッション',
+      'security.row1.desc': 'このデバイスがセッションを保持しています。他のデバイスからのアクセス試行は明確な通知とともにブロックされます。',
+      'security.row2.title': '継続的な自動保存',
+      'security.row2.desc': '問題を切り替えるたびに加え、30秒ごとのハートビートで回答が保存されます。ユーザーが問題を読んでいるだけの間も同様です。',
+      'security.row3.title': 'エンドツーエンド暗号化',
+      'security.row3.desc': 'バックエンドがすべての API レスポンスを暗号化。プロキシやパケットスニファーには暗号文しか見えません。',
+      'security.row4.title': 'サーバー基準のタイマー',
+      'security.row4.desc': '試験時間はサーバー側で計測されるため、DevTools やローカルストレージの改ざんでは操作できません。',
+      'collections.tag': 'コレクション &amp; バッジ',
+      'collections.title': '学習パスを構築し、<br/>ふさわしい報酬を授与',
+      'collections.desc': '講師は複数の試験を共通テーマの<strong>コレクション</strong>にまとめます。受講生がすべてに合格すると、システムが<strong>自動的にバッジを授与</strong>します。',
+      'collections.check1': '50種類のプリセットバッジ、またはカスタム画像をアップロード',
+      'collections.check2': 'プロフィールページにバッジが目立つように表示',
+      'collections.check3': '学習パス全体を完了する動機付けになります',
+      'collections.check4': '管理者はコレクションごとの授与バッジ数を確認できます',
+      'collections.cardTitle': '🗂️ コレクション — AWS Complete Roadmap',
+      'collections.progressLabel': '3件中2件の試験が完了 · あと1件でバッジ獲得',
+      'resume.tag': '進捗を失わない',
+      'resume.title': 'タブを閉じて再ログイン —<br/>中断した箇所から再開',
+      'resume.desc': '停電、バッテリー切れ、うっかりタブを閉じてしまった場合でも — 再ログインして試験ページを開くと、未完了のセッションを自動検出し、正確な状態を復元します。',
+      'resume.check1': '選択した回答はサーバーから復元されます（localStorage に依存しません）',
+      'resume.check2': 'カウントダウンは残り時間から再開（サーバー基準）',
+      'resume.check3': '同じアカウントであればどのデバイスでも動作',
+      'resume.check4': '再開時にクレジットが二重に差し引かれることはありません',
+      'resume.cardTitle': '🔄 自動的な試験の復元',
+      'resume.step1.title': '試験を開始 — クレジット差し引き', 'resume.step1.sub': 'セッションが作成され、タイマーが開始',
+      'resume.step2.title': 'タブを閉じる / 接続切断', 'resume.step2.sub': '回答はサーバーに保存済み、セッションはまだ有効',
+      'resume.step3.title': '再ログイン → 試験ページを開く', 'resume.step3.sub': 'システムが未完了のセッションを検出',
+      'resume.step4.title': '受験していた問題から再開', 'resume.step4.sub': '回答 &amp; 残り時間が完全に復元されます',
+      'how.tag': '使い方', 'how.title': '数分で始められます',
+      'how.sub': 'インストール不要、クレジットカード不要 — アカウントだけで利用できます。',
+      'how.s1.title': 'アカウントを作成', 'how.s1.desc': 'メールまたは Google でログイン。受講生にはデフォルトのクレジットが付与され、すぐに受験できます。',
+      'how.s2.title': '試験を作成または選択', 'how.s2.desc': '講師は4ステップウィザードまたは JSON インポートで試験を作成。受講生は試験一覧を閲覧し、準備ができたら開始します。',
+      'how.s3.title': '安全に受験', 'how.s3.desc': 'カウントダウンタイマー、問題ごとの自動保存、安全なセッション — データを失う心配はありません。',
+      'how.s4.title': '結果を確認 &amp; バッジを獲得', 'how.s4.desc': '得点と詳細な分析がすぐに表示されます。コレクションを完了すると自動的にバッジを獲得できます。',
+      'roles.tag': '役割', 'roles.title': '講師にも受講生にも<br/>対応しています',
+      'roles.teacherLabel': '講師 / 試験作成者', 'roles.teacherTitle': 'すべてのコンテンツを<br/>作成・管理',
+      'roles.t1': '4ステップウィザードで試験を作成', 'roles.t2': 'JSON から問題を一括インポート',
+      'roles.t3': 'コレクションを整理してバッジを授与', 'roles.t4': '自動公開のスケジュール設定',
+      'roles.t5': '受験統計と合格率を確認', 'roles.t6': 'クレジットコスト、クールダウン、最大受験回数を設定',
+      'roles.studentLabel': '受講生 / 受験者', 'roles.studentTitle': '学習パスに沿って<br/>学び、受験する',
+      'roles.s1': '登録時に20クレジット付与', 'roles.s2': 'タイマーと自動保存付きで受験',
+      'roles.s3': '接続が切れても試験を再開可能', 'roles.s4': '詳細な結果と解説を確認',
+      'roles.s5': 'コレクション完了バッジを収集', 'roles.s6': '蓄積したクレジットで講師にアップグレード',
+      'faq.title': 'よくある質問',
+      'faq.q1': '複数のデバイスを同時に使用できますか？',
+      'faq.a1': 'いいえ — 受験中は1台のデバイスのみが有効です。別のデバイスで開くと、そのデバイスはブロックされます。5分間操作がない場合、古いセッションは解放され新しいデバイスが利用できるようになります。',
+      'faq.q2': 'タブを閉じたり停電した場合、試験は失われますか？',
+      'faq.a2': 'いいえ。回答は次の問題に進むたびと30秒ごとにサーバーへ自動保存されます。再ログインすると、システムが未完了の試験を検出し正確な状態を復元します — 回答も残り時間も失われません。',
+      'faq.q3': '時間切れで提出できなかった場合はどうなりますか？',
+      'faq.a3': '採点サービスが15分ごとにすべての時間切れ試験を自動採点します。結果はすでに保存された回答に基づいて記録されます。受講生は提出ボタンを押さなくても正確な結果を受け取れます。',
+      'faq.q4': 'クレジットとは何ですか？追加購入はできますか？',
+      'faq.a4': 'クレジットは試験を受けるための単位です — 試験ごとに費用が異なります。登録時に20クレジットが付与されます。現在は管理者が追加クレジットを付与しますが、将来的には直接購入できるシステムを予定しています。',
+      'faq.q5': '講師になるにはどうすればよいですか？',
+      'faq.a5': '受講生として登録した後、プロフィールページ → クレジットを使って講師にアップグレードしてください。アップグレード後、試験やコレクションを作成し、受講生を管理できます。ロールを有効にするにはログアウトして再度ログインする必要があります。',
+      'faq.q6': '私のデータは安全に保護されますか？',
+      'faq.a6': 'はい。すべての API レスポンスは ECDH P-256 鍵交換を用いた AES-256-GCM で暗号化されています — ブラウザとサーバー間のデータは傍受されても読み取れません。JWT 認証、CASL 認可、レート制限がすべてのエンドポイントを保護します。',
+      'cta.title': '公平でスマートな試験を<br/>実施する準備はできましたか？',
+      'cta.desc': '無料でお試しいただけます。クレジットカード不要。数分で利用開始できます。',
+      'footer.tagline': 'スマートなオンライン試験プラットフォーム',
+      'footer.builtBy': '開発者',
     }
   };
 
@@ -1006,16 +1124,20 @@
     try { localStorage.setItem('landing-lang', lang); } catch (e) {}
   }
 
+  var LANG_ORDER = ['vi', 'en', 'ja'];
+
   function toggleLang() {
-    var current = document.documentElement.lang === 'en' ? 'en' : 'vi';
-    applyLang(current === 'vi' ? 'en' : 'vi');
+    var current = LANG_ORDER.indexOf(document.documentElement.lang);
+    if (current === -1) current = 0;
+    applyLang(LANG_ORDER[(current + 1) % LANG_ORDER.length]);
   }
 
   (function initLang() {
     var saved = null;
     try { saved = localStorage.getItem('landing-lang'); } catch (e) {}
-    var lang = saved || (navigator.language && navigator.language.toLowerCase().indexOf('en') === 0 ? 'en' : 'vi');
-    applyLang(lang);
+    var browserLang = (navigator.language || '').toLowerCase();
+    var detected = browserLang.indexOf('ja') === 0 ? 'ja' : browserLang.indexOf('en') === 0 ? 'en' : 'vi';
+    applyLang(saved || detected);
   })();
 </script>
 

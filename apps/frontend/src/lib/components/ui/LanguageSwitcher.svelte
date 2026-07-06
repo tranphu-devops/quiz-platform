@@ -15,6 +15,8 @@
   <span class:active={$locale === 'vi'}>VI</span>
   <span class="sep">/</span>
   <span class:active={$locale === 'en'}>EN</span>
+  <span class="sep">/</span>
+  <span class:active={$locale === 'ja'}>JA</span>
 </button>
 
 <style>

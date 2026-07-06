@@ -31,6 +31,7 @@ export const en = {
     label: 'Language',
     vi: 'Tiếng Việt',
     en: 'English',
+    ja: '日本語',
   },
   nav: {
     sectionNav: 'NAVIGATION',
