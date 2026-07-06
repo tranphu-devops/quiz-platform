@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Landing page hiển thị literal `<br/>` trong tiêu đề CTA cuối trang do thiếu cờ `data-i18n-html` — đã sửa để render đúng thẻ xuống dòng.
 - **Tỷ lệ hiển thị ảnh bìa đề thi đổi từ 16:9 sang 4:3**: ảnh bìa AI sinh vuông (1:1) bị crop quá chặt khi ép vào khung 16:9, làm mất nhiều nội dung ảnh. Đổi `aspect-ratio` ở card `/exams`, card đề thi trên trang hồ sơ công khai `/users/[id]`, và khung preview khi tạo/sửa đề thi sang 4:3 để hiển thị cân đối hơn với ảnh nguồn vuông.
+- **Hero ảnh bìa ở `/exams/[id]` giảm độ đậm còn 25% opacity**: khối hero là hình chữ nhật rộng có chữ đè lên, chiều cao co giãn theo nội dung nên rất khó chọn khung crop đẹp cho ảnh vuông — thay vì cố crop, ảnh giờ chỉ làm nền mờ nhẹ phía sau chữ.
 
 ---
 
