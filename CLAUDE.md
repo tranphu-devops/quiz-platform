@@ -29,7 +29,7 @@ docker compose up --build
 Access at http://localhost (via Nginx on port 80).
 
 `docker-compose.override.yml` is applied automatically in dev — it volume-mounts each service's `src/` for hot reload (`node --watch`) and exposes ports directly:
-- nginx: 80, frontend: 4000, gotrue: 9999, user: 4002, exam: 4003, submission: 4004, interaction: 4005, postgres: 5432
+- nginx: 80, frontend: 4000, gotrue: 9999, user: 4002, exam: 4003, submission: 4004, interaction: 4005, postgres: 5432, redis: 6379
 
 ### Individual service dev (outside Docker)
 ```bash
@@ -178,6 +178,14 @@ src/
 - Error format: `{ error: string, statusCode: number }`
 - Health: `GET /health` → `{ status: "ok", service: "...", timestamp: "..." }`
 - `db.js` applies `search_path` via `pool.on('connect')`, read from `?search_path=` in `DATABASE_URL`
+
+### Redis cache (exam-service, user-service, interaction-service)
+A shared `redis` service (docker-compose, `redis://redis:6379`, no persistence — `save ""` + `appendonly no`, pure cache) sits in front of the three read-heaviest services to speed up page loads. `src/lib/cache.js` (identical in each of the three services) exports `getOrSet(key, ttlSeconds, fetchFn)` and `invalidate(...keys)`, backed by `ioredis`. It is **best-effort**: any Redis error/timeout falls back to calling `fetchFn` directly (or is a no-op for `invalidate`), so a down/misconfigured cache never breaks a request — `submission-service` and `grader-service` intentionally have no cache (submission state changes too fast to benefit, and correctness there is critical).
+
+Strategy: active invalidation on every write that affects a cached key, plus a 60s TTL as a backstop for any invalidation path that was missed. Only **safe-to-share** data is cached — anything that varies per caller (a user's own "liked" state, ability-gated draft content) is always computed fresh:
+- **exam-service**: `GET /exams` (keyed by role/creator_id — student/public list, per-creator list, per-teacher own list, admin list) and `GET /collections` (same role-keyed split). `GET /exams/:id` and `GET /collections/:id` always run the CASL ability check fresh on every request (never skip it for a cache hit) and only cache the response body when the exam/collection is **published** — the row is then identical for every authorized viewer, so there's no risk of leaking a draft or another owner's content through the cache. Writes call `invalidate()` with the exact set of list/detail keys the change could affect.
+- **user-service**: `GET /public/profile/:userId`, `GET /public/settings` (both invalidated on the corresponding profile/admin-settings write) and `GET /badges/:userId` (TTL-only — badges are awarded by submission-service, which has no invalidation hook into this cache).
+- **interaction-service**: `GET /exams/:examId/summary` caches only `like_count`/`comment_count` (global, invalidated on like-toggle/comment create-delete); the caller-specific `liked` flag is always queried fresh and merged in after the cache read, so it's never shared across users.
 
 ### Image upload — user-service only
 All image uploads (avatar, exam cover, question image) go through a **single endpoint in user-service**:

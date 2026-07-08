@@ -1,6 +1,7 @@
 import { subject } from '@casl/ability'
 import { pool } from '../db.js'
 import { verifyAuth, optionalAuth } from '../middleware/auth.js'
+import { getOrSet, invalidate } from '../lib/cache.js'
 
 const COMMENTS_PER_PAGE = 10
 const REPORT_CATEGORIES = ['question_wrong', 'answer_wrong', 'image_issue', 'other']
@@ -8,19 +9,26 @@ const REPORT_CATEGORIES = ['question_wrong', 'answer_wrong', 'image_issue', 'oth
 export default async function interactionRoutes(fastify) {
   // ── Public reads (lenient auth: know caller if a token is present) ──────────
 
-  // Aggregate counts + caller's like state for an exam hero/detail page
+  // Aggregate counts + caller's like state for an exam hero/detail page.
+  // Counts are shared/global so they're cached; `liked` is per-caller and
+  // always computed fresh so it's never served from another user's cache.
   fastify.get('/exams/:examId/summary', { preHandler: optionalAuth }, async (req) => {
     const { examId } = req.params
-    const [likeCount, commentCount, liked] = await Promise.all([
-      pool.query('SELECT COUNT(*)::int AS n FROM quiz_interactions.likes WHERE exam_id = $1', [examId]),
-      pool.query('SELECT COUNT(*)::int AS n FROM quiz_interactions.comments WHERE exam_id = $1', [examId]),
+    const [counts, liked] = await Promise.all([
+      getOrSet(`interactions:counts:${examId}`, 60, async () => {
+        const [likeCount, commentCount] = await Promise.all([
+          pool.query('SELECT COUNT(*)::int AS n FROM quiz_interactions.likes WHERE exam_id = $1', [examId]),
+          pool.query('SELECT COUNT(*)::int AS n FROM quiz_interactions.comments WHERE exam_id = $1', [examId])
+        ])
+        return { like_count: likeCount.rows[0].n, comment_count: commentCount.rows[0].n }
+      }),
       req.user
         ? pool.query('SELECT 1 FROM quiz_interactions.likes WHERE exam_id = $1 AND user_id = $2', [examId, req.user.id])
         : Promise.resolve({ rowCount: 0 })
     ])
     return {
-      like_count: likeCount.rows[0].n,
-      comment_count: commentCount.rows[0].n,
+      like_count: counts.like_count,
+      comment_count: counts.comment_count,
       liked: liked.rowCount > 0
     }
   })
@@ -72,6 +80,7 @@ export default async function interactionRoutes(fastify) {
        VALUES ($1, $2, $3) RETURNING *`,
       [examId, req.user.id, content]
     )
+    invalidate(`interactions:counts:${examId}`)
     // Attach author snapshot for immediate render
     const prof = await pool.query(
       'SELECT full_name, avatar_url FROM quiz_users.profiles WHERE id = $1',
@@ -109,6 +118,7 @@ export default async function interactionRoutes(fastify) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
     await pool.query('DELETE FROM quiz_interactions.comments WHERE id = $1', [id])
+    invalidate(`interactions:counts:${comment.exam_id}`)
     return { ok: true }
   })
 
@@ -134,6 +144,7 @@ export default async function interactionRoutes(fastify) {
       )
       liked = true
     }
+    invalidate(`interactions:counts:${examId}`)
     const count = await pool.query(
       'SELECT COUNT(*)::int AS n FROM quiz_interactions.likes WHERE exam_id = $1', [examId]
     )

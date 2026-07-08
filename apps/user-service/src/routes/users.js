@@ -2,6 +2,7 @@ import crypto from 'node:crypto'
 import bcrypt from 'bcryptjs'
 import { pool } from '../db.js'
 import { verifyAuth } from '../middleware/auth.js'
+import { getOrSet, invalidate } from '../lib/cache.js'
 
 // Cached at first call — deriving public key from private is deterministic
 let _backendPublicKey = null
@@ -52,17 +53,20 @@ export default async function userRoutes(fastify) {
   fastify.get('/public/profile/:userId', async (req, reply) => {
     const { userId } = req.params
     try {
-      const { rows } = await pool.query(`
-        SELECT p.id, p.full_name, p.avatar_url, p.role, p.bio, p.birth_year,
-               p.gender, p.interests, p.facebook_url, p.zalo, p.tiktok_url,
-               p.youtube_url, p.instagram_url, p.linkedin_url, p.website_url,
-               p.updated_at, au.email, au.created_at AS joined_at
-        FROM profiles p
-        JOIN auth.users au ON au.id = p.id
-        WHERE p.id = $1`,
-        [userId])
-      if (rows.length === 0) return reply.status(404).send({ error: 'User not found', statusCode: 404 })
-      return rows[0]
+      const row = await getOrSet(`public:profile:${userId}`, 60, async () => {
+        const { rows } = await pool.query(`
+          SELECT p.id, p.full_name, p.avatar_url, p.role, p.bio, p.birth_year,
+                 p.gender, p.interests, p.facebook_url, p.zalo, p.tiktok_url,
+                 p.youtube_url, p.instagram_url, p.linkedin_url, p.website_url,
+                 p.updated_at, au.email, au.created_at AS joined_at
+          FROM profiles p
+          JOIN auth.users au ON au.id = p.id
+          WHERE p.id = $1`,
+          [userId])
+        return rows[0] ?? null
+      })
+      if (!row) return reply.status(404).send({ error: 'User not found', statusCode: 404 })
+      return row
     } catch (err) {
       fastify.log.error(err)
       return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
@@ -72,10 +76,12 @@ export default async function userRoutes(fastify) {
   // Public endpoint — returns non-sensitive settings for client display
   fastify.get('/public/settings', async (req, reply) => {
     try {
-      const { rows } = await pool.query(
-        "SELECT key, value FROM admin_settings WHERE key IN ('teacher_upgrade_cost', 'default_credits', 'default_exam_cost')"
-      )
-      return Object.fromEntries(rows.map(r => [r.key, r.value]))
+      return await getOrSet('public:settings', 60, async () => {
+        const { rows } = await pool.query(
+          "SELECT key, value FROM admin_settings WHERE key IN ('teacher_upgrade_cost', 'default_credits', 'default_exam_cost')"
+        )
+        return Object.fromEntries(rows.map(r => [r.key, r.value]))
+      })
     } catch (err) {
       fastify.log.error(err)
       return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
@@ -93,15 +99,19 @@ export default async function userRoutes(fastify) {
   fastify.get('/badges/:userId', async (req, reply) => {
     const { userId } = req.params
     try {
-      // Badges are in quiz_submissions schema; use fully-qualified names
-      const r = await pool.query(`
-        SELECT sb.id, sb.earned_at, sb.collection_id,
-               qe.title AS collection_title, qe.badge_image_url, qe.description
-        FROM quiz_submissions.student_badges sb
-        JOIN quiz_exams.collections qe ON qe.id = sb.collection_id
-        WHERE sb.user_id = $1
-        ORDER BY sb.earned_at DESC`, [userId])
-      return r.rows
+      // Badges are awarded by submission-service, so there's no local write
+      // path to invalidate from here — rely on the TTL alone (60s staleness
+      // window is acceptable for a "new badge" notice).
+      return await getOrSet(`badges:${userId}`, 60, async () => {
+        const r = await pool.query(`
+          SELECT sb.id, sb.earned_at, sb.collection_id,
+                 qe.title AS collection_title, qe.badge_image_url, qe.description
+          FROM quiz_submissions.student_badges sb
+          JOIN quiz_exams.collections qe ON qe.id = sb.collection_id
+          WHERE sb.user_id = $1
+          ORDER BY sb.earned_at DESC`, [userId])
+        return r.rows
+      })
     } catch (err) {
       fastify.log.error(err)
       return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
@@ -168,6 +178,7 @@ export default async function userRoutes(fastify) {
          facebook_url ?? null, zalo ?? null, tiktok_url ?? null,
          youtube_url ?? null, instagram_url ?? null, linkedin_url ?? null, website_url ?? null]
       )
+      invalidate(`public:profile:${id}`)
       return result.rows[0]
     } catch (err) {
       fastify.log.error(err)
@@ -240,6 +251,7 @@ export default async function userRoutes(fastify) {
       `UPDATE profiles SET role = $1, updated_at = NOW() WHERE id = $2`,
       [role, id]
     )
+    invalidate(`public:profile:${id}`)
     return { success: true }
   })
 
@@ -338,6 +350,7 @@ export default async function userRoutes(fastify) {
         [key, String(value)]
       )
     }
+    invalidate('public:settings')
     return { success: true }
   })
 }
