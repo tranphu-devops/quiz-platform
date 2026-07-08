@@ -1,6 +1,14 @@
 import { subject } from '@casl/ability'
 import { pool } from '../db.js'
 import { verifyAuth } from '../middleware/auth.js'
+import { getOrSet, invalidate } from '../lib/cache.js'
+
+// Cache keys for GET /collections list variants that could include a given collection
+const collectionListKeys = createdBy => [
+  'collections:list:admin',
+  'collections:list:student',
+  `collections:list:teacher:${createdBy}`
+]
 
 export default async function collectionRoutes(fastify) {
   fastify.addHook('preHandler', async (req, reply) => {
@@ -12,82 +20,90 @@ export default async function collectionRoutes(fastify) {
   // GET /collections — published for students; own for teachers; all for admin
   fastify.get('/collections', async (req, reply) => {
     try {
-      let rows
-      if (req.user.role === 'admin') {
-        const r = await pool.query(`
-          SELECT c.*,
-            COALESCE(p.full_name, au.email, 'Unknown') AS creator_name,
-            COALESCE(json_agg(json_build_object('id', e.id, 'title', e.title) ORDER BY ce.position)
-              FILTER (WHERE e.id IS NOT NULL), '[]') AS exams,
-            COALESCE((
-              SELECT array_agg(DISTINCT t ORDER BY t)
-              FROM collection_exams ce2
-              JOIN exams e2 ON e2.id = ce2.exam_id
-              CROSS JOIN LATERAL unnest(COALESCE(e2.tags, ARRAY[]::text[])) AS t
-              WHERE ce2.collection_id = c.id
-            ), ARRAY[]::text[]) AS tags,
-            COUNT(DISTINCT sb.user_id)::int AS badge_count
-          FROM collections c
-          LEFT JOIN quiz_users.profiles p ON p.id = c.created_by
-          LEFT JOIN auth.users au ON au.id = c.created_by
-          LEFT JOIN collection_exams ce ON ce.collection_id = c.id
-          LEFT JOIN exams e ON e.id = ce.exam_id
-          LEFT JOIN quiz_submissions.student_badges sb ON sb.collection_id = c.id
-          WHERE c.deleted_at IS NULL
-          GROUP BY c.id, p.full_name, au.email ORDER BY c.created_at DESC`)
-        rows = r.rows
-      } else if (req.user.role === 'teacher') {
-        const r = await pool.query(`
-          SELECT c.*,
-            COALESCE(p.full_name, au.email, 'Unknown') AS creator_name,
-            COALESCE(json_agg(json_build_object('id', e.id, 'title', e.title) ORDER BY ce.position)
-              FILTER (WHERE e.id IS NOT NULL), '[]') AS exams,
-            COALESCE((
-              SELECT array_agg(DISTINCT t ORDER BY t)
-              FROM collection_exams ce2
-              JOIN exams e2 ON e2.id = ce2.exam_id
-              CROSS JOIN LATERAL unnest(COALESCE(e2.tags, ARRAY[]::text[])) AS t
-              WHERE ce2.collection_id = c.id
-            ), ARRAY[]::text[]) AS tags
-          FROM collections c
-          LEFT JOIN quiz_users.profiles p ON p.id = c.created_by
-          LEFT JOIN auth.users au ON au.id = c.created_by
-          LEFT JOIN collection_exams ce ON ce.collection_id = c.id
-          LEFT JOIN exams e ON e.id = ce.exam_id
-          WHERE c.created_by = $1 AND c.deleted_at IS NULL
-          GROUP BY c.id, p.full_name, au.email ORDER BY c.created_at DESC`, [req.user.id])
-        rows = r.rows
-      } else {
-        // Student: only published collections that have ≥1 published exam; only show published exams within
-        const r = await pool.query(`
-          SELECT c.*,
-            COALESCE(p.full_name, au.email, 'Unknown') AS creator_name,
-            COALESCE(json_agg(
-              json_build_object(
-                'id', e.id, 'title', e.title, 'time_limit', e.time_limit,
-                'cover_image_url', e.cover_image_url, 'description', e.description,
-                'passing_score', e.passing_score, 'credit_cost', e.credit_cost
-              ) ORDER BY ce.position
-            ) FILTER (WHERE e.id IS NOT NULL AND e.is_published = true), '[]') AS exams,
-            COALESCE((
-              SELECT array_agg(DISTINCT t ORDER BY t)
-              FROM collection_exams ce2
-              JOIN exams e2 ON e2.id = ce2.exam_id
-              CROSS JOIN LATERAL unnest(COALESCE(e2.tags, ARRAY[]::text[])) AS t
-              WHERE ce2.collection_id = c.id AND e2.is_published = true
-            ), ARRAY[]::text[]) AS tags
-          FROM collections c
-          LEFT JOIN quiz_users.profiles p ON p.id = c.created_by
-          LEFT JOIN auth.users au ON au.id = c.created_by
-          LEFT JOIN collection_exams ce ON ce.collection_id = c.id
-          LEFT JOIN exams e ON e.id = ce.exam_id
-          WHERE c.is_published = true AND c.deleted_at IS NULL
-          GROUP BY c.id, p.full_name, au.email
-          HAVING COUNT(DISTINCT e.id) FILTER (WHERE e.is_published = true) > 0
-          ORDER BY c.created_at DESC`)
-        rows = r.rows
-      }
-      return rows
+      const cacheKey = req.user.role === 'admin'
+        ? 'collections:list:admin'
+        : req.user.role === 'teacher'
+          ? `collections:list:teacher:${req.user.id}`
+          : 'collections:list:student'
+
+      return await getOrSet(cacheKey, 60, async () => {
+        let rows
+        if (req.user.role === 'admin') {
+          const r = await pool.query(`
+            SELECT c.*,
+              COALESCE(p.full_name, au.email, 'Unknown') AS creator_name,
+              COALESCE(json_agg(json_build_object('id', e.id, 'title', e.title) ORDER BY ce.position)
+                FILTER (WHERE e.id IS NOT NULL), '[]') AS exams,
+              COALESCE((
+                SELECT array_agg(DISTINCT t ORDER BY t)
+                FROM collection_exams ce2
+                JOIN exams e2 ON e2.id = ce2.exam_id
+                CROSS JOIN LATERAL unnest(COALESCE(e2.tags, ARRAY[]::text[])) AS t
+                WHERE ce2.collection_id = c.id
+              ), ARRAY[]::text[]) AS tags,
+              COUNT(DISTINCT sb.user_id)::int AS badge_count
+            FROM collections c
+            LEFT JOIN quiz_users.profiles p ON p.id = c.created_by
+            LEFT JOIN auth.users au ON au.id = c.created_by
+            LEFT JOIN collection_exams ce ON ce.collection_id = c.id
+            LEFT JOIN exams e ON e.id = ce.exam_id
+            LEFT JOIN quiz_submissions.student_badges sb ON sb.collection_id = c.id
+            WHERE c.deleted_at IS NULL
+            GROUP BY c.id, p.full_name, au.email ORDER BY c.created_at DESC`)
+          rows = r.rows
+        } else if (req.user.role === 'teacher') {
+          const r = await pool.query(`
+            SELECT c.*,
+              COALESCE(p.full_name, au.email, 'Unknown') AS creator_name,
+              COALESCE(json_agg(json_build_object('id', e.id, 'title', e.title) ORDER BY ce.position)
+                FILTER (WHERE e.id IS NOT NULL), '[]') AS exams,
+              COALESCE((
+                SELECT array_agg(DISTINCT t ORDER BY t)
+                FROM collection_exams ce2
+                JOIN exams e2 ON e2.id = ce2.exam_id
+                CROSS JOIN LATERAL unnest(COALESCE(e2.tags, ARRAY[]::text[])) AS t
+                WHERE ce2.collection_id = c.id
+              ), ARRAY[]::text[]) AS tags
+            FROM collections c
+            LEFT JOIN quiz_users.profiles p ON p.id = c.created_by
+            LEFT JOIN auth.users au ON au.id = c.created_by
+            LEFT JOIN collection_exams ce ON ce.collection_id = c.id
+            LEFT JOIN exams e ON e.id = ce.exam_id
+            WHERE c.created_by = $1 AND c.deleted_at IS NULL
+            GROUP BY c.id, p.full_name, au.email ORDER BY c.created_at DESC`, [req.user.id])
+          rows = r.rows
+        } else {
+          // Student: only published collections that have ≥1 published exam; only show published exams within
+          const r = await pool.query(`
+            SELECT c.*,
+              COALESCE(p.full_name, au.email, 'Unknown') AS creator_name,
+              COALESCE(json_agg(
+                json_build_object(
+                  'id', e.id, 'title', e.title, 'time_limit', e.time_limit,
+                  'cover_image_url', e.cover_image_url, 'description', e.description,
+                  'passing_score', e.passing_score, 'credit_cost', e.credit_cost
+                ) ORDER BY ce.position
+              ) FILTER (WHERE e.id IS NOT NULL AND e.is_published = true), '[]') AS exams,
+              COALESCE((
+                SELECT array_agg(DISTINCT t ORDER BY t)
+                FROM collection_exams ce2
+                JOIN exams e2 ON e2.id = ce2.exam_id
+                CROSS JOIN LATERAL unnest(COALESCE(e2.tags, ARRAY[]::text[])) AS t
+                WHERE ce2.collection_id = c.id AND e2.is_published = true
+              ), ARRAY[]::text[]) AS tags
+            FROM collections c
+            LEFT JOIN quiz_users.profiles p ON p.id = c.created_by
+            LEFT JOIN auth.users au ON au.id = c.created_by
+            LEFT JOIN collection_exams ce ON ce.collection_id = c.id
+            LEFT JOIN exams e ON e.id = ce.exam_id
+            WHERE c.is_published = true AND c.deleted_at IS NULL
+            GROUP BY c.id, p.full_name, au.email
+            HAVING COUNT(DISTINCT e.id) FILTER (WHERE e.is_published = true) > 0
+            ORDER BY c.created_at DESC`)
+          rows = r.rows
+        }
+        return rows
+      })
     } catch (err) {
       fastify.log.error(err)
       return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
@@ -120,6 +136,7 @@ export default async function collectionRoutes(fastify) {
       }
       await client.query('COMMIT')
       col.exams = exam_ids
+      invalidate(...collectionListKeys(req.user.id))
       return reply.status(201).send(col)
     } catch (err) {
       await client.query('ROLLBACK')
@@ -134,24 +151,39 @@ export default async function collectionRoutes(fastify) {
   fastify.get('/collections/:id', async (req, reply) => {
     const { id } = req.params
     try {
-      const r = await pool.query(`
-        SELECT c.*,
-          COALESCE(json_agg(
-            json_build_object('id', e.id, 'title', e.title, 'time_limit', e.time_limit, 'is_published', e.is_published, 'passing_score', e.passing_score, 'credit_cost', e.credit_cost)
-            ORDER BY ce.position
-          ) FILTER (WHERE e.id IS NOT NULL), '[]') AS exams
-        FROM collections c
-        LEFT JOIN collection_exams ce ON ce.collection_id = c.id
-        LEFT JOIN exams e ON e.id = ce.exam_id
-        WHERE c.id = $1 AND c.deleted_at IS NULL
-        GROUP BY c.id`, [id])
+      // The row itself is cheap (single indexed lookup) and needed for the
+      // ability check on every request, so it is always read fresh — only
+      // the aggregated exams/tags join below gets cached.
+      const base = await pool.query('SELECT id, created_by, is_published, deleted_at FROM collections WHERE id = $1', [id])
+      if (base.rows.length === 0 || base.rows[0].deleted_at) return reply.status(404).send({ error: 'Not found', statusCode: 404 })
+      const baseCol = base.rows[0]
 
-      if (r.rows.length === 0) return reply.status(404).send({ error: 'Not found', statusCode: 404 })
-      const col = r.rows[0]
-
-      if (req.ability.cannot('read', subject('Collection', { ...col, created_by: col.created_by }))) {
+      if (req.ability.cannot('read', subject('Collection', baseCol))) {
         return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
       }
+
+      const fetchFull = async () => {
+        const r = await pool.query(`
+          SELECT c.*,
+            COALESCE(json_agg(
+              json_build_object('id', e.id, 'title', e.title, 'time_limit', e.time_limit, 'is_published', e.is_published, 'passing_score', e.passing_score, 'credit_cost', e.credit_cost)
+              ORDER BY ce.position
+            ) FILTER (WHERE e.id IS NOT NULL), '[]') AS exams
+          FROM collections c
+          LEFT JOIN collection_exams ce ON ce.collection_id = c.id
+          LEFT JOIN exams e ON e.id = ce.exam_id
+          WHERE c.id = $1 AND c.deleted_at IS NULL
+          GROUP BY c.id`, [id])
+        return r.rows[0]
+      }
+
+      // Only cache when published: content is then identical for every
+      // authorized viewer (student/teacher/admin all passed the same ability
+      // check above), so sharing the cached body carries no leak risk.
+      const col = baseCol.is_published
+        ? await getOrSet(`collection:detail:${id}`, 60, fetchFull)
+        : await fetchFull()
+
       return col
     } catch (err) {
       fastify.log.error(err)
@@ -197,6 +229,7 @@ export default async function collectionRoutes(fastify) {
           }
         }
         await client.query('COMMIT')
+        invalidate(...collectionListKeys(col.created_by), `collection:detail:${id}`)
         return r.rows[0]
       } catch (err) {
         await client.query('ROLLBACK')
@@ -221,6 +254,7 @@ export default async function collectionRoutes(fastify) {
         return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
       }
       await pool.query('UPDATE collections SET deleted_at = NOW() WHERE id = $1', [id])
+      invalidate(...collectionListKeys(existing.rows[0].created_by), `collection:detail:${id}`)
       return { success: true }
     } catch (err) {
       fastify.log.error(err)

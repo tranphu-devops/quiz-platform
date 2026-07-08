@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased] — 2026-07-08
+
+### Added
+- **Redis read-through cache cho exam-service, user-service, interaction-service**: thêm service `redis` (docker-compose) làm lớp cache chung phía sau `exam-service`, `user-service`, `interaction-service`, giúp tăng tốc các trang tải nặng (`/exams`, `/exams/[id]`, `/collections`, hồ sơ công khai, tương tác thích/bình luận). Cache chỉ áp dụng cho dữ liệu đọc nhiều/an toàn chia sẻ (danh sách đề công khai, chi tiết đề đã publish, profile công khai, settings công khai, số lượt thích/bình luận) — không bao giờ cache dữ liệu riêng theo người dùng (như trạng thái "đã thích") hay dữ liệu cần kiểm tra quyền mỗi request (đề chưa publish). Ghi (create/update/delete) sẽ chủ động xoá cache liên quan ngay lập tức, cộng thêm TTL 60s làm lớp bảo hiểm. Cache "fail-open": nếu Redis lỗi/không kết nối được, request tự động rơi về đọc thẳng DB, không bao giờ làm sập request.
+
+---
+
 ## [Unreleased] — 2026-07-06
 
 ### Added

@@ -1,6 +1,17 @@
 import { subject } from '@casl/ability'
 import { pool } from '../db.js'
 import { verifyAuth } from '../middleware/auth.js'
+import { getOrSet, invalidate } from '../lib/cache.js'
+
+// Cache keys for GET /exams list variants that could include a given exam
+const examListKeys = createdBy => [
+  'exams:list:public',
+  'exams:list:admin',
+  `exams:list:teacher:${createdBy}`,
+  `exams:list:public:creator:${createdBy}`
+]
+// Cache keys for GET /exams/:id (student-safe variants only, see below)
+const examDetailKeys = id => [`exam:detail:${id}:student:preview`, `exam:detail:${id}:student:full`]
 
 export default async function examRoutes(fastify) {
   fastify.addHook('preHandler', async (req, reply) => {
@@ -51,6 +62,7 @@ export default async function examRoutes(fastify) {
         'INSERT INTO exams (title, description, cover_image_url, time_limit, passing_score, created_by, tags, show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts, scheduled_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *',
         [title, description, cover_image_url, time_limit, passing_score, req.user.id, tags, show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts, scheduled_at || null]
       )
+      invalidate(...examListKeys(req.user.id))
       return reply.status(201).send(result.rows[0])
     } catch (err) {
       fastify.log.error(err)
@@ -64,6 +76,10 @@ export default async function examRoutes(fastify) {
       const isStudent = req.user.role === 'student'
 
       const { creator_id } = req.query
+
+      const cacheKey = (isStudent || creator_id)
+        ? (creator_id ? `exams:list:public:creator:${creator_id}` : 'exams:list:public')
+        : (req.user.role === 'teacher' ? `exams:list:teacher:${req.user.id}` : 'exams:list:admin')
 
       // Student list: only published exams, public fields only
       const studentBase = `
@@ -114,8 +130,10 @@ export default async function examRoutes(fastify) {
         query = `${fullSelect} WHERE e.deleted_at IS NULL ${group}`
       }
 
-      const result = await pool.query(query, params)
-      return result.rows
+      return await getOrSet(cacheKey, 60, async () => {
+        const result = await pool.query(query, params)
+        return result.rows
+      })
     } catch (err) {
       fastify.log.error(err)
       return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
@@ -140,39 +158,51 @@ export default async function examRoutes(fastify) {
         return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
       }
 
-      const countResult = await pool.query(
-        'SELECT COUNT(*)::int AS n FROM questions WHERE exam_id = $1 AND deleted_at IS NULL',
-        [id]
-      )
-      const question_count = countResult.rows[0].n
+      const buildResponse = async () => {
+        const countResult = await pool.query(
+          'SELECT COUNT(*)::int AS n FROM questions WHERE exam_id = $1 AND deleted_at IS NULL',
+          [id]
+        )
+        const question_count = countResult.rows[0].n
 
-      // Preview (student detail page): a single random sample question.
-      // Full (teacher/take): all questions in authored order.
-      const questionsResult = await pool.query(
-        isPreview
-          ? `SELECT * FROM questions WHERE exam_id = $1 AND deleted_at IS NULL ORDER BY RANDOM() LIMIT 1`
-          : `SELECT * FROM questions WHERE exam_id = $1 AND deleted_at IS NULL ORDER BY order_index`,
-        [id]
-      )
+        // Preview (student detail page): a single random sample question.
+        // Full (teacher/take): all questions in authored order.
+        const questionsResult = await pool.query(
+          isPreview
+            ? `SELECT * FROM questions WHERE exam_id = $1 AND deleted_at IS NULL ORDER BY RANDOM() LIMIT 1`
+            : `SELECT * FROM questions WHERE exam_id = $1 AND deleted_at IS NULL ORDER BY order_index`,
+          [id]
+        )
 
-      let questions = questionsResult.rows
-      if (isStudent) {
-        questions = questions.map(({ correct_answer, explanation, ...q }) => {
-          if (q.question_type === 'multiple') {
-            const correct_count = (correct_answer ?? '').split(',').filter(Boolean).length
-            return { ...q, correct_count }
-          }
-          return q
-        })
+        let questions = questionsResult.rows
+        if (isStudent) {
+          questions = questions.map(({ correct_answer, explanation, ...q }) => {
+            if (q.question_type === 'multiple') {
+              const correct_count = (correct_answer ?? '').split(',').filter(Boolean).length
+              return { ...q, correct_count }
+            }
+            return q
+          })
+        }
+
+        // Strip internal fields not needed by students
+        if (isStudent) {
+          const { created_by, show_explanation, allow_retake, ...examPublic } = exam
+          return { ...examPublic, question_count, questions }
+        }
+
+        return { ...exam, question_count, questions }
       }
 
-      // Strip internal fields not needed by students
-      if (isStudent) {
-        const { created_by, show_explanation, allow_retake, ...examPublic } = exam
-        return { ...examPublic, question_count, questions }
+      // Only cache the student view of a *published* exam: it's identical for
+      // every student (already stripped of correct_answer/explanation) and the
+      // ability check above still runs fresh on every request, so this can
+      // never leak a draft or another teacher's exam. The privileged (teacher/
+      // admin) view is skipped — low traffic, and it carries correct answers.
+      if (isStudent && exam.is_published) {
+        return await getOrSet(`exam:detail:${id}:student:${isPreview ? 'preview' : 'full'}`, 60, buildResponse)
       }
-
-      return { ...exam, question_count, questions }
+      return await buildResponse()
     } catch (err) {
       fastify.log.error(err)
       return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
@@ -216,6 +246,7 @@ export default async function examRoutes(fastify) {
          WHERE id = $9 AND deleted_at IS NULL RETURNING *`,
         [title, description, cover_image_url ?? null, time_limit, passing_score ?? null, is_published, tags ?? null, show_explanation ?? null, id, allow_retake ?? null, credit_cost ?? null, cooldown_minutes ?? null, max_attempts ?? null, has_scheduled_at, scheduled_at_val]
       )
+      invalidate(...examListKeys(exam.created_by), ...examDetailKeys(id))
       return result.rows[0]
     } catch (err) {
       fastify.log.error(err)
@@ -243,6 +274,7 @@ export default async function examRoutes(fastify) {
       // Cascade soft-delete to questions
       await pool.query('UPDATE questions SET deleted_at = $1 WHERE exam_id = $2 AND deleted_at IS NULL', [now, id])
 
+      invalidate(...examListKeys(exam.created_by), ...examDetailKeys(id))
       return reply.status(204).send()
     } catch (err) {
       fastify.log.error(err)
@@ -275,6 +307,7 @@ export default async function examRoutes(fastify) {
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
         [id, content, image_url, JSON.stringify(options), correct_answer, points, order_index, explanation, question_type]
       )
+      invalidate(...examDetailKeys(id))
       return reply.status(201).send(result.rows[0])
     } catch (err) {
       fastify.log.error(err)
@@ -315,6 +348,7 @@ export default async function examRoutes(fastify) {
       if (result.rows.length === 0) {
         return reply.status(404).send({ error: 'Question not found', statusCode: 404 })
       }
+      invalidate(...examDetailKeys(id))
       return result.rows[0]
     } catch (err) {
       fastify.log.error(err)
@@ -344,6 +378,7 @@ export default async function examRoutes(fastify) {
         return reply.status(404).send({ error: 'Question not found', statusCode: 404 })
       }
 
+      invalidate(...examDetailKeys(id))
       return reply.status(204).send()
     } catch (err) {
       fastify.log.error(err)

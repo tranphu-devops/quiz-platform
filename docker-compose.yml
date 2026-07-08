@@ -61,11 +61,14 @@ services:
       AWS_REGION: ${AWS_REGION:-ap-southeast-1}
       AWS_ENDPOINT: ${AWS_ENDPOINT:-}
       AWS_PUBLIC_URL: ${AWS_PUBLIC_URL:-}
+      REDIS_URL: redis://redis:6379
     depends_on:
       postgres:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
   exam-service:
@@ -77,12 +80,15 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
       API_ENCRYPTION_KEY: ${API_ENCRYPTION_KEY:-}
+      REDIS_URL: redis://redis:6379
       PORT: 3003
     depends_on:
       postgres:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
   submission-service:
@@ -112,12 +118,15 @@ services:
       DATABASE_URL: ${INTERACTION_DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
       API_ENCRYPTION_KEY: ${API_ENCRYPTION_KEY:-}
+      REDIS_URL: redis://redis:6379
       PORT: 3005
     depends_on:
       postgres:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
   grader-service:
@@ -155,6 +164,18 @@ services:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d quizdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Shared read-through cache for exam-service, user-service, interaction-service.
+  # Best-effort: services fall back to direct DB reads if redis is unavailable.
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
