@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased] — 2026-07-19
+
+### Added
+- **Tạo đề thi bằng AI từ tài liệu upload (`generator-service` mới)**: teacher/admin có thể vào `/exams/generate`, tải lên một tài liệu (PDF, DOCX, hoặc text), chọn số câu hỏi/ngôn ngữ/độ khó, hệ thống gọi Claude API để soạn sẵn một bộ câu hỏi trắc nghiệm và tự động tạo đề thi (ở trạng thái draft), rồi điều hướng sang trang edit sẵn có để hoàn thiện (điểm đạt, thời gian, publish...). Giúp tiết kiệm thời gian cho teacher đã có sẵn tài liệu ôn tập, thay vì soạn từng câu thủ công.
+- **LLM key**: teacher có thể tự lưu LLM API key riêng (mã hoá AES-256-GCM tại nghỉ, có thể giải mã để gọi provider) hoặc dùng key nền tảng do admin cấu hình — dùng key nền tảng sẽ trừ credit của teacher theo mức admin đặt (tái dùng cơ chế credit sẵn có). Admin bật/tắt và cấu hình mức trừ, giới hạn kích thước file, số câu hỏi tối đa tại tab "Tạo đề bằng AI" mới trong `/admin`.
+- Import đề thi vào exam-service qua đúng route Teacher API hiện có (`POST /exams`, `POST /exams/:id/questions`), forward nguyên JWT của teacher — không cần thay đổi gì ở exam-service, `created_by`/CASL xử lý y hệt như teacher tự gọi API.
+- DOCX được extract text bằng `mammoth` trước khi gửi cho LLM (Claude không parse trực tiếp `.docx`, chỉ nhận PDF/text làm document block native); PDF gửi thẳng dạng base64.
+
+---
+
 ## [Unreleased] — 2026-07-08
 
 ### Added

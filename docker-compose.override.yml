@@ -37,6 +37,14 @@ services:
     volumes:
       - ./apps/interaction-service/src:/app/src
 
+  generator-service:
+    build:
+      context: ./apps/generator-service
+    ports:
+      - "4006:3006"
+    volumes:
+      - ./apps/generator-service/src:/app/src
+
   grader-service:
     build:
       context: ./apps/grader-service

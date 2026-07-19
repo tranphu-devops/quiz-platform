@@ -27,6 +27,7 @@ jobs:
           - exam-service
           - submission-service
           - interaction-service
+          - generator-service
           - grader-service
           - frontend
 

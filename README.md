@@ -11,6 +11,7 @@
 | exam-service | 3003 | 4003 | Đề thi, câu hỏi, bộ đề (collections) |
 | submission-service | 3004 | 4004 | Nộp bài, chấm điểm, phiên thi 1-thiết-bị |
 | interaction-service | 3005 | 4005 | Bình luận / thích / báo lỗi |
+| generator-service | 3006 | 4006 | Tạo đề thi bằng AI từ tài liệu upload (PDF/DOCX/text) |
 | grader-service | — | — | Worker cron (15 phút/lần) tự chấm bài hết giờ — không có HTTP |
 | migrate | — | — | Job one-shot chạy migration rồi thoát; các service chờ nó xong mới khởi động |
 | frontend | 3000 | 4000 | SvelteKit 5 SPA (SSR tắt) |
@@ -63,11 +64,13 @@ curl http://localhost/api/exams/health
 curl http://localhost/api/users/health
 curl http://localhost/api/submissions/health
 curl http://localhost/api/interactions/health
+curl http://localhost/api/generator/health
 ```
 
 ## Tính năng chính
 
 - **Soạn đề**: wizard 4 bước, import câu hỏi từ JSON, ảnh bìa & ảnh câu hỏi, câu đơn/nhiều đáp án đúng, giải thích markdown.
+- **Tạo đề bằng AI**: teacher upload tài liệu (PDF/DOCX/text) tại `/exams/generate` — hệ thống gọi Claude API soạn sẵn bộ câu hỏi trắc nghiệm, tự tạo đề nháp để hoàn thiện. Dùng key LLM riêng của teacher hoặc key nền tảng do admin cấu hình (trừ credit).
 - **Bộ đề & Huy hiệu**: gom nhiều đề thành lộ trình; hoàn thành toàn bộ → tự động trao huy hiệu trên profile.
 - **Hệ thống Credit**: mỗi đề có credit cost; trừ credit khi bắt đầu thi; admin cấu hình mức credit.
 - **Phiên thi an toàn**: mỗi bài chỉ trên một thiết bị (session UUID); auto-save tiến trình; resume khi login lại; auto-grade khi hết giờ (grader-service); xuất bản theo lịch với đếm ngược.
@@ -84,7 +87,7 @@ curl http://localhost/api/interactions/health
 - **Storage**: Lightsail / S3-compatible object storage (upload ảnh)
 - **Container**: Docker Compose + Nginx
 - **Registry**: GitHub Container Registry (GHCR)
-- **CI/CD**: GitHub Actions — matrix build (user / exam / submission / interaction / grader / frontend), auto-deploy lên server sau khi build thành công
+- **CI/CD**: GitHub Actions — matrix build (user / exam / submission / interaction / generator / grader / frontend), auto-deploy lên server sau khi build thành công
 
 ## Roles
 

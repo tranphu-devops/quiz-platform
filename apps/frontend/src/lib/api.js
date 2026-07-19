@@ -6,6 +6,7 @@ const EXAM_URL = import.meta.env.PUBLIC_EXAM_URL ?? '/api/exams'
 const SUB_URL = import.meta.env.PUBLIC_SUBMISSION_URL ?? '/api/submissions'
 const USER_URL = import.meta.env.PUBLIC_USER_URL ?? '/api/users'
 const INTERACTION_URL = import.meta.env.PUBLIC_INTERACTION_URL ?? '/api/interactions'
+const GENERATOR_URL = import.meta.env.PUBLIC_GENERATOR_URL ?? '/api/generator'
 
 function authHeaders(json = true) {
   const t = get(token)
@@ -244,4 +245,29 @@ export const uploadApi = {
       body: form
     })
   }
+}
+
+export const generatorApi = {
+  generate: (file, params) => {
+    const t = get(token)
+    const form = new FormData()
+    form.append('file', file)
+    form.append('params', JSON.stringify(params))
+    return apiFetch(`${GENERATOR_URL}/generate`, {
+      method: 'POST',
+      headers: t ? { Authorization: `Bearer ${t}` } : {},
+      body: form
+    })
+  },
+  listJobs: () => apiFetch(`${GENERATOR_URL}/generate/jobs`, { headers: authHeaders(false) }),
+  getJob: (id) => apiFetch(`${GENERATOR_URL}/generate/jobs/${id}`, { headers: authHeaders(false) }),
+  listKeys: () => apiFetch(`${GENERATOR_URL}/generate/keys`, { headers: authHeaders(false) }),
+  saveKey: (apiKey) =>
+    apiFetch(`${GENERATOR_URL}/generate/keys`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ api_key: apiKey })
+    }),
+  deleteKey: (id) =>
+    apiFetch(`${GENERATOR_URL}/generate/keys/${id}`, { method: 'DELETE', headers: authHeaders(false) })
 }

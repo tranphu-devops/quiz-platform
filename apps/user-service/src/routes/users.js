@@ -78,7 +78,7 @@ export default async function userRoutes(fastify) {
     try {
       return await getOrSet('public:settings', 60, async () => {
         const { rows } = await pool.query(
-          "SELECT key, value FROM admin_settings WHERE key IN ('teacher_upgrade_cost', 'default_credits', 'default_exam_cost')"
+          "SELECT key, value FROM admin_settings WHERE key IN ('teacher_upgrade_cost', 'default_credits', 'default_exam_cost', 'ai_generation_enabled', 'ai_generation_credit_cost')"
         )
         return Object.fromEntries(rows.map(r => [r.key, r.value]))
       })
