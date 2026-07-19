@@ -6,6 +6,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] — 2026-07-19
 
+### Added
+- **Rate limit riêng theo từng route nhạy cảm** (bắt đầu với `auth-service` và collections trong `exam-service`), phân theo mức độ rủi ro thay vì chỉ dựa vào giới hạn chung 300 request/phút/IP đã có: `POST /register` (5/phút), `POST /verify` (20/phút) ở auth-service; tạo/sửa/xoá collection (20/phút), xem chi tiết collection (60/phút), route nội bộ check-badge (100/phút) ở exam-service. Nhằm khắc phục dứt điểm các cảnh báo CodeQL `js/missing-rate-limiting` còn lại trên từng route cụ thể (giới hạn chung trước đây không đủ cụ thể để CodeQL nhận diện). Đây là phần đầu của một đợt áp dụng rộng hơn trên tất cả các service còn lại (sẽ tiếp tục ở PR sau).
+
+---
+
+## [Unreleased] — 2026-07-19
+
 ### Changed
 - **Nâng cấp Fastify 4 → 5 trên cả 6 backend service** (`user`, `exam`, `submission`, `interaction`, `generator`, `auth`) cùng các plugin liên quan (`@fastify/cors`, `@fastify/multipart`, `@fastify/rate-limit`) lên bản major tương ứng hỗ trợ Fastify 5. **Nâng cấp Vite 5 → 6 và `@sveltejs/vite-plugin-svelte` 4 → 6 trên frontend.** Khắc phục toàn bộ cảnh báo Dependabot liên quan đến các lỗ hổng đã biết của Fastify 4.x và Vite 5.x. Đã kiểm tra không có breaking change nào trong repo bị ảnh hưởng (không dùng route-level JSON schema, `reply.redirect()`, `fastify-plugin`, custom pino logger, glob range-brace, v.v.) và khởi động thử từng service + build thử frontend đều thành công.
 

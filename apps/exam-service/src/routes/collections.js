@@ -111,7 +111,7 @@ export default async function collectionRoutes(fastify) {
   })
 
   // POST /collections
-  fastify.post('/collections', async (req, reply) => {
+  fastify.post('/collections', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     if (req.ability.cannot('create', 'Collection')) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
@@ -148,7 +148,7 @@ export default async function collectionRoutes(fastify) {
   })
 
   // GET /collections/:id
-  fastify.get('/collections/:id', async (req, reply) => {
+  fastify.get('/collections/:id', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id } = req.params
     try {
       // The row itself is cheap (single indexed lookup) and needed for the
@@ -192,7 +192,7 @@ export default async function collectionRoutes(fastify) {
   })
 
   // PUT /collections/:id
-  fastify.put('/collections/:id', async (req, reply) => {
+  fastify.put('/collections/:id', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id } = req.params
     const { title, description, badge_image_url, is_published, exam_ids } = req.body ?? {}
 
@@ -244,7 +244,7 @@ export default async function collectionRoutes(fastify) {
   })
 
   // DELETE /collections/:id — soft delete
-  fastify.delete('/collections/:id', async (req, reply) => {
+  fastify.delete('/collections/:id', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id } = req.params
     try {
       const existing = await pool.query('SELECT * FROM collections WHERE id = $1 AND deleted_at IS NULL', [id])
@@ -263,7 +263,7 @@ export default async function collectionRoutes(fastify) {
   })
 
   // GET /collections/internal/check-badge — called by submission-service
-  fastify.get('/collections/internal/check-badge', async (req, reply) => {
+  fastify.get('/collections/internal/check-badge', { config: { rateLimit: { max: 100, timeWindow: '1 minute' } } }, async (req, reply) => {
     const key = req.headers['x-internal-key']
     if (!key || key !== process.env.INTERNAL_API_KEY) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })

@@ -5,7 +5,7 @@ import { pool } from '../db.js'
 const VALID_ROLES = ['admin', 'teacher', 'student']
 
 export default async function authRoutes(fastify) {
-  fastify.post('/register', async (req, reply) => {
+  fastify.post('/register', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { email, password, role = 'student' } = req.body ?? {}
 
     if (!email || !password) {
@@ -63,7 +63,7 @@ export default async function authRoutes(fastify) {
     }
   })
 
-  fastify.post('/verify', async (req, reply) => {
+  fastify.post('/verify', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { token } = req.body ?? {}
     if (!token) {
       return reply.status(400).send({ error: 'Token required', statusCode: 400 })
