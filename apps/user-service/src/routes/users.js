@@ -15,6 +15,17 @@ function backendPublicKey() {
   return _backendPublicKey
 }
 
+// Linear-time shape check (no backtracking regex) — avoids ReDoS on crafted input.
+function isValidEmail(email) {
+  const at = email.indexOf('@')
+  if (at <= 0 || at !== email.lastIndexOf('@')) return false
+  const local = email.slice(0, at)
+  const domain = email.slice(at + 1)
+  if (/\s/.test(local) || /\s/.test(domain)) return false
+  const dot = domain.lastIndexOf('.')
+  return dot > 0 && dot < domain.length - 1
+}
+
 export default async function userRoutes(fastify) {
   // Internal endpoint — no JWT auth, uses x-internal-key
   fastify.post('/internal/credits/deduct', async (req, reply) => {
@@ -296,7 +307,7 @@ export default async function userRoutes(fastify) {
     const { email, password, full_name, role = 'student' } = req.body ?? {}
 
     if (!email || !password) return reply.status(400).send({ error: 'Email và mật khẩu là bắt buộc', statusCode: 400 })
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return reply.status(400).send({ error: 'Email không hợp lệ', statusCode: 400 })
+    if (!isValidEmail(email)) return reply.status(400).send({ error: 'Email không hợp lệ', statusCode: 400 })
     if (password.length < 8) return reply.status(400).send({ error: 'Mật khẩu phải có ít nhất 8 ký tự', statusCode: 400 })
     if (!['student', 'teacher'].includes(role)) return reply.status(400).send({ error: 'Role phải là student hoặc teacher', statusCode: 400 })
 

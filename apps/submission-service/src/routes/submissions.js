@@ -7,6 +7,11 @@ import { verifyAuth } from '../middleware/auth.js'
 // Allows legitimate re-login/crash recovery without manual intervention.
 const SESSION_STALE_SECS = 300
 
+// exam_id is interpolated into internal service URLs below — validate the
+// shape first so a crafted value can't be used to probe internal hosts (SSRF).
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const isUuid = (v) => typeof v === 'string' && UUID_RE.test(v)
+
 // ── Shared grading logic ──────────────────────────────────────────────────────
 
 function isCorrect(q, studentAnswer) {
@@ -50,6 +55,7 @@ function buildGradeResult(exam, answers) {
 }
 
 async function awardBadgesIfEarned(userId, examId, log) {
+  if (!isUuid(examId)) return
   try {
     const collectionsRes = await fetch(
       `${process.env.EXAM_SERVICE_URL}/collections/internal/check-badge?exam_id=${examId}`,
@@ -128,6 +134,9 @@ export default async function submissionRoutes(fastify) {
     const { exam_id } = req.body ?? {}
     if (!exam_id) {
       return reply.status(400).send({ error: 'exam_id required', statusCode: 400 })
+    }
+    if (!isUuid(exam_id)) {
+      return reply.status(400).send({ error: 'exam_id không hợp lệ', statusCode: 400 })
     }
 
     try {
@@ -338,6 +347,9 @@ export default async function submissionRoutes(fastify) {
         return reply.status(409).send({ error: 'Phiên làm bài không còn hiệu lực', reason: 'session_conflict', submission_id: sub.id, statusCode: 409 })
       }
 
+      if (!isUuid(sub.exam_id)) {
+        return reply.status(500).send({ error: 'Invalid exam reference', statusCode: 500 })
+      }
       const examRes = await fetch(
         `${process.env.EXAM_SERVICE_URL}/exams/internal/${sub.exam_id}`,
         { headers: { 'x-internal-key': process.env.INTERNAL_API_KEY } }

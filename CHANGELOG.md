@@ -7,6 +7,19 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] — 2026-07-19
 
 ### Added
+- **Rate limiting trên toàn bộ 6 backend service** (`user`, `exam`, `submission`, `interaction`, `generator`, `auth`): mỗi service giờ giới hạn 300 request/phút/IP (`@fastify/rate-limit`, `trustProxy: true` để đọc đúng IP thật qua Nginx), request nội bộ giữa các service (mang `x-internal-key`) được bỏ qua giới hạn. Riêng route đăng nhập (auth-service) và route tạo API key (user-service) có giới hạn chặt hơn (10/phút và 5/phút) để chống brute-force/spam. Khắc phục 61 cảnh báo CodeQL `js/missing-rate-limiting`.
+
+### Fixed
+- **SSRF khi tạo/nộp bài thi (submission-service)**: `exam_id` (đến từ request của client) được dùng trực tiếp để dựng URL gọi nội bộ sang exam-service — giờ được kiểm tra đúng định dạng UUID trước khi dùng, chặn khả năng dò quét host nội bộ bằng giá trị `exam_id` giả mạo.
+- **ReDoS trong kiểm tra định dạng email (user-service)**: regex email cũ có thể bị khai thác backtracking với input được soạn có chủ đích, gây treo service. Thay bằng hàm kiểm tra tuyến tính không dùng regex backtracking.
+- **Sanitize HTML chưa triệt để (frontend)**: các hàm rút gọn text từ HTML (`htmlToText`, `isHtmlEmpty`) chỉ xoá thẻ một lượt, có thể để sót thẻ lồng nhau kiểu `<<script>script>`. Giờ lặp lại việc xoá thẻ đến khi không còn thay đổi (fixed-point).
+- **Thiếu khai báo quyền cho GitHub Actions workflow deploy**: `deploy.yml` không set `permissions`, mặc định kế thừa quyền rộng của repo dù chỉ SSH ra server ngoài, không gọi GitHub API. Giờ khai báo `permissions: {}` (không quyền nào), theo nguyên tắc least-privilege.
+
+---
+
+## [Unreleased] — 2026-07-19
+
+### Added
 - **Tạo đề thi bằng AI từ tài liệu upload (`generator-service` mới)**: teacher/admin có thể vào `/exams/generate`, tải lên một tài liệu (PDF, DOCX, hoặc text), chọn số câu hỏi/ngôn ngữ/độ khó, hệ thống gọi Claude API để soạn sẵn một bộ câu hỏi trắc nghiệm và tự động tạo đề thi (ở trạng thái draft), rồi điều hướng sang trang edit sẵn có để hoàn thiện (điểm đạt, thời gian, publish...). Giúp tiết kiệm thời gian cho teacher đã có sẵn tài liệu ôn tập, thay vì soạn từng câu thủ công.
 - **LLM key**: teacher có thể tự lưu LLM API key riêng (mã hoá AES-256-GCM tại nghỉ, có thể giải mã để gọi provider) hoặc dùng key nền tảng do admin cấu hình — dùng key nền tảng sẽ trừ credit của teacher theo mức admin đặt (tái dùng cơ chế credit sẵn có). Admin bật/tắt và cấu hình mức trừ, giới hạn kích thước file, số câu hỏi tối đa tại tab "Tạo đề bằng AI" mới trong `/admin`.
 - Import đề thi vào exam-service qua đúng route Teacher API hiện có (`POST /exams`, `POST /exams/:id/questions`), forward nguyên JWT của teacher — không cần thay đổi gì ở exam-service, `created_by`/CASL xử lý y hệt như teacher tự gọi API.
