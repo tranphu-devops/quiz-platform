@@ -31,7 +31,7 @@ export default async function authRoutes(fastify) {
     }
   })
 
-  fastify.post('/login', async (req, reply) => {
+  fastify.post('/login', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { email, password } = req.body ?? {}
 
     if (!email || !password) {

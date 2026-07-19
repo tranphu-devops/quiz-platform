@@ -19,7 +19,7 @@ export default async function apiKeyRoutes(fastify) {
   })
 
   // POST /api-keys — generate a new key; returns plaintext exactly once
-  fastify.post('/api-keys', async (req, reply) => {
+  fastify.post('/api-keys', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { name } = req.body ?? {}
     if (!name || typeof name !== 'string' || !name.trim()) {
       return reply.status(400).send({ error: 'Name required', statusCode: 400 })

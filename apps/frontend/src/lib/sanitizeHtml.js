@@ -43,6 +43,17 @@ function clean(node) {
   }
 }
 
+// Repeatedly strips tags until a fixed point — a single pass can leave new
+// tags behind when a match like "<<script>script>" collapses into "<script>".
+function stripTagsToFixedPoint(str, replacement = '') {
+  let prev, out = String(str)
+  do {
+    prev = out
+    out = out.replace(/<[^>]*>/g, replacement)
+  } while (out !== prev)
+  return out
+}
+
 export function sanitizeHtml(html) {
   if (!html || typeof document === 'undefined') return ''
   const wrapper = document.createElement('div')
@@ -54,7 +65,7 @@ export function sanitizeHtml(html) {
 // Plain-text excerpt of rich HTML — for card previews / line-clamped summaries.
 export function htmlToText(html) {
   if (!html) return ''
-  if (typeof document === 'undefined') return String(html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  if (typeof document === 'undefined') return stripTagsToFixedPoint(html, ' ').replace(/\s+/g, ' ').trim()
   const wrapper = document.createElement('div')
   wrapper.innerHTML = String(html)
   return (wrapper.textContent || '').replace(/\s+/g, ' ').trim()
@@ -63,7 +74,7 @@ export function htmlToText(html) {
 // True when the HTML has no visible content (empty tags / whitespace only).
 export function isHtmlEmpty(html) {
   if (!html) return true
-  if (typeof document === 'undefined') return !String(html).replace(/<[^>]*>/g, '').trim()
+  if (typeof document === 'undefined') return !stripTagsToFixedPoint(html).trim()
   const wrapper = document.createElement('div')
   wrapper.innerHTML = String(html)
   return !wrapper.textContent.trim() && !wrapper.querySelector('img, br')
