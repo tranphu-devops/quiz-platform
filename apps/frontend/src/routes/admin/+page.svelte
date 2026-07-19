@@ -54,6 +54,17 @@
   let creditSuccess = $state(false)
   let creditError = $state('')
 
+  // ── AI generation tab ────────────────────────────────────────────────────────
+  let aiSettings = $state({
+    ai_generation_enabled: 'false',
+    ai_generation_credit_cost: '5',
+    ai_generation_max_file_size_mb: '20',
+    ai_generation_max_questions: '30'
+  })
+  let aiSaving = $state(false)
+  let aiSuccess = $state(false)
+  let aiError = $state('')
+
   // ── Collections tab ────────────────────────────────────────────────────────
   let collections = $state([])
   let collectionsLoading = $state(false)
@@ -94,6 +105,12 @@
         const all = await res.json()
         settings = { upload_max_size_mb: all.upload_max_size_mb ?? '5', upload_allowed_types: all.upload_allowed_types ?? 'image/jpeg,image/png,image/webp,image/gif' }
         creditSettings = { default_credits: all.default_credits ?? '20', teacher_upgrade_cost: all.teacher_upgrade_cost ?? '100', default_exam_cost: all.default_exam_cost ?? '10' }
+        aiSettings = {
+          ai_generation_enabled: all.ai_generation_enabled ?? 'false',
+          ai_generation_credit_cost: all.ai_generation_credit_cost ?? '5',
+          ai_generation_max_file_size_mb: all.ai_generation_max_file_size_mb ?? '20',
+          ai_generation_max_questions: all.ai_generation_max_questions ?? '30'
+        }
       }
     } catch {} finally { settingsLoading = false }
   }
@@ -114,6 +131,15 @@
       if (!res.ok) { const d = await res.json(); creditError = d.error ?? $t('admin.saveConfigError'); return }
       creditSuccess = true
     } catch { creditError = $t('imageUpload.connectionError') } finally { creditSaving = false }
+  }
+
+  async function saveAiSettings() {
+    aiError = ''; aiSuccess = false; aiSaving = true
+    try {
+      const res = await userApi.updateSettings(aiSettings)
+      if (!res.ok) { const d = await res.json(); aiError = d.error ?? $t('admin.saveConfigError'); return }
+      aiSuccess = true
+    } catch { aiError = $t('imageUpload.connectionError') } finally { aiSaving = false }
   }
 
   async function loadUsers() {
@@ -186,6 +212,7 @@
   <button class="tab-btn" class:active={tab === 'collections'} onclick={() => { tab = 'collections'; loadCollections() }}>{$t('nav.collections')}</button>
   <button class="tab-btn" class:active={tab === 'settings'}    onclick={() => tab = 'settings'}>{$t('admin.tabUploadSettings')}</button>
   <button class="tab-btn" class:active={tab === 'credits'}     onclick={() => tab = 'credits'}>{$t('admin.tabCredits')}</button>
+  <button class="tab-btn" class:active={tab === 'ai'}          onclick={() => tab = 'ai'}>{$t('admin.tabAiGeneration')}</button>
 </div>
 
 <div class="admin-content">
@@ -493,6 +520,66 @@
               />
               <div>
                 <Button onclick={saveCreditSettings} loading={creditSaving} disabled={creditSaving}>
+                  {$t('admin.saveSettings')}
+                </Button>
+              </div>
+            </div>
+          {/if}
+        </Card>
+      </div>
+    {/if}
+
+    <!-- ── AI GENERATION TAB ───────────────────────────────────────────── -->
+    {#if tab === 'ai'}
+      <div class="settings-wrap">
+        <Card title={$t('admin.aiConfigTitle')} subtitle={$t('admin.aiConfigSubtitle')}>
+          {#if settingsLoading}
+            <p class="ix-loading">{$t('common.loading')}</p>
+          {:else}
+            {#if aiError}<p class="ix-error">{aiError}</p>{/if}
+            {#if aiSuccess}<p class="ix-success">{$t('admin.aiSettingsSaved')}</p>{/if}
+
+            <div class="form-stack">
+              <label class="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={aiSettings.ai_generation_enabled === 'true'}
+                  onchange={(e) => aiSettings.ai_generation_enabled = e.target.checked ? 'true' : 'false'}
+                />
+                {$t('admin.aiEnabledLabel')}
+              </label>
+              <Input
+                id="ai_generation_credit_cost"
+                label={$t('admin.aiCreditCostLabel')}
+                type="number"
+                bind:value={aiSettings.ai_generation_credit_cost}
+                min="0"
+                step="1"
+                hint={$t('admin.aiCreditCostHint')}
+                style="width:120px"
+              />
+              <Input
+                id="ai_generation_max_file_size_mb"
+                label={$t('admin.aiMaxFileSizeLabel')}
+                type="number"
+                bind:value={aiSettings.ai_generation_max_file_size_mb}
+                min="1"
+                step="1"
+                hint={$t('admin.aiMaxFileSizeHint')}
+                style="width:120px"
+              />
+              <Input
+                id="ai_generation_max_questions"
+                label={$t('admin.aiMaxQuestionsLabel')}
+                type="number"
+                bind:value={aiSettings.ai_generation_max_questions}
+                min="1"
+                step="1"
+                hint={$t('admin.aiMaxQuestionsHint')}
+                style="width:120px"
+              />
+              <div>
+                <Button onclick={saveAiSettings} loading={aiSaving} disabled={aiSaving}>
                   {$t('admin.saveSettings')}
                 </Button>
               </div>
@@ -826,6 +913,15 @@
     display: flex;
     flex-direction: column;
     gap: 20px;
+  }
+
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ix-text-primary);
   }
 
   /* ── Feedback ─────────────────────────────────────────────────────────── */

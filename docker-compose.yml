@@ -15,6 +15,7 @@ services:
       - exam-service
       - submission-service
       - interaction-service
+      - generator-service
       - frontend
     restart: unless-stopped
 
@@ -127,6 +128,26 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+    restart: unless-stopped
+
+  generator-service:
+    image: ghcr.io/${GHCR_ORG:-tranphu-devops}/generator-service:${TAG:-latest}
+    build:
+      context: ./apps/generator-service
+    environment:
+      DATABASE_URL: ${GENERATOR_DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      EXAM_SERVICE_URL: http://exam-service:3003
+      USER_SERVICE_URL: http://user-service:3002
+      GENERATOR_KEY_ENCRYPTION_KEY: ${GENERATOR_KEY_ENCRYPTION_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      PORT: 3006
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   grader-service:

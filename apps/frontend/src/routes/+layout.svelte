@@ -81,6 +81,7 @@
     shield:   `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5L2 4.5v3.5c0 3.5 2.5 6 6 7 3.5-1 6-3.5 6-7V4.5z"/></svg>`,
     menu:     `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2.5" y1="5" x2="15.5" y2="5"/><line x1="2.5" y1="9" x2="15.5" y2="9"/><line x1="2.5" y1="13" x2="15.5" y2="13"/></svg>`,
     code:     `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4l4 4-4 4"/><path d="M6 12L2 8l4-4"/></svg>`,
+    sparkle:  `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5l1.2 3.3L12.5 6l-3.3 1.2L8 10.5l-1.2-3.3L3.5 6l3.3-1.2z"/><path d="M13 10l.6 1.6L15 12.2l-1.4.6L13 14.4l-.6-1.6L11 12.2l1.4-.6z"/></svg>`,
   }
 
   // ── Sidebar sections (reactive) ──────────────────────────────────────────────
@@ -89,10 +90,11 @@
       label: $t('nav.sectionNav'),
       items: [
         { icon: I.home,     label: $t('nav.dashboard'), href: '/dashboard',    active: $page.url.pathname === '/dashboard' },
-        { icon: I.document, label: $t('nav.exams'),    href: '/exams',        active: $page.url.pathname.startsWith('/exams') && !$page.url.pathname.startsWith('/exams/create') },
+        { icon: I.document, label: $t('nav.exams'),    href: '/exams',        active: $page.url.pathname.startsWith('/exams') && !$page.url.pathname.startsWith('/exams/create') && !$page.url.pathname.startsWith('/exams/generate') },
         ...($user.role !== 'student' ? [
-          { icon: I.plus,   label: $t('nav.createExam'), href: '/exams/create',  active: $page.url.pathname === '/exams/create' },
-          { icon: I.folder, label: $t('nav.collections'),       href: '/collections',   active: $page.url.pathname.startsWith('/collections') },
+          { icon: I.plus,    label: $t('nav.createExam'),   href: '/exams/create',   active: $page.url.pathname === '/exams/create' },
+          { icon: I.sparkle, label: $t('nav.generateExam'), href: '/exams/generate', active: $page.url.pathname === '/exams/generate' },
+          { icon: I.folder,  label: $t('nav.collections'),  href: '/collections',    active: $page.url.pathname.startsWith('/collections') },
         ] : []),
       ]
     },

@@ -29,7 +29,7 @@ docker compose up --build
 Access at http://localhost (via Nginx on port 80).
 
 `docker-compose.override.yml` is applied automatically in dev — it volume-mounts each service's `src/` for hot reload (`node --watch`) and exposes ports directly:
-- nginx: 80, frontend: 4000, gotrue: 9999, user: 4002, exam: 4003, submission: 4004, interaction: 4005, postgres: 5432, redis: 6379
+- nginx: 80, frontend: 4000, gotrue: 9999, user: 4002, exam: 4003, submission: 4004, interaction: 4005, generator: 4006, postgres: 5432, redis: 6379
 
 ### Individual service dev (outside Docker)
 ```bash
@@ -93,6 +93,7 @@ USER_DATABASE_URL=postgres://postgres:<pw>@postgres:5432/quizdb?search_path=quiz
 EXAM_DATABASE_URL=postgres://postgres:<pw>@postgres:5432/quizdb?search_path=quiz_exams
 SUBMISSION_DATABASE_URL=postgres://postgres:<pw>@postgres:5432/quizdb?search_path=quiz_submissions
 INTERACTION_DATABASE_URL=postgres://postgres:<pw>@postgres:5432/quizdb?search_path=quiz_interactions
+GENERATOR_DATABASE_URL=postgres://postgres:<pw>@postgres:5432/quizdb?search_path=quiz_generator
 
 # AWS / Lightsail Object Storage (for image uploads)
 AWS_ACCESS_KEY_ID=
@@ -106,11 +107,14 @@ AWS_PUBLIC_URL=               # public base URL of the bucket, e.g. https://buck
 API_ENCRYPTION_KEY=          # EC private key for response encryption (production only); generate with scripts/generate-api-key.js
 GHCR_ORG=tranphu-devops      # GHCR org prefix for docker-compose image names
 SENTRY_AUTH_TOKEN=           # Build-time secret for Sentry source map upload; passed via BuildKit secret, never in image
+GENERATOR_KEY_ENCRYPTION_KEY= # 32 bytes hex; encrypts teacher-supplied ("bring your own") LLM API keys at rest (AES-256-GCM). Generate: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+ANTHROPIC_API_KEY=            # Optional platform-wide Claude API key, used only when a teacher opts into the platform key (deducts credits)
 # Frontend Vite overrides (defaults point to /api/* via Nginx; override for direct service access)
 PUBLIC_EXAM_URL=
 PUBLIC_SUBMISSION_URL=
 PUBLIC_USER_URL=
 PUBLIC_INTERACTION_URL=
+PUBLIC_GENERATOR_URL=
 ```
 
 ## Architecture
@@ -125,6 +129,7 @@ Browser → Nginx :80
   /api/exams/       → exam-service:3003     (Nginx blocks /api/exams/exams/internal/ and /api/exams/collections/internal/ — these map to the exam-service's /exams/internal/ and /collections/internal/ paths after proxy stripping)
   /api/submissions/ → submission-service:3004
   /api/interactions/ → interaction-service:3005  (comments / likes / reports)
+  /api/generator/   → generator-service:3006  (AI exam generation from an uploaded document)
   /                 → frontend:3000
 ```
 
@@ -165,7 +170,7 @@ Role rules:
 In routes: `req.ability.cannot('action', subject('Type', plainObject))`. Always import `subject` from `@casl/ability` for condition-based checks.
 
 ### Backend services (Fastify + Node.js 24)
-There are four HTTP backends (user, exam, submission, interaction) — plus `grader-service` (a non-HTTP cron worker, see below). All four HTTP services share the same layout:
+There are five HTTP backends (user, exam, submission, interaction, generator) — plus `grader-service` (a non-HTTP cron worker, see below). All five HTTP services share the same layout:
 ```
 src/
   index.js           # Fastify setup, /health, plugin registration
@@ -206,12 +211,13 @@ Fully client-rendered SPA (`export const ssr = false` in `+layout.js`). Auth per
 Key files:
 - `src/lib/auth.js` — GoTrueClient, URL = `window.location.origin + '/auth'`
 - `src/lib/stores/auth.js` — `session`, `user`, `token` Svelte stores via `onAuthStateChange`
-- `src/lib/api.js` — `examApi`, `submissionApi`, `userApi`, `collectionApi`, `badgeApi`, `uploadApi`, `commentApi`, `likeApi`, `reportApi`; all read `token` store for Bearer header
+- `src/lib/api.js` — `examApi`, `submissionApi`, `userApi`, `collectionApi`, `badgeApi`, `uploadApi`, `commentApi`, `likeApi`, `reportApi`, `generatorApi`; all read `token` store for Bearer header
 
 `uploadApi.upload(file, type, oldUrl?)` sends `multipart/form-data` with no `Content-Type` header (let browser set the boundary).
 
 Components in `src/lib/components/`:
 - `ImageUpload.svelte` — drag-and-drop upload with preview; `bind:value` for the URL; accepts `type` prop (`avatar|exam-cover|question`); automatically passes the current URL as `old_url` to delete the old file on replace.
+- `DocumentUpload.svelte` — drag-and-drop picker for the AI exam generator (`/exams/generate`); `bind:file` holds the raw `File` (no auto-upload, no image preview — the parent page sends it together with generation params).
 - `MarkdownEditor.svelte` — markdown editor for question explanations
 - `RichTextEditor.svelte` — WYSIWYG editor (bold/italic/underline/lists/links toolbar) for exam `description`; `bind:value` for the HTML string. Pair with `sanitizeHtml.js` before storing.
 - `BadgePicker.svelte` — grid of 50 preset badge SVGs + custom upload tab; `bind:value` for badge URL. Preset metadata from `src/lib/badge-presets.json`.
@@ -232,6 +238,7 @@ Routes:
 /users/[id]              → public profile page (read-only) for any user — shows bio/social links + exams they've created (published only, unless viewer is the creator/admin)
 /exams                   → Udemy-style grid; cover image or gradient placeholder
 /exams/create            → create exam with cover image + per-question images
+/exams/generate          → AI exam generator: upload a document (PDF/DOCX/text), draft exam auto-created
 /exams/[id]              → exam detail / start
 /exams/[id]/take         → take exam; shows question image if present
 /exams/[id]/edit         → edit exam
@@ -239,7 +246,7 @@ Routes:
 /collections             → teacher: list own collections; admin: all
 /collections/create      → create collection (teacher)
 /collections/[id]/edit   → edit collection (teacher)
-/admin                   → tabs: Users (role management) · Upload settings (max size, MIME types)
+/admin                   → tabs: Users (role management) · Upload settings (max size, MIME types) · Credits · AI Generation (platform key, cost, limits)
 ```
 
 ### Public user profile
@@ -271,17 +278,30 @@ A separate microservice (schema `quiz_interactions`) for social/feedback feature
   - `POST /exams/:examId/reports` · `GET /reports/mine` (reporter's own history) · `GET /reports/inbox` (teacher: own exams / admin: all) · `GET /reports/inbox/count` (open-count badge) · `PATCH /reports/:id` (owner/admin responds → `status='resolved'`)
 - Frontend: `commentApi`, `likeApi`, `reportApi` in `api.js`. Like heart + comments live on `/exams/[id]`; the report modal on `/exams/[id]/result`; report history ("my reports") and the teacher/admin inbox+response live on `/profile`.
 
+### AI exam generator (`apps/generator-service`, port 3006)
+Teacher/admin uploads a document (PDF, DOCX, or plain text) on `/exams/generate`; the service calls the Claude API to draft a full multiple-choice exam, then imports it into exam-service as a **draft** (unpublished) exam via exam-service's own Teacher API routes (`POST /exams`, `POST /exams/:id/questions`) — **not** an internal/privileged path. exam-service itself is unmodified: `generateRoutes` forwards the caller's own `Authorization: Bearer <JWT>` header on those requests, so `created_by`/CASL behave exactly as if the teacher had called the Teacher API directly. JWT-only auth (`middleware/auth.js` has no `X-API-Key` path, unlike exam-service/user-service — this feature is UI-driven, not part of the Teacher API surface).
+
+- **Document handling** — PDF and plain text are sent to Claude as native `document`/`text` content blocks (base64 for PDF). **DOCX is not a Claude-native document type** — `lib/docParse.js` extracts its text with `mammoth` first and sends that as a `text` block. Max upload size is `admin_settings.ai_generation_max_file_size_mb` (default 20MB); Nginx's `/api/generator/` location raises `client_max_body_size` to `20m` and `proxy_read_timeout`/`proxy_send_timeout` to `180s` (generation + sequential question import is slower than a typical API call).
+- **LLM call** (`lib/llm.js`) — `@anthropic-ai/sdk`, `output_config.format: json_schema` forces a structured `{ title, description, tags, questions[] }` result (schema mirrors the Teacher API's question shape: `content, options[{key,text}], correct_answer[] , question_type, explanation, points`). Default model `claude-sonnet-5`; `ALLOWED_MODELS`/`PLATFORM_MODELS` in `lib/llm.js` gate which models each key source may use. The result is re-validated locally (unique option keys, `correct_answer` ⊆ option keys, `multiple` needs ≥2 correct, `order_index` assigned sequentially 0..n-1) before import — exam-service defaults `order_index` to `0` for every question if the caller omits it, so this must always be sent explicitly.
+- **`credit_cost` gotcha on import** — exam-service's `POST /exams` inserts `credit_cost` as literally given rather than falling back to its own column default when omitted (an explicit `NULL` still violates the `NOT NULL` constraint). `importExam()` therefore always resolves and sends a concrete `credit_cost` itself (from `admin_settings.default_exam_cost`) rather than relying on exam-service to apply a fallback — this is a real, pre-existing exam-service quirk, not something to "fix" by touching exam-service.
+- **LLM key sourcing** — two modes, chosen per-request (`params.key_source`):
+  - `own` — teacher's own Claude API key, saved via `POST /generate/keys` and encrypted at rest with **AES-256-GCM** (`lib/keyCrypto.js`, key from `GENERATOR_KEY_ENCRYPTION_KEY` — 32 bytes hex). This is a **reversible** encryption, unlike `quiz_users.api_keys`' one-way SHA-256 hash and unlike the ECDH *response* encryption below — the plaintext must be recoverable to actually call the provider. Plaintext is returned once at save time only; `GET /generate/keys` returns metadata + `key_prefix` only.
+  - `platform` — uses the server's own `ANTHROPIC_API_KEY` env var, gated by `admin_settings.ai_generation_enabled`, and **deducts credits before calling the LLM** (`POST {USER_SERVICE_URL}/internal/credits/deduct`, same internal endpoint submission-service uses) — insufficient credit (402) short-circuits before any LLM spend. A failure *after* the deduction (LLM error, import error) does not refund the credit — an accepted v1 tradeoff.
+- **Job history** — every attempt (success or failure) is recorded in `quiz_generator.generation_jobs` (`status`, `key_source`, `model`, `credits_charged`, `exam_id`, `error_message`). `GET /generate/jobs` / `GET /generate/jobs/:id`.
+- **Admin settings** (`quiz_users.admin_settings`, same table/pattern as upload/credit config): `ai_generation_enabled`, `ai_generation_credit_cost`, `ai_generation_max_file_size_mb`, `ai_generation_max_questions`. Configured on the "Tạo đề bằng AI" tab in `/admin`. `GET /api/users/public/settings` also exposes `ai_generation_enabled`/`ai_generation_credit_cost` (no auth) so the generate page can decide whether to offer the platform-key option without an admin call.
+- Frontend: `generatorApi` in `api.js`; `DocumentUpload.svelte` (plain file-picker/drag-drop, distinct from `ImageUpload.svelte` — no auto-upload-on-select, no image preview); page at `/exams/generate` (sidebar entry "Tạo đề thi bằng AI", teacher/admin only). On success the page redirects to `/exams/[id]/edit` so the teacher reviews/edits the generated questions and sets passing score, time limit, publish, etc. through the existing edit flow.
+
 ### Exam notes (frontend-only, not persisted)
 On `/exams/[id]/take` there is a **single scratch note for the whole exam session** (one `note` string in per-tab Svelte `$state`), shared across all questions and unchanged when navigating between them. It lives in a floating widget (`.note-widget`) anchored bottom-right, **hidden by default**, toggled by a FAB (the FAB shows a dot when the note is non-empty). The note is **intentionally not sent to any server** — lost on refresh (F5); a helper line states this. There is no notes table or endpoint.
 
 ### Database schemas
-Schema is defined by the ordered migration files in `infra/postgres/migrations/` (see **Database migrations** above), all idempotent (`IF NOT EXISTS` + `ALTER TABLE … ADD COLUMN IF NOT EXISTS`) and applied automatically by the `migrate` service. `0001_init.sql` is the base; later files (`0002_image_upload` … `0012_soft_delete`) add columns/tables incrementally.
+Schema is defined by the ordered migration files in `infra/postgres/migrations/` (see **Database migrations** above), all idempotent (`IF NOT EXISTS` + `ALTER TABLE … ADD COLUMN IF NOT EXISTS`) and applied automatically by the `migrate` service. `0001_init.sql` is the base; later files (`0002_image_upload` … `0013_generator`) add columns/tables incrementally.
 
 Never manually create tables in `auth` / `quiz_auth` — GoTrue manages that schema (the `auth` schema is created by `0001_init.sql` so it exists before GoTrue starts).
 
 Schema summary:
 - `quiz_users.profiles` — `id, full_name, avatar_url, role, credits, updated_at`, plus extended personal fields: `bio, birth_year, gender, interests, facebook_url, zalo, tiktok_url, youtube_url, instagram_url, linkedin_url, website_url`
-- `quiz_users.admin_settings` — `key, value` (upload validation + credit config)
+- `quiz_users.admin_settings` — `key, value` (upload validation + credit config + AI generation config: `ai_generation_enabled`, `ai_generation_credit_cost`, `ai_generation_max_file_size_mb`, `ai_generation_max_questions`)
 - `quiz_exams.exams` — includes `cover_image_url`, `tags TEXT[]`, `show_explanation`, `allow_retake`, `credit_cost`, `cooldown_minutes` (int, minutes between retakes), `max_attempts` (int nullable, null = unlimited), `scheduled_at` (timestamptz nullable, when null or in the past the exam is open; when in the future the exam is visible but locked), `passing_score` (float nullable, percentage threshold for "pass"; used by badge-award logic), `deleted_at TIMESTAMPTZ` (soft-delete; NULL = active)
 - `quiz_exams.questions` — includes `image_url`, `question_type` (`single`|`multiple`), `correct_answer` (comma-separated keys for multiple), `deleted_at TIMESTAMPTZ` (soft-delete; cascaded from exam delete)
 - `quiz_exams.collections` — `id, title, description, created_by, badge_image_url, is_published`, `deleted_at TIMESTAMPTZ` (soft-delete)
@@ -291,6 +311,8 @@ Schema summary:
 - `quiz_interactions.comments` — `id, exam_id, user_id, content, created_at, updated_at`
 - `quiz_interactions.likes` — `(exam_id, user_id)` PK; `created_at`
 - `quiz_interactions.reports` — `id, exam_id, exam_owner_id, reporter_id, category, description, status` (`open`|`resolved`), `response, responded_by, responded_at, created_at`
+- `quiz_generator.llm_keys` — teacher-supplied ("bring your own") LLM API keys: `id, user_id, provider, encrypted_key` (AES-256-GCM, reversible), `key_prefix, created_at, last_used_at, revoked_at`
+- `quiz_generator.generation_jobs` — one row per AI exam generation attempt: `id, user_id, status` (`processing`|`completed`|`failed`), `key_source` (`own`|`platform`), `model, source_filename, source_file_type, question_count, exam_id, credits_charged, error_message, created_at, completed_at`
 
 Seed files in `infra/postgres/`: `seed.sql` (sample data), `seed_aws_saa.sql` (AWS SAA exam with 45 questions), `seed_exam_01.sql`.
 
@@ -331,7 +353,7 @@ Custom SvelteKit error pages (`+error.svelte`) handle 404 and 5xx responses with
 
 ### CI/CD
 Three GitHub Actions workflows:
-- `build-push.yml` — triggered on push to `main`; builds multi-platform (amd64 + arm64) Docker images to GHCR. Matrix: `auth-service` (legacy, built but not deployed), `user-service`, `exam-service`, `submission-service`, `interaction-service`, `grader-service`, `frontend`.
+- `build-push.yml` — triggered on push to `main`; builds multi-platform (amd64 + arm64) Docker images to GHCR. Matrix: `auth-service` (legacy, built but not deployed), `user-service`, `exam-service`, `submission-service`, `interaction-service`, `generator-service`, `grader-service`, `frontend`.
 - `deploy.yml` — triggered after `build-push.yml` succeeds; SSHs into the production server and runs `deploy.sh --update`.
 - `cleanup-images.yml` — runs weekly (Sunday 00:00 ICT); deletes GHCR image versions beyond the 5 most recent, keeping all semver-tagged releases.
 
@@ -357,6 +379,7 @@ Three GitHub Actions workflows:
 - **Interactions gating:** Comments — any authenticated user. Likes — **students only** (server rejects others with 403). Reports — only after a completed submission (server verifies via cross-schema query, 403 otherwise). Comment moderation is **author + admin only** (teachers can't moderate comments on their own exams). Report responses are **owner + admin** and flip `status` to `resolved`.
 - **Exam notes are not persisted:** the take-page note textareas are in-memory only (Svelte `$state`), never sent to a server; don't add a notes table/endpoint — losing them on refresh is intended behavior.
 - **Soft-delete pattern (exams / questions / collections):** DELETE endpoints set `deleted_at = NOW()` instead of hard-deleting. All SELECT queries must include `AND deleted_at IS NULL` (or `AND e.deleted_at IS NULL` for aliased tables). Deleting an exam cascades the same timestamp to all its questions. `deleted_at` rows are never returned to the frontend; no restore UI exists yet — recovery is done directly in DB if needed.
+- **`POST /exams` requires an explicit `credit_cost`:** the column is `NOT NULL DEFAULT 10`, but the route inserts whatever value is given (including a literal `null`) rather than falling back to the column default — an omitted/`null` `credit_cost` always 500s. Any programmatic caller that doesn't set `credit_cost` itself (see `apps/generator-service`) must resolve `admin_settings.default_exam_cost` and send a concrete number.
 
 ## Design System
 
