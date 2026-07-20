@@ -12,7 +12,7 @@ export default async function interactionRoutes(fastify) {
   // Aggregate counts + caller's like state for an exam hero/detail page.
   // Counts are shared/global so they're cached; `liked` is per-caller and
   // always computed fresh so it's never served from another user's cache.
-  fastify.get('/exams/:examId/summary', { preHandler: optionalAuth }, async (req) => {
+  fastify.get('/exams/:examId/summary', { preHandler: optionalAuth, config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req) => {
     const { examId } = req.params
     const [counts, liked] = await Promise.all([
       getOrSet(`interactions:counts:${examId}`, 60, async () => {
@@ -34,7 +34,7 @@ export default async function interactionRoutes(fastify) {
   })
 
   // Paginated comments (10/page) with author name + avatar (cross-schema join)
-  fastify.get('/exams/:examId/comments', { preHandler: optionalAuth }, async (req) => {
+  fastify.get('/exams/:examId/comments', { preHandler: optionalAuth, config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req) => {
     const { examId } = req.params
     const page = Math.max(1, parseInt(req.query.page ?? '1', 10) || 1)
     const offset = (page - 1) * COMMENTS_PER_PAGE
@@ -66,7 +66,7 @@ export default async function interactionRoutes(fastify) {
   // ── Authenticated writes/reads ──────────────────────────────────────────────
 
   // Comments: any logged-in user may create
-  fastify.post('/exams/:examId/comments', { preHandler: verifyAuth }, async (req, reply) => {
+  fastify.post('/exams/:examId/comments', { preHandler: verifyAuth, config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     if (req.ability.cannot('create', 'Comment')) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
@@ -89,7 +89,7 @@ export default async function interactionRoutes(fastify) {
     return reply.status(201).send({ ...rows[0], ...(prof.rows[0] ?? {}) })
   })
 
-  fastify.patch('/comments/:id', { preHandler: verifyAuth }, async (req, reply) => {
+  fastify.patch('/comments/:id', { preHandler: verifyAuth, config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id } = req.params
     const content = (req.body?.content ?? '').trim()
     if (!content) return reply.status(400).send({ error: 'content required', statusCode: 400 })
@@ -109,7 +109,7 @@ export default async function interactionRoutes(fastify) {
     return upd.rows[0]
   })
 
-  fastify.delete('/comments/:id', { preHandler: verifyAuth }, async (req, reply) => {
+  fastify.delete('/comments/:id', { preHandler: verifyAuth, config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id } = req.params
     const { rows } = await pool.query('SELECT * FROM quiz_interactions.comments WHERE id = $1', [id])
     const comment = rows[0]
@@ -123,7 +123,7 @@ export default async function interactionRoutes(fastify) {
   })
 
   // Likes: students only; toggle heart
-  fastify.post('/exams/:examId/like', { preHandler: verifyAuth }, async (req, reply) => {
+  fastify.post('/exams/:examId/like', { preHandler: verifyAuth, config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     if (req.ability.cannot('create', 'Like')) {
       return reply.status(403).send({ error: 'Chỉ học viên mới có thể thích đề thi', statusCode: 403 })
     }
@@ -152,7 +152,7 @@ export default async function interactionRoutes(fastify) {
   })
 
   // Reports: only users who finished the exam may file one
-  fastify.post('/exams/:examId/reports', { preHandler: verifyAuth }, async (req, reply) => {
+  fastify.post('/exams/:examId/reports', { preHandler: verifyAuth, config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     if (req.ability.cannot('create', 'Report')) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
@@ -189,7 +189,7 @@ export default async function interactionRoutes(fastify) {
   })
 
   // Reporter's own history (for the profile "my reports" section)
-  fastify.get('/reports/mine', { preHandler: verifyAuth }, async (req) => {
+  fastify.get('/reports/mine', { preHandler: verifyAuth, config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req) => {
     const { rows } = await pool.query(
       `SELECT r.*, e.title AS exam_title
        FROM quiz_interactions.reports r
@@ -202,7 +202,7 @@ export default async function interactionRoutes(fastify) {
   })
 
   // Teacher/admin inbox: reports on exams they own (admin sees all)
-  fastify.get('/reports/inbox', { preHandler: verifyAuth }, async (req, reply) => {
+  fastify.get('/reports/inbox', { preHandler: verifyAuth, config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     if (req.user.role !== 'teacher' && req.user.role !== 'admin') {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
@@ -232,7 +232,7 @@ export default async function interactionRoutes(fastify) {
   })
 
   // Unread badge count = open reports in the caller's inbox
-  fastify.get('/reports/inbox/count', { preHandler: verifyAuth }, async (req, reply) => {
+  fastify.get('/reports/inbox/count', { preHandler: verifyAuth, config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     if (req.user.role !== 'teacher' && req.user.role !== 'admin') {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
@@ -244,7 +244,7 @@ export default async function interactionRoutes(fastify) {
   })
 
   // Owner/admin responds to a report → marks it resolved
-  fastify.patch('/reports/:id', { preHandler: verifyAuth }, async (req, reply) => {
+  fastify.patch('/reports/:id', { preHandler: verifyAuth, config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id } = req.params
     const response = (req.body?.response ?? '').trim()
     const status = req.body?.status ?? 'resolved'

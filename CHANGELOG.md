@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - **Rate limit riêng theo từng route nhạy cảm** (bắt đầu với `auth-service` và collections trong `exam-service`), phân theo mức độ rủi ro thay vì chỉ dựa vào giới hạn chung 300 request/phút/IP đã có: `POST /register` (5/phút), `POST /verify` (20/phút) ở auth-service; tạo/sửa/xoá collection (20/phút), xem chi tiết collection (60/phút), route nội bộ check-badge (100/phút) ở exam-service. Nhằm khắc phục dứt điểm các cảnh báo CodeQL `js/missing-rate-limiting` còn lại trên từng route cụ thể (giới hạn chung trước đây không đủ cụ thể để CodeQL nhận diện). Đây là phần đầu của một đợt áp dụng rộng hơn trên tất cả các service còn lại (sẽ tiếp tục ở PR sau).
+- **Hoàn tất rate limit theo route trên các service còn lại**: áp dụng tiếp cho toàn bộ route của `exam-service` (exams), `user-service` (quản lý API key, upload ảnh, quản lý user), `submission-service` (làm bài/nộp bài), `interaction-service` (comment/like/report) và `generator-service` (tạo đề bằng AI) — mỗi route gắn mức giới hạn theo rủi ro: thao tác tạo tài nguyên/nặng (5/phút), CRUD thường (20/phút), đọc dữ liệu (60/phút), heartbeat khi làm bài (120/phút), route nội bộ (100/phút). Đóng toàn bộ các cảnh báo CodeQL `js/missing-rate-limiting` còn lại trên từng route cụ thể trong repo.
 
 ---
 

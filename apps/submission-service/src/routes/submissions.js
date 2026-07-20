@@ -126,7 +126,7 @@ export default async function submissionRoutes(fastify) {
   // Creates an in_progress submission row and deducts credits.
   // If an unexpired in_progress row already exists, resumes it without charging again.
   // If an expired in_progress row exists, grades it inline then allows a fresh start.
-  fastify.post('/submissions/start', async (req, reply) => {
+  fastify.post('/submissions/start', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     if (req.ability.cannot('create', 'Submission')) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
@@ -281,7 +281,7 @@ export default async function submissionRoutes(fastify) {
 
   // PUT /submissions/:id/progress
   // Saves the student's current answers without grading. Fire-and-forget safe.
-  fastify.put('/submissions/:id/progress', async (req, reply) => {
+  fastify.put('/submissions/:id/progress', { config: { rateLimit: { max: 120, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id } = req.params
     const { answers } = req.body ?? {}
 
@@ -321,7 +321,7 @@ export default async function submissionRoutes(fastify) {
   // POST /submissions/:id/submit
   // Grades an in_progress submission and marks it completed.
   // Returns 409 if already graded (e.g. by the batch auto-grader).
-  fastify.post('/submissions/:id/submit', async (req, reply) => {
+  fastify.post('/submissions/:id/submit', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     if (req.ability.cannot('create', 'Submission')) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
@@ -395,7 +395,7 @@ export default async function submissionRoutes(fastify) {
   // GET /submissions/active?exam_id=
   // Returns the caller's current in_progress submission for an exam (if not expired).
   // Used by take page to detect a resumable session after re-login or cross-device navigation.
-  fastify.get('/submissions/active', async (req, reply) => {
+  fastify.get('/submissions/active', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { exam_id } = req.query
     if (!exam_id) {
       return reply.status(400).send({ error: 'exam_id required', statusCode: 400 })
@@ -444,7 +444,7 @@ export default async function submissionRoutes(fastify) {
   })
 
   // GET /submissions/:id
-  fastify.get('/submissions/:id', async (req, reply) => {
+  fastify.get('/submissions/:id', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id } = req.params
 
     try {
@@ -466,7 +466,7 @@ export default async function submissionRoutes(fastify) {
   })
 
   // GET /submissions?examId=&userId=&status=in_progress
-  fastify.get('/submissions', async (req, reply) => {
+  fastify.get('/submissions', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { examId, userId, status } = req.query
 
     try {

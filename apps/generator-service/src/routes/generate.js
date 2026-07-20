@@ -85,7 +85,7 @@ export default async function generateRoutes(fastify) {
 
   // ── BYO LLM key management ──────────────────────────────────────────────
 
-  fastify.post('/generate/keys', async (req, reply) => {
+  fastify.post('/generate/keys', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { api_key } = req.body ?? {}
     if (!api_key || typeof api_key !== 'string' || api_key.trim().length < 10) {
       return reply.status(400).send({ error: 'api_key required', statusCode: 400 })
@@ -104,7 +104,7 @@ export default async function generateRoutes(fastify) {
     }
   })
 
-  fastify.get('/generate/keys', async (req, reply) => {
+  fastify.get('/generate/keys', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     try {
       const { rows } = await pool.query(
         `SELECT id, provider, key_prefix, created_at, last_used_at
@@ -118,7 +118,7 @@ export default async function generateRoutes(fastify) {
     }
   })
 
-  fastify.delete('/generate/keys/:id', async (req, reply) => {
+  fastify.delete('/generate/keys/:id', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     try {
       const { rowCount } = await pool.query(
         `UPDATE llm_keys SET revoked_at = NOW()
@@ -135,7 +135,7 @@ export default async function generateRoutes(fastify) {
 
   // ── Generate exam from uploaded document ────────────────────────────────
 
-  fastify.post('/generate', async (req, reply) => {
+  fastify.post('/generate', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (req, reply) => {
     const authHeader = req.headers.authorization
     const data = await req.file()
     if (!data) return reply.status(400).send({ error: 'No file uploaded', statusCode: 400 })
@@ -252,7 +252,7 @@ export default async function generateRoutes(fastify) {
 
   // ── Job history ──────────────────────────────────────────────────────────
 
-  fastify.get('/generate/jobs', async (req, reply) => {
+  fastify.get('/generate/jobs', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     try {
       const { rows } = await pool.query(
         `SELECT * FROM generation_jobs WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50`,
@@ -265,7 +265,7 @@ export default async function generateRoutes(fastify) {
     }
   })
 
-  fastify.get('/generate/jobs/:id', async (req, reply) => {
+  fastify.get('/generate/jobs/:id', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     try {
       const { rows } = await pool.query(
         `SELECT * FROM generation_jobs WHERE id = $1 AND user_id = $2`,
