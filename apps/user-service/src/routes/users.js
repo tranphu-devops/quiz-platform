@@ -28,7 +28,7 @@ function isValidEmail(email) {
 
 export default async function userRoutes(fastify) {
   // Internal endpoint — no JWT auth, uses x-internal-key
-  fastify.post('/internal/credits/deduct', async (req, reply) => {
+  fastify.post('/internal/credits/deduct', { config: { rateLimit: { max: 100, timeWindow: '1 minute' } } }, async (req, reply) => {
     const key = req.headers['x-internal-key']
     if (!key || key !== process.env.INTERNAL_API_KEY) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
@@ -129,7 +129,7 @@ export default async function userRoutes(fastify) {
     }
   })
 
-  fastify.get('/:id', async (req, reply) => {
+  fastify.get('/:id', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id } = req.params
     try {
       const result = await pool.query(
@@ -149,7 +149,7 @@ export default async function userRoutes(fastify) {
     }
   })
 
-  fastify.put('/:id', async (req, reply) => {
+  fastify.put('/:id', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id } = req.params
     const {
       full_name, avatar_url,
@@ -198,7 +198,7 @@ export default async function userRoutes(fastify) {
   })
 
   // Student upgrade to teacher by spending credits
-  fastify.post('/upgrade-to-teacher', async (req, reply) => {
+  fastify.post('/upgrade-to-teacher', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     if (req.user.role !== 'student') {
       return reply.status(400).send({ error: 'Chỉ student mới có thể nâng cấp', statusCode: 400 })
     }
@@ -233,7 +233,7 @@ export default async function userRoutes(fastify) {
     }
   })
 
-  fastify.get('/admin/users', async (req, reply) => {
+  fastify.get('/admin/users', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     const { rows } = await pool.query(`
       SELECT u.id, u.email,
@@ -248,7 +248,7 @@ export default async function userRoutes(fastify) {
     return rows
   })
 
-  fastify.patch('/admin/users/:id/role', async (req, reply) => {
+  fastify.patch('/admin/users/:id/role', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     const { id } = req.params
     const { role } = req.body ?? {}
@@ -266,7 +266,7 @@ export default async function userRoutes(fastify) {
     return { success: true }
   })
 
-  fastify.patch('/admin/users/:id/credits', async (req, reply) => {
+  fastify.patch('/admin/users/:id/credits', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     const { id } = req.params
     const { credits } = req.body ?? {}
@@ -282,7 +282,7 @@ export default async function userRoutes(fastify) {
   })
 
   // ── GET /admin/users/:id — full profile for edit form ────────────────────
-  fastify.get('/admin/users/:id', async (req, reply) => {
+  fastify.get('/admin/users/:id', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     const { id } = req.params
     const { rows } = await pool.query(`
@@ -302,7 +302,7 @@ export default async function userRoutes(fastify) {
   })
 
   // ── POST /admin/users — tạo tài khoản mới ────────────────────────────────
-  fastify.post('/admin/users', async (req, reply) => {
+  fastify.post('/admin/users', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (req, reply) => {
     if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     const { email, password, full_name, role = 'student' } = req.body ?? {}
 
@@ -345,13 +345,13 @@ export default async function userRoutes(fastify) {
     }
   })
 
-  fastify.get('/admin/settings', async (req, reply) => {
+  fastify.get('/admin/settings', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     const { rows } = await pool.query('SELECT key, value FROM admin_settings ORDER BY key')
     return Object.fromEntries(rows.map(r => [r.key, r.value]))
   })
 
-  fastify.put('/admin/settings', async (req, reply) => {
+  fastify.put('/admin/settings', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     const settings = req.body ?? {}
     for (const [key, value] of Object.entries(settings)) {

@@ -21,7 +21,7 @@ export default async function examRoutes(fastify) {
   })
 
   // Internal endpoint for submission-service grading (not via Nginx)
-  fastify.get('/exams/internal/:id', async (req, reply) => {
+  fastify.get('/exams/internal/:id', { config: { rateLimit: { max: 100, timeWindow: '1 minute' } } }, async (req, reply) => {
     const internalKey = req.headers['x-internal-key']
     if (!internalKey || internalKey !== process.env.INTERNAL_API_KEY) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
@@ -47,7 +47,7 @@ export default async function examRoutes(fastify) {
   })
 
   // POST /exams
-  fastify.post('/exams', async (req, reply) => {
+  fastify.post('/exams', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     if (req.ability.cannot('create', 'Exam')) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
@@ -142,7 +142,7 @@ export default async function examRoutes(fastify) {
 
   // GET /exams/:id
   // ?preview=true → returns only first 3 questions (for detail page student view)
-  fastify.get('/exams/:id', async (req, reply) => {
+  fastify.get('/exams/:id', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id } = req.params
     const isStudent = req.user.role === 'student'
     const isPreview = req.query.preview === 'true'
@@ -210,7 +210,7 @@ export default async function examRoutes(fastify) {
   })
 
   // PUT /exams/:id
-  fastify.put('/exams/:id', async (req, reply) => {
+  fastify.put('/exams/:id', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id } = req.params
     const body = req.body ?? {}
     const { title, description, cover_image_url, time_limit, passing_score, is_published, tags, show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts } = body
@@ -255,7 +255,7 @@ export default async function examRoutes(fastify) {
   })
 
   // DELETE /exams/:id — soft delete
-  fastify.delete('/exams/:id', async (req, reply) => {
+  fastify.delete('/exams/:id', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id } = req.params
 
     try {
@@ -283,7 +283,7 @@ export default async function examRoutes(fastify) {
   })
 
   // POST /exams/:id/questions
-  fastify.post('/exams/:id/questions', async (req, reply) => {
+  fastify.post('/exams/:id/questions', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id } = req.params
     const { content, image_url = null, options, correct_answer: ca, points = 1.0, order_index = 0, explanation = null, question_type = 'single' } = req.body ?? {}
     const correct_answer = Array.isArray(ca) ? [...ca].sort().join(',') : ca
@@ -316,7 +316,7 @@ export default async function examRoutes(fastify) {
   })
 
   // PUT /exams/:id/questions/:qid
-  fastify.put('/exams/:id/questions/:qid', async (req, reply) => {
+  fastify.put('/exams/:id/questions/:qid', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id, qid } = req.params
     const { content, image_url, options, correct_answer: ca2, points, order_index, explanation, question_type } = req.body ?? {}
     const correct_answer = ca2 != null ? (Array.isArray(ca2) ? [...ca2].sort().join(',') : ca2) : undefined
@@ -357,7 +357,7 @@ export default async function examRoutes(fastify) {
   })
 
   // DELETE /exams/:id/questions/:qid — soft delete
-  fastify.delete('/exams/:id/questions/:qid', async (req, reply) => {
+  fastify.delete('/exams/:id/questions/:qid', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id, qid } = req.params
 
     try {

@@ -7,7 +7,7 @@ const VALID_TYPES = ['avatar', 'exam-cover', 'question']
 export default async function uploadRoutes(fastify) {
   fastify.addHook('preHandler', verifyAuth)
 
-  fastify.post('/upload', async (req, reply) => {
+  fastify.post('/upload', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (req, reply) => {
     const data = await req.file()
     if (!data) return reply.status(400).send({ error: 'No file uploaded', statusCode: 400 })
 

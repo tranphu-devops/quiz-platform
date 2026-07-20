@@ -42,7 +42,7 @@ export default async function apiKeyRoutes(fastify) {
   })
 
   // GET /api-keys — list caller's keys (metadata only, no secret)
-  fastify.get('/api-keys', async (req, reply) => {
+  fastify.get('/api-keys', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     try {
       const { rows } = await pool.query(
         `SELECT id, name, key_prefix, last_used_at, created_at, revoked_at
@@ -57,7 +57,7 @@ export default async function apiKeyRoutes(fastify) {
   })
 
   // DELETE /api-keys/:id — revoke (soft; verify path checks revoked_at)
-  fastify.delete('/api-keys/:id', async (req, reply) => {
+  fastify.delete('/api-keys/:id', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id } = req.params
     try {
       const { rowCount } = await pool.query(
