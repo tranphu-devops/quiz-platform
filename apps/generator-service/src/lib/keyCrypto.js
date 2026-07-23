@@ -38,7 +38,7 @@ export function decryptKey(encoded) {
 }
 
 // Short, non-sensitive fragment for display in key listings (never the
-// plaintext key itself) — e.g. "sk-ant-...ab12".
+// plaintext key itself) — e.g. "sk-or-v1...ab12".
 export function keyPrefix(plaintext) {
   const head = plaintext.slice(0, 8)
   const tail = plaintext.slice(-4)

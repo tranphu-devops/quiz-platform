@@ -15,7 +15,7 @@
   let language = $state('vi')
   let difficulty = $state('medium')
   let keySource = $state('own')
-  let model = $state('claude-sonnet-5')
+  let model = $state('anthropic/claude-sonnet-5')
   let ownKeyInput = $state('')
 
   let platformEnabled = $state(false)
@@ -173,9 +173,9 @@
         <div class="ix-field">
           <label class="ix-label" for="model">{$t('generator.modelLabel')}</label>
           <select id="model" class="ix-select" bind:value={model}>
-            <option value="claude-haiku-4-5">Claude Haiku 4.5</option>
-            <option value="claude-sonnet-5">Claude Sonnet 5</option>
-            <option value="claude-opus-4-8">Claude Opus 4.8</option>
+            <option value="anthropic/claude-haiku-4.5">Claude Haiku 4.5</option>
+            <option value="anthropic/claude-sonnet-5">Claude Sonnet 5</option>
+            <option value="anthropic/claude-opus-4.8">Claude Opus 4.8</option>
           </select>
         </div>
       {/if}

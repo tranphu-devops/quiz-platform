@@ -15,7 +15,7 @@ const MIME_TYPES = {
 
 // Platform-key generations are limited to the cheaper tiers; BYO-key
 // teachers pay for their own usage and may pick any supported model.
-const PLATFORM_MODELS = ['claude-haiku-4-5', 'claude-sonnet-5']
+const PLATFORM_MODELS = ['anthropic/claude-haiku-4.5', 'anthropic/claude-sonnet-5']
 
 async function getAdminSettings(keys) {
   const { rows } = await pool.query(
@@ -94,7 +94,7 @@ export default async function generateRoutes(fastify) {
       const trimmed = api_key.trim()
       const { rows } = await pool.query(
         `INSERT INTO llm_keys (user_id, provider, encrypted_key, key_prefix)
-         VALUES ($1, 'anthropic', $2, $3) RETURNING id, provider, key_prefix, created_at`,
+         VALUES ($1, 'openrouter', $2, $3) RETURNING id, provider, key_prefix, created_at`,
         [req.user.id, encryptKey(trimmed), keyPrefix(trimmed)]
       )
       return reply.status(201).send(rows[0])
@@ -187,7 +187,7 @@ export default async function generateRoutes(fastify) {
         return reply.status(403).send({ error: 'Tính năng dùng key nền tảng chưa được bật', statusCode: 403 })
       }
       if (!PLATFORM_MODELS.includes(model)) model = DEFAULT_MODEL
-      apiKey = process.env.ANTHROPIC_API_KEY
+      apiKey = process.env.OPENROUTER_API_KEY
       if (!apiKey) {
         return reply.status(500).send({ error: 'Chưa cấu hình key nền tảng', statusCode: 500 })
       }

@@ -142,7 +142,7 @@ services:
       EXAM_SERVICE_URL: http://exam-service:3003
       USER_SERVICE_URL: http://user-service:3002
       GENERATOR_KEY_ENCRYPTION_KEY: ${GENERATOR_KEY_ENCRYPTION_KEY}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       PORT: 3006
     depends_on:
       postgres:

@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased] — 2026-07-23
+
+### Changed
+- **Trình tạo đề bằng AI (generator-service) chuyển sang gọi LLM qua OpenRouter thay vì gọi trực tiếp Anthropic API**: một số môi trường deploy (VD: AWS Lightsail) bị Cloudflare — lớp edge đứng trước `api.anthropic.com` — chặn `403 Request not allowed` ở tầng network/IP-reputation, tái hiện được cả bằng `curl` thuần từ server (không liên quan code) và không hết sau khi đổi static IP, nên không thể khắc phục trong repo. Route qua OpenRouter (`https://openrouter.ai`, tương thích OpenAI) giúp server chỉ cần gọi tới OpenRouter — chính OpenRouter mới là bên gọi lên Anthropic — nên tránh được block này. Model đề xuất vẫn là các model Claude (qua slug OpenRouter, VD `anthropic/claude-sonnet-5`), không đổi trải nghiệm người dùng. Biến môi trường `ANTHROPIC_API_KEY` đổi tên thành `OPENROUTER_API_KEY`; key "tự mang" (BYO) của giáo viên giờ là OpenRouter key (`sk-or-v1-...`) thay vì key Anthropic.
+
+---
+
 ## [Unreleased] — 2026-07-19
 
 ### Added

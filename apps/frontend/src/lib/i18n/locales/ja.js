@@ -739,7 +739,7 @@ export const ja = {
     keySourcePlatformDisabled: '管理者がプラットフォームキーの利用を許可していません',
     modelLabel: 'モデル',
     ownKeyLabel: 'あなたのLLM APIキー',
-    ownKeyPlaceholder: 'sk-ant-...',
+    ownKeyPlaceholder: 'sk-or-v1-...',
     ownKeySaved: '末尾が {suffix} のキーを保存済み',
     ownKeyMissing: 'まだキーが保存されていません。以下に入力すると暗号化して保存され、次回から利用できます。',
     saveKeyButton: 'キーを保存',

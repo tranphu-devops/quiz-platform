@@ -739,7 +739,7 @@ export const vi = {
     keySourcePlatformDisabled: 'Admin chưa bật tính năng dùng key nền tảng',
     modelLabel: 'Model',
     ownKeyLabel: 'LLM API key của bạn',
-    ownKeyPlaceholder: 'sk-ant-...',
+    ownKeyPlaceholder: 'sk-or-v1-...',
     ownKeySaved: 'Đã lưu key kết thúc bằng {suffix}',
     ownKeyMissing: 'Bạn chưa lưu key — nhập key bên dưới, hệ thống sẽ lưu lại (mã hoá) để dùng cho các lần sau.',
     saveKeyButton: 'Lưu key',

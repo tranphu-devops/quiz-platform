@@ -739,7 +739,7 @@ export const en = {
     keySourcePlatformDisabled: 'The admin has not enabled the platform key option',
     modelLabel: 'Model',
     ownKeyLabel: 'Your LLM API key',
-    ownKeyPlaceholder: 'sk-ant-...',
+    ownKeyPlaceholder: 'sk-or-v1-...',
     ownKeySaved: 'Saved key ending in {suffix}',
     ownKeyMissing: "You haven't saved a key yet — enter one below and it will be stored (encrypted) for next time.",
     saveKeyButton: 'Save key',
