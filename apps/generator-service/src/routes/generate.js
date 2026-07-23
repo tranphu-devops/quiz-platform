@@ -28,21 +28,37 @@ async function getAdminSettings(keys) {
   return Object.fromEntries(rows.map(r => [r.key, r.value]))
 }
 
-async function insertJob(fields) {
+// Job starts as 'processing' (completed_at NULL) so POST /generate can
+// respond immediately and the frontend polls GET /generate/jobs/:id for the
+// outcome — see finalizeJob(). This sidesteps the 524 a slow LLM call would
+// otherwise trigger at Cloudflare's own edge timeout (~100s, independent of
+// and shorter than Nginx's 180s proxy_read_timeout — not configurable without
+// an Enterprise plan), since the HTTP response no longer waits on the LLM.
+// Known v1 limitation: a generator-service crash/restart mid-generation
+// leaves the job stuck in 'processing' forever (no startup reconciliation
+// like grader-service's stale in_progress sweep) — acceptable for now since
+// the teacher can just retry.
+async function createProcessingJob(fields) {
   const { rows } = await pool.query(
     `INSERT INTO generation_jobs
-      (user_id, status, key_source, model, source_filename, source_file_type,
-       question_count, exam_id, credits_charged, error_message, error_detail, completed_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+      (user_id, status, key_source, model, source_filename, source_file_type, credits_charged)
+     VALUES ($1, 'processing', $2, $3, $4, $5, $6)
      RETURNING *`,
-    [
-      fields.userId, fields.status, fields.keySource, fields.model,
-      fields.filename, fields.fileType, fields.questionCount ?? null,
-      fields.examId ?? null, fields.creditsCharged ?? null, fields.errorMessage ?? null,
-      fields.errorDetail ? JSON.stringify(fields.errorDetail) : null
-    ]
+    [fields.userId, fields.keySource, fields.model, fields.filename, fields.fileType, fields.creditsCharged ?? null]
   )
   return rows[0]
+}
+
+async function finalizeJob(jobId, fields) {
+  await pool.query(
+    `UPDATE generation_jobs
+     SET status = $2, question_count = $3, exam_id = $4, error_message = $5, error_detail = $6, completed_at = NOW()
+     WHERE id = $1`,
+    [
+      jobId, fields.status, fields.questionCount ?? null, fields.examId ?? null,
+      fields.errorMessage ?? null, fields.errorDetail ? JSON.stringify(fields.errorDetail) : null
+    ]
+  )
 }
 
 async function importExam(authHeader, { title, description, tags, questions }, creditCost) {
@@ -311,34 +327,35 @@ export default async function generateRoutes(fastify) {
       pool.query(`UPDATE llm_keys SET last_used_at = NOW() WHERE id = $1`, [rows[0].id]).catch(() => {})
     }
 
-    try {
-      const documentBlock = buildDocumentBlock({
-        mimetype: data.mimetype,
-        buffer,
-        extractedText: fileType === 'docx' ? await extractDocxText(buffer) : undefined
-      })
+    const job = await createProcessingJob({
+      userId: req.user.id, keySource, model, filename: data.filename, fileType, creditsCharged
+    })
 
-      const { exam } = await generateExam({ apiKey, model, documentBlock, questionCount, language, difficulty })
-      const defaultExamCost = Math.max(0, Number(settings.default_exam_cost ?? 10))
-      const examId = await importExam(authHeader, exam, defaultExamCost)
+    reply.status(202).send({ job_id: job.id })
 
-      const job = await insertJob({
-        userId: req.user.id, status: 'completed', keySource, model,
-        filename: data.filename, fileType, questionCount: exam.questions.length,
-        examId, creditsCharged
-      })
-
-      return reply.status(201).send({ job_id: job.id, exam_id: examId })
-    } catch (err) {
-      fastify.log.error(err)
-      const errorDetail = err.detail ?? { source: 'generator-service', message: err.message }
-      await insertJob({
-        userId: req.user.id, status: 'failed', keySource, model,
-        filename: data.filename, fileType, creditsCharged,
-        errorMessage: err.message, errorDetail
-      }).catch(() => {})
-      return reply.status(502).send({ error: err.message ?? 'Sinh đề thi thất bại', detail: errorDetail, statusCode: 502 })
-    }
+    // Fire-and-forget: the HTTP response is already sent above, so the LLM
+    // call + exam import run in the background — same pattern as the
+    // collection badge-award check (see CLAUDE.md). The frontend polls
+    // GET /generate/jobs/:id for completion instead of holding the request
+    // open, which is what let a slow model's response arrive after
+    // Cloudflare's edge had already returned a 524 to the client.
+    const defaultExamCost = Math.max(0, Number(settings.default_exam_cost ?? 10))
+    ;(async () => {
+      try {
+        const documentBlock = buildDocumentBlock({
+          mimetype: data.mimetype,
+          buffer,
+          extractedText: fileType === 'docx' ? await extractDocxText(buffer) : undefined
+        })
+        const { exam } = await generateExam({ apiKey, model, documentBlock, questionCount, language, difficulty })
+        const examId = await importExam(authHeader, exam, defaultExamCost)
+        await finalizeJob(job.id, { status: 'completed', questionCount: exam.questions.length, examId })
+      } catch (err) {
+        fastify.log.error(err)
+        const errorDetail = err.detail ?? { source: 'generator-service', message: err.message }
+        await finalizeJob(job.id, { status: 'failed', errorMessage: err.message, errorDetail }).catch(() => {})
+      }
+    })()
   })
 
   // ── Job history ──────────────────────────────────────────────────────────

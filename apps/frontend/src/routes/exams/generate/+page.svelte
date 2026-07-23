@@ -56,6 +56,29 @@
     }
   })
 
+  const POLL_INTERVAL_MS = 3000
+  const POLL_MAX_ATTEMPTS = 200 // ~10 min ceiling — safety net, not an expected duration
+
+  // POST /generate returns as soon as the job is queued (202 + job_id) rather
+  // than waiting for the LLM call — a slow/third-party model can take well
+  // over Cloudflare's own edge timeout (~100s, separate from and shorter than
+  // Nginx's 180s proxy_read_timeout), which used to surface as a 524 even
+  // though the backend was still working. We poll job status instead.
+  async function pollJob(jobId) {
+    for (let attempt = 0; attempt < POLL_MAX_ATTEMPTS; attempt++) {
+      await new Promise(r => setTimeout(r, POLL_INTERVAL_MS))
+      try {
+        const res = await generatorApi.getJob(jobId)
+        if (!res.ok) continue // transient — keep polling
+        const job = await res.json()
+        if (job.status === 'completed' || job.status === 'failed') return job
+      } catch {
+        // network hiccup — keep polling
+      }
+    }
+    return null // exceeded POLL_MAX_ATTEMPTS
+  }
+
   async function submit() {
     error = ''
     if (!file) { error = $t('generator.errorNoFile'); return }
@@ -86,9 +109,19 @@
         error = d.error ?? $t('generator.errorGeneric')
         return
       }
-      const data = await res.json()
+      const { job_id } = await res.json()
+
+      const job = await pollJob(job_id)
+      if (!job) {
+        error = $t('generator.pollTimeout')
+        return
+      }
+      if (job.status === 'failed') {
+        error = job.error_message ?? $t('generator.errorGeneric')
+        return
+      }
       alert($t('generator.successToast'))
-      goto(`/exams/${data.exam_id}/edit`)
+      goto(`/exams/${job.exam_id}/edit`)
     } catch {
       error = $t('generator.errorGeneric')
     } finally {
