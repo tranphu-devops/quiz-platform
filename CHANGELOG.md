@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased] — 2026-07-23
+
+### Added
+- **Admin cấu hình được model AI mặc định; giáo viên dùng key riêng được chọn model tuỳ ý; thêm màn hình quản lý API key AI cho cả admin và giáo viên.** Trước đây model chọn trên `/exams/generate` không có tác dụng (giá trị dropdown không khớp định dạng model của backend, luôn rơi về mặc định cứng). Giờ: (1) admin cấu hình "model mặc định" tại `/admin` → tab "Tạo đề bằng AI" — mọi lượt sinh đề bằng **key nền tảng** dùng đúng model này, không cho chọn khác (admin kiểm soát chi phí); (2) giáo viên dùng **key OpenRouter riêng** được nhập model tự do (không giới hạn danh sách — chi phí là của họ); (3) trang mới `/exams/generate/keys` (liên kết ở sidebar) cho giáo viên/admin xem, thêm, thu hồi các OpenRouter key đã lưu, và admin quản lý thêm key OpenRouter dùng chung cho toàn nền tảng (mã hoá AES-256-GCM tại chỗ, thay thế được mà không cần redeploy — vẫn fallback về biến môi trường `OPENROUTER_API_KEY` nếu chưa cấu hình qua UI).
+
+### Changed
+- **Trình tạo đề bằng AI (generator-service) chuyển sang gọi LLM qua OpenRouter thay vì gọi trực tiếp Anthropic API**: một số môi trường deploy (VD: AWS Lightsail) bị Cloudflare — lớp edge đứng trước `api.anthropic.com` — chặn `403 Request not allowed` ở tầng network/IP-reputation, tái hiện được cả bằng `curl` thuần từ server (không liên quan code) và không hết sau khi đổi static IP, nên không thể khắc phục trong repo. Route qua OpenRouter (`https://openrouter.ai`, tương thích OpenAI) giúp server chỉ cần gọi tới OpenRouter — chính OpenRouter mới là bên gọi lên Anthropic — nên tránh được block này. Model đề xuất vẫn là các model Claude (qua slug OpenRouter, VD `anthropic/claude-sonnet-5`), không đổi trải nghiệm người dùng. Biến môi trường `ANTHROPIC_API_KEY` đổi tên thành `OPENROUTER_API_KEY`; key "tự mang" (BYO) của giáo viên giờ là OpenRouter key (`sk-or-v1-...`) thay vì key Anthropic.
+
+---
+
 ## [Unreleased] — 2026-07-19
 
 ### Added

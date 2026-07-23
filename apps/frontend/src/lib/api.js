@@ -269,5 +269,14 @@ export const generatorApi = {
       body: JSON.stringify({ api_key: apiKey })
     }),
   deleteKey: (id) =>
-    apiFetch(`${GENERATOR_URL}/generate/keys/${id}`, { method: 'DELETE', headers: authHeaders(false) })
+    apiFetch(`${GENERATOR_URL}/generate/keys/${id}`, { method: 'DELETE', headers: authHeaders(false) }),
+  getPlatformKey: () => apiFetch(`${GENERATOR_URL}/generate/platform-key`, { headers: authHeaders(false) }),
+  savePlatformKey: (apiKey) =>
+    apiFetch(`${GENERATOR_URL}/generate/platform-key`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ api_key: apiKey })
+    }),
+  deletePlatformKey: () =>
+    apiFetch(`${GENERATOR_URL}/generate/platform-key`, { method: 'DELETE', headers: authHeaders(false) })
 }

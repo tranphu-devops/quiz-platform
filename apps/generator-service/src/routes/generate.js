@@ -2,7 +2,7 @@ import { pool } from '../db.js'
 import { verifyAuth } from '../middleware/auth.js'
 import { encryptKey, decryptKey, keyPrefix } from '../lib/keyCrypto.js'
 import { extractDocxText } from '../lib/docParse.js'
-import { buildDocumentBlock, generateExam, DEFAULT_MODEL, ALLOWED_MODELS } from '../lib/llm.js'
+import { buildDocumentBlock, generateExam, DEFAULT_MODEL } from '../lib/llm.js'
 
 const EXAM_SERVICE_URL = process.env.EXAM_SERVICE_URL
 const USER_SERVICE_URL = process.env.USER_SERVICE_URL
@@ -13,9 +13,12 @@ const MIME_TYPES = {
   'text/plain': 'txt'
 }
 
-// Platform-key generations are limited to the cheaper tiers; BYO-key
-// teachers pay for their own usage and may pick any supported model.
-const PLATFORM_MODELS = ['claude-haiku-4-5', 'claude-sonnet-5']
+// Loose shape check for a free-typed OpenRouter model slug (own-key mode has
+// no allowlist — it's the teacher's own key/cost). Just enough to catch
+// empty/garbage input before it reaches OpenRouter as a 400.
+function isPlausibleModelSlug(value) {
+  return typeof value === 'string' && value.trim().length > 0 && value.trim().length < 100 && value.includes('/')
+}
 
 async function getAdminSettings(keys) {
   const { rows } = await pool.query(
@@ -93,8 +96,8 @@ export default async function generateRoutes(fastify) {
     try {
       const trimmed = api_key.trim()
       const { rows } = await pool.query(
-        `INSERT INTO llm_keys (user_id, provider, encrypted_key, key_prefix)
-         VALUES ($1, 'anthropic', $2, $3) RETURNING id, provider, key_prefix, created_at`,
+        `INSERT INTO llm_keys (user_id, provider, encrypted_key, key_prefix, scope)
+         VALUES ($1, 'openrouter', $2, $3, 'user') RETURNING id, provider, key_prefix, created_at`,
         [req.user.id, encryptKey(trimmed), keyPrefix(trimmed)]
       )
       return reply.status(201).send(rows[0])
@@ -108,7 +111,7 @@ export default async function generateRoutes(fastify) {
     try {
       const { rows } = await pool.query(
         `SELECT id, provider, key_prefix, created_at, last_used_at
-         FROM llm_keys WHERE user_id = $1 AND revoked_at IS NULL ORDER BY created_at DESC`,
+         FROM llm_keys WHERE user_id = $1 AND scope = 'user' AND revoked_at IS NULL ORDER BY created_at DESC`,
         [req.user.id]
       )
       return rows
@@ -122,10 +125,71 @@ export default async function generateRoutes(fastify) {
     try {
       const { rowCount } = await pool.query(
         `UPDATE llm_keys SET revoked_at = NOW()
-         WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL`,
+         WHERE id = $1 AND user_id = $2 AND scope = 'user' AND revoked_at IS NULL`,
         [req.params.id, req.user.id]
       )
       if (rowCount === 0) return reply.status(404).send({ error: 'Key not found', statusCode: 404 })
+      return { success: true }
+    } catch (err) {
+      fastify.log.error(err)
+      return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
+    }
+  })
+
+  // ── Platform-wide LLM key management (admin-only) ───────────────────────
+  // Stored the same way as BYO keys (llm_keys, AES-256-GCM encrypted_key),
+  // scope='platform' instead of scoped by user_id. Falls back to the
+  // OPENROUTER_API_KEY env var when no row is active (see POST /generate),
+  // so an existing deployment keeps working with zero required action.
+
+  fastify.post('/generate/platform-key', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
+    if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+    const { api_key } = req.body ?? {}
+    if (!api_key || typeof api_key !== 'string' || api_key.trim().length < 10) {
+      return reply.status(400).send({ error: 'api_key required', statusCode: 400 })
+    }
+    const client = await pool.connect()
+    try {
+      const trimmed = api_key.trim()
+      await client.query('BEGIN')
+      await client.query(`UPDATE llm_keys SET revoked_at = NOW() WHERE scope = 'platform' AND revoked_at IS NULL`)
+      const { rows } = await client.query(
+        `INSERT INTO llm_keys (user_id, provider, encrypted_key, key_prefix, scope)
+         VALUES ($1, 'openrouter', $2, $3, 'platform') RETURNING id, key_prefix, created_at`,
+        [req.user.id, encryptKey(trimmed), keyPrefix(trimmed)]
+      )
+      await client.query('COMMIT')
+      return reply.status(201).send(rows[0])
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {})
+      fastify.log.error(err)
+      return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
+    } finally {
+      client.release()
+    }
+  })
+
+  fastify.get('/generate/platform-key', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
+    if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+    try {
+      const { rows } = await pool.query(
+        `SELECT id, key_prefix, created_at, last_used_at
+         FROM llm_keys WHERE scope = 'platform' AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1`
+      )
+      return rows[0] ?? null
+    } catch (err) {
+      fastify.log.error(err)
+      return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
+    }
+  })
+
+  fastify.delete('/generate/platform-key', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
+    if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+    try {
+      const { rowCount } = await pool.query(
+        `UPDATE llm_keys SET revoked_at = NOW() WHERE scope = 'platform' AND revoked_at IS NULL`
+      )
+      if (rowCount === 0) return reply.status(404).send({ error: 'Chưa cấu hình platform key', statusCode: 404 })
       return { success: true }
     } catch (err) {
       fastify.log.error(err)
@@ -167,9 +231,10 @@ export default async function generateRoutes(fastify) {
     const difficulty = params.difficulty ?? 'trung bình'
 
     const settings = await getAdminSettings([
-      'ai_generation_enabled', 'ai_generation_credit_cost',
+      'ai_generation_enabled', 'ai_generation_credit_cost', 'ai_generation_default_model',
       'ai_generation_max_file_size_mb', 'ai_generation_max_questions', 'default_exam_cost'
     ])
+    const defaultModel = settings.ai_generation_default_model || DEFAULT_MODEL
     const maxFileSizeMb = Number(settings.ai_generation_max_file_size_mb ?? 20)
     const maxQuestions = Number(settings.ai_generation_max_questions ?? 30)
     const questionCount = Math.max(1, Math.min(Number(params.question_count) || 15, maxQuestions))
@@ -179,15 +244,31 @@ export default async function generateRoutes(fastify) {
     }
 
     let apiKey
-    let model = params.model || DEFAULT_MODEL
+    let model
     let creditsCharged = null
 
     if (keySource === 'platform') {
       if (settings.ai_generation_enabled !== 'true') {
         return reply.status(403).send({ error: 'Tính năng dùng key nền tảng chưa được bật', statusCode: 403 })
       }
-      if (!PLATFORM_MODELS.includes(model)) model = DEFAULT_MODEL
-      apiKey = process.env.ANTHROPIC_API_KEY
+      // Platform-key generations always use the admin-configured default —
+      // no per-request model choice, since admin controls platform spend.
+      model = defaultModel
+      const { rows: platformKeyRows } = await pool.query(
+        `SELECT id, encrypted_key FROM llm_keys
+         WHERE scope = 'platform' AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1`
+      )
+      if (platformKeyRows.length > 0) {
+        try {
+          apiKey = decryptKey(platformKeyRows[0].encrypted_key)
+        } catch (err) {
+          fastify.log.error(err)
+          return reply.status(500).send({ error: 'Không thể giải mã platform key', statusCode: 500 })
+        }
+        pool.query(`UPDATE llm_keys SET last_used_at = NOW() WHERE id = $1`, [platformKeyRows[0].id]).catch(() => {})
+      } else {
+        apiKey = process.env.OPENROUTER_API_KEY
+      }
       if (!apiKey) {
         return reply.status(500).send({ error: 'Chưa cấu hình key nền tảng', statusCode: 500 })
       }
@@ -203,22 +284,23 @@ export default async function generateRoutes(fastify) {
       }
       creditsCharged = cost
     } else {
+      // Own key — free model choice, it's the teacher's own key/cost.
+      model = isPlausibleModelSlug(params.model) ? params.model.trim() : defaultModel
       const { rows } = await pool.query(
-        `SELECT encrypted_key FROM llm_keys
-         WHERE user_id = $1 AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1`,
+        `SELECT id, encrypted_key FROM llm_keys
+         WHERE user_id = $1 AND scope = 'user' AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1`,
         [req.user.id]
       )
       if (rows.length === 0) {
         return reply.status(400).send({ error: 'Chưa lưu LLM API key. Vui lòng nhập key trước.', statusCode: 400 })
       }
-      if (!ALLOWED_MODELS.includes(model)) model = DEFAULT_MODEL
       try {
         apiKey = decryptKey(rows[0].encrypted_key)
       } catch (err) {
         fastify.log.error(err)
         return reply.status(500).send({ error: 'Không thể giải mã key đã lưu', statusCode: 500 })
       }
-      pool.query(`UPDATE llm_keys SET last_used_at = NOW() WHERE user_id = $1`, [req.user.id]).catch(() => {})
+      pool.query(`UPDATE llm_keys SET last_used_at = NOW() WHERE id = $1`, [rows[0].id]).catch(() => {})
     }
 
     try {

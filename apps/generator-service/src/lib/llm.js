@@ -1,7 +1,10 @@
-import Anthropic from '@anthropic-ai/sdk'
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1'
 
-export const DEFAULT_MODEL = 'claude-sonnet-5'
-export const ALLOWED_MODELS = ['claude-haiku-4-5', 'claude-sonnet-5', 'claude-opus-4-8']
+// Model ids are OpenRouter slugs (provider-prefixed, dot-separated version),
+// not the bare Anthropic model names used when calling Anthropic directly.
+// Fallback only — the actual default is admin-configurable
+// (admin_settings.ai_generation_default_model, read in routes/generate.js).
+export const DEFAULT_MODEL = 'anthropic/claude-sonnet-5'
 
 // Structured-output schema for the generated exam. Mirrors exam-service's
 // Teacher API shape (POST /exams + POST /exams/:id/questions) so the result
@@ -47,14 +50,18 @@ const EXAM_SCHEMA = {
   additionalProperties: false
 }
 
-// PDF and plain text go to Claude as native document/text blocks. DOCX must
-// already be pre-extracted to plain text by lib/docParse.js — Claude's
-// document block does not accept .docx as a media type.
+// PDF and plain text go to the model as OpenAI-compatible file/text content
+// blocks (OpenRouter's chat completions API). DOCX must already be
+// pre-extracted to plain text by lib/docParse.js — there is no native .docx
+// content block.
 export function buildDocumentBlock({ mimetype, buffer, extractedText }) {
   if (mimetype === 'application/pdf') {
     return {
-      type: 'document',
-      source: { type: 'base64', media_type: 'application/pdf', data: buffer.toString('base64') }
+      type: 'file',
+      file: {
+        filename: 'document.pdf',
+        file_data: `data:application/pdf;base64,${buffer.toString('base64')}`
+      }
     }
   }
   const text = extractedText ?? buffer.toString('utf8')
@@ -78,30 +85,51 @@ Yêu cầu:
 }
 
 export async function generateExam({ apiKey, model, documentBlock, questionCount, language, difficulty }) {
-  const client = new Anthropic({ apiKey })
-
-  const response = await client.messages.create({
+  const body = {
     model,
     max_tokens: 16000,
-    output_config: {
-      format: { type: 'json_schema', schema: EXAM_SCHEMA },
-      effort: 'medium'
-    },
     messages: [{
       role: 'user',
       content: [documentBlock, { type: 'text', text: buildPrompt({ questionCount, language, difficulty }) }]
-    }]
+    }],
+    response_format: {
+      type: 'json_schema',
+      json_schema: { name: 'exam', strict: true, schema: EXAM_SCHEMA }
+    },
+    // Only relevant when documentBlock is a PDF file block — "native" hands
+    // the PDF to the underlying model directly (Claude models support it
+    // natively) instead of OpenRouter's default OCR parsing, which costs
+    // extra and isn't needed here.
+    ...(documentBlock.type === 'file' ? { plugins: [{ id: 'file-parser', pdf: { engine: 'native' } }] } : {})
+  }
+
+  const res = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://phutx.top',
+      'X-Title': 'Quiz Platform - AI Exam Generator'
+    },
+    body: JSON.stringify(body)
   })
 
-  if (response.stop_reason === 'refusal') {
+  const data = await res.json().catch(() => null)
+  if (!res.ok) {
+    throw new Error(data?.error?.message ?? `OpenRouter request thất bại (${res.status})`)
+  }
+
+  const choice = data.choices?.[0]
+  if (!choice) throw new Error('LLM không trả về nội dung hợp lệ')
+  if (choice.message?.refusal || choice.finish_reason === 'content_filter') {
     throw new Error('LLM từ chối sinh nội dung cho tài liệu này')
   }
 
-  const textBlock = response.content.find(b => b.type === 'text')
-  if (!textBlock) throw new Error('LLM không trả về nội dung hợp lệ')
+  const content = choice.message?.content
+  if (!content) throw new Error('LLM không trả về nội dung hợp lệ')
 
-  const parsed = JSON.parse(textBlock.text)
-  return { exam: normalizeExam(parsed), usage: response.usage }
+  const parsed = JSON.parse(content)
+  return { exam: normalizeExam(parsed), usage: data.usage }
 }
 
 // Defensive re-validation on top of the schema guarantee: unique option

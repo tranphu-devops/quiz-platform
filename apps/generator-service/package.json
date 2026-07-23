@@ -7,7 +7,6 @@
     "start": "node src/index.js"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.32.1",
     "@casl/ability": "^6.7.2",
     "@fastify/cors": "^11.3.0",
     "@fastify/multipart": "^10.1.0",

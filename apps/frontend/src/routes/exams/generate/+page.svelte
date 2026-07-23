@@ -15,7 +15,8 @@
   let language = $state('vi')
   let difficulty = $state('medium')
   let keySource = $state('own')
-  let model = $state('claude-sonnet-5')
+  let model = $state('anthropic/claude-sonnet-5')
+  let defaultModel = $state('anthropic/claude-sonnet-5')
   let ownKeyInput = $state('')
 
   let platformEnabled = $state(false)
@@ -39,6 +40,10 @@
         const s = await settingsRes.json()
         platformEnabled = s.ai_generation_enabled === 'true'
         platformCost = Number(s.ai_generation_credit_cost ?? 5)
+        if (s.ai_generation_default_model) {
+          defaultModel = s.ai_generation_default_model
+          model = s.ai_generation_default_model
+        }
       }
       if (keysRes.ok) {
         const keys = await keysRes.json()
@@ -149,6 +154,7 @@
           <input type="radio" name="key_source" value="platform" bind:group={keySource} disabled={!platformEnabled} />
           {platformEnabled ? $t('generator.keySourcePlatform', { cost: platformCost }) : $t('generator.keySourcePlatformDisabled')}
         </label>
+        <a class="ix-hint" href="/exams/generate/keys" target="_blank" rel="noopener">{$t('generator.manageKeysLink')}</a>
       </div>
 
       {#if keySource === 'own'}
@@ -170,14 +176,15 @@
       {/if}
 
       {#if keySource === 'own'}
-        <div class="ix-field">
-          <label class="ix-label" for="model">{$t('generator.modelLabel')}</label>
-          <select id="model" class="ix-select" bind:value={model}>
-            <option value="claude-haiku-4-5">Claude Haiku 4.5</option>
-            <option value="claude-sonnet-5">Claude Sonnet 5</option>
-            <option value="claude-opus-4-8">Claude Opus 4.8</option>
-          </select>
-        </div>
+        <Input
+          id="model"
+          label={$t('generator.modelLabel')}
+          bind:value={model}
+          placeholder={defaultModel}
+          hint={$t('generator.modelHint')}
+        />
+      {:else}
+        <p class="ix-hint">{$t('generator.platformModelHint', { model: defaultModel })}</p>
       {/if}
 
       <div>
@@ -197,6 +204,7 @@
   .ix-field { display: flex; flex-direction: column; gap: 5px; }
   .ix-label { font-size: 13px; font-weight: 500; color: var(--ix-text-secondary); line-height: 1; }
   .ix-hint { font-size: 12px; color: var(--ix-text-muted); margin: 0; line-height: 1.4; }
+  a.ix-hint { display: inline-block; margin-top: 4px; color: var(--primary); text-decoration: underline; }
   .ix-error   { color: var(--danger); font-size: 14px; }
   .ix-loading { font-size: 14px; color: var(--ix-text-muted); }
   .ix-select {
