@@ -32,13 +32,14 @@ async function insertJob(fields) {
   const { rows } = await pool.query(
     `INSERT INTO generation_jobs
       (user_id, status, key_source, model, source_filename, source_file_type,
-       question_count, exam_id, credits_charged, error_message, completed_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+       question_count, exam_id, credits_charged, error_message, error_detail, completed_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
      RETURNING *`,
     [
       fields.userId, fields.status, fields.keySource, fields.model,
       fields.filename, fields.fileType, fields.questionCount ?? null,
-      fields.examId ?? null, fields.creditsCharged ?? null, fields.errorMessage ?? null
+      fields.examId ?? null, fields.creditsCharged ?? null, fields.errorMessage ?? null,
+      fields.errorDetail ? JSON.stringify(fields.errorDetail) : null
     ]
   )
   return rows[0]
@@ -57,11 +58,13 @@ async function importExam(authHeader, { title, description, tags, questions }, c
   })
   if (!examRes.ok) {
     const err = await examRes.json().catch(() => ({}))
-    throw new Error(err.error ?? `Tạo đề thi thất bại (${examRes.status})`)
+    throw Object.assign(new Error(err.error ?? `Tạo đề thi thất bại (${examRes.status})`), {
+      detail: { source: 'exam-service', step: 'create_exam', http_status: examRes.status, message: err.error }
+    })
   }
   const exam = await examRes.json()
 
-  for (const q of questions) {
+  for (const [index, q] of questions.entries()) {
     const qRes = await fetch(`${EXAM_SERVICE_URL}/exams/${exam.id}/questions`, {
       method: 'POST',
       headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
@@ -69,7 +72,12 @@ async function importExam(authHeader, { title, description, tags, questions }, c
     })
     if (!qRes.ok) {
       const err = await qRes.json().catch(() => ({}))
-      throw new Error(err.error ?? `Thêm câu hỏi thất bại (${qRes.status})`)
+      throw Object.assign(new Error(err.error ?? `Thêm câu hỏi thất bại (${qRes.status})`), {
+        detail: {
+          source: 'exam-service', step: 'create_question', http_status: qRes.status,
+          message: err.error, question_index: index, exam_id: exam.id
+        }
+      })
     }
   }
 
@@ -323,12 +331,13 @@ export default async function generateRoutes(fastify) {
       return reply.status(201).send({ job_id: job.id, exam_id: examId })
     } catch (err) {
       fastify.log.error(err)
+      const errorDetail = err.detail ?? { source: 'generator-service', message: err.message }
       await insertJob({
         userId: req.user.id, status: 'failed', keySource, model,
         filename: data.filename, fileType, creditsCharged,
-        errorMessage: err.message
+        errorMessage: err.message, errorDetail
       }).catch(() => {})
-      return reply.status(502).send({ error: err.message ?? 'Sinh đề thi thất bại', statusCode: 502 })
+      return reply.status(502).send({ error: err.message ?? 'Sinh đề thi thất bại', detail: errorDetail, statusCode: 502 })
     }
   })
 

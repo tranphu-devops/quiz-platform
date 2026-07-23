@@ -1,5 +1,12 @@
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1'
 
+// Attaches a structured `.detail` to the thrown Error so routes/generate.js
+// can persist it into generation_jobs.error_detail (JSONB) for the job
+// history UI, instead of only the flattened message string.
+function llmError(message, detail) {
+  return Object.assign(new Error(message), { detail })
+}
+
 // Model ids are OpenRouter slugs (provider-prefixed, dot-separated version),
 // not the bare Anthropic model names used when calling Anthropic directly.
 // Fallback only — the actual default is admin-configurable
@@ -85,9 +92,13 @@ Yêu cầu:
 }
 
 export async function generateExam({ apiKey, model, documentBlock, questionCount, language, difficulty }) {
+  // Scale with questionCount — a fixed 16000 was getting hit (and silently
+  // truncating the JSON output, surfacing as a confusing "Unterminated
+  // string in JSON" parse error) once teachers asked for larger exams.
+  const maxTokens = Math.min(32000, 4000 + questionCount * 900)
   const body = {
     model,
-    max_tokens: 16000,
+    max_tokens: maxTokens,
     messages: [{
       role: 'user',
       content: [documentBlock, { type: 'text', text: buildPrompt({ questionCount, language, difficulty }) }]
@@ -116,20 +127,49 @@ export async function generateExam({ apiKey, model, documentBlock, questionCount
 
   const data = await res.json().catch(() => null)
   if (!res.ok) {
-    throw new Error(data?.error?.message ?? `OpenRouter request thất bại (${res.status})`)
+    const providerError = data?.error
+    throw llmError(providerError?.message ?? `OpenRouter request thất bại (${res.status})`, {
+      source: 'openrouter', http_status: res.status,
+      code: providerError?.code, metadata: providerError?.metadata, model
+    })
   }
 
   const choice = data.choices?.[0]
-  if (!choice) throw new Error('LLM không trả về nội dung hợp lệ')
+  if (!choice) {
+    throw llmError('LLM không trả về nội dung hợp lệ', { source: 'openrouter', reason: 'no_choice', model, response: data })
+  }
   if (choice.message?.refusal || choice.finish_reason === 'content_filter') {
-    throw new Error('LLM từ chối sinh nội dung cho tài liệu này')
+    throw llmError('LLM từ chối sinh nội dung cho tài liệu này', {
+      source: 'openrouter', reason: 'refusal', model,
+      refusal: choice.message?.refusal, finish_reason: choice.finish_reason
+    })
+  }
+  if (choice.finish_reason === 'length') {
+    throw llmError('LLM output bị cắt do vượt giới hạn token — vui lòng giảm số câu hỏi mong muốn hoặc chọn model khác', {
+      source: 'openrouter', reason: 'length', model, max_tokens: maxTokens, question_count: questionCount
+    })
   }
 
   const content = choice.message?.content
-  if (!content) throw new Error('LLM không trả về nội dung hợp lệ')
+  if (!content) {
+    throw llmError('LLM không trả về nội dung hợp lệ', { source: 'openrouter', reason: 'empty_content', model, finish_reason: choice.finish_reason })
+  }
 
-  const parsed = JSON.parse(content)
-  return { exam: normalizeExam(parsed), usage: data.usage }
+  let parsed
+  try {
+    parsed = JSON.parse(content)
+  } catch (err) {
+    throw llmError('LLM trả về JSON không hợp lệ, vui lòng thử lại', {
+      source: 'openrouter', reason: 'parse_error', model,
+      parse_error: err.message, content_length: content.length,
+      content_excerpt: content.length > 1000 ? `${content.slice(0, 500)}…[cut]…${content.slice(-500)}` : content
+    })
+  }
+  try {
+    return { exam: normalizeExam(parsed), usage: data.usage }
+  } catch (err) {
+    throw llmError(err.message, { source: 'validation', model })
+  }
 }
 
 // Defensive re-validation on top of the schema guarantee: unique option

@@ -154,7 +154,10 @@
           <input type="radio" name="key_source" value="platform" bind:group={keySource} disabled={!platformEnabled} />
           {platformEnabled ? $t('generator.keySourcePlatform', { cost: platformCost }) : $t('generator.keySourcePlatformDisabled')}
         </label>
-        <a class="ix-hint" href="/exams/generate/keys" target="_blank" rel="noopener">{$t('generator.manageKeysLink')}</a>
+        <div class="header-links">
+          <a class="ix-hint" href="/exams/generate/keys" target="_blank" rel="noopener">{$t('generator.manageKeysLink')}</a>
+          <a class="ix-hint" href="/exams/generate/jobs" target="_blank" rel="noopener">{$t('generator.viewJobsLink')}</a>
+        </div>
       </div>
 
       {#if keySource === 'own'}
@@ -205,6 +208,7 @@
   .ix-label { font-size: 13px; font-weight: 500; color: var(--ix-text-secondary); line-height: 1; }
   .ix-hint { font-size: 12px; color: var(--ix-text-muted); margin: 0; line-height: 1.4; }
   a.ix-hint { display: inline-block; margin-top: 4px; color: var(--primary); text-decoration: underline; }
+  .header-links { display: flex; gap: 14px; }
   .ix-error   { color: var(--danger); font-size: 14px; }
   .ix-loading { font-size: 14px; color: var(--ix-text-muted); }
   .ix-select {
