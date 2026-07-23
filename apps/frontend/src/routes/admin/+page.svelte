@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import { goto } from '$app/navigation'
   import { user } from '$lib/stores/auth'
-  import { userApi, collectionApi } from '$lib/api'
+  import { userApi, collectionApi, generatorApi } from '$lib/api'
   import PageHeader from '$lib/components/ui/PageHeader.svelte'
   import Card from '$lib/components/ui/Card.svelte'
   import Button from '$lib/components/ui/Button.svelte'
@@ -59,10 +59,17 @@
     ai_generation_enabled: 'false',
     ai_generation_credit_cost: '5',
     ai_generation_max_file_size_mb: '20',
-    ai_generation_max_questions: '30'
+    ai_generation_max_questions: '30',
+    ai_generation_default_model: 'anthropic/claude-sonnet-5'
   })
   let aiSaving = $state(false)
   let aiSuccess = $state(false)
+
+  // ── Platform LLM key (admin) ─────────────────────────────────────────────
+  let platformKey = $state(null) // { id, key_prefix, created_at, last_used_at } | null
+  let newPlatformKey = $state('')
+  let platformKeySaving = $state(false)
+  let platformKeyError = $state('')
   let aiError = $state('')
 
   // ── Collections tab ────────────────────────────────────────────────────────
@@ -72,8 +79,46 @@
   onMount(async () => {
     if (!$user) { goto('/login'); return }
     if ($user.role !== 'admin') { goto('/dashboard'); return }
-    await Promise.all([loadUsers(), loadSettings()])
+    await Promise.all([loadUsers(), loadSettings(), loadPlatformKey()])
   })
+
+  async function loadPlatformKey() {
+    try {
+      const res = await generatorApi.getPlatformKey()
+      if (res.ok) platformKey = await res.json()
+    } catch {
+      // non-fatal
+    }
+  }
+
+  async function savePlatformKey() {
+    platformKeyError = ''
+    if (!newPlatformKey.trim()) { platformKeyError = $t('admin.platformKeyRequired'); return }
+    platformKeySaving = true
+    try {
+      const res = await generatorApi.savePlatformKey(newPlatformKey.trim())
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        platformKeyError = d.error ?? $t('admin.saveConfigError')
+        return
+      }
+      newPlatformKey = ''
+      await loadPlatformKey()
+    } catch {
+      platformKeyError = $t('imageUpload.connectionError')
+    } finally {
+      platformKeySaving = false
+    }
+  }
+
+  async function revokePlatformKey() {
+    try {
+      const res = await generatorApi.deletePlatformKey()
+      if (res.ok) platformKey = null
+    } catch {
+      // non-fatal
+    }
+  }
 
   async function loadCollections() {
     if (collections.length) return
@@ -109,7 +154,8 @@
           ai_generation_enabled: all.ai_generation_enabled ?? 'false',
           ai_generation_credit_cost: all.ai_generation_credit_cost ?? '5',
           ai_generation_max_file_size_mb: all.ai_generation_max_file_size_mb ?? '20',
-          ai_generation_max_questions: all.ai_generation_max_questions ?? '30'
+          ai_generation_max_questions: all.ai_generation_max_questions ?? '30',
+          ai_generation_default_model: all.ai_generation_default_model ?? 'anthropic/claude-sonnet-5'
         }
       }
     } catch {} finally { settingsLoading = false }
@@ -578,6 +624,12 @@
                 hint={$t('admin.aiMaxQuestionsHint')}
                 style="width:120px"
               />
+              <Input
+                id="ai_generation_default_model"
+                label={$t('admin.aiDefaultModelLabel')}
+                bind:value={aiSettings.ai_generation_default_model}
+                hint={$t('admin.aiDefaultModelHint')}
+              />
               <div>
                 <Button onclick={saveAiSettings} loading={aiSaving} disabled={aiSaving}>
                   {$t('admin.saveSettings')}
@@ -585,6 +637,30 @@
               </div>
             </div>
           {/if}
+        </Card>
+
+        <Card title={$t('admin.platformKeyTitle')} subtitle={$t('admin.platformKeySubtitle')}>
+          {#if platformKey}
+            <div class="key-row">
+              <code class="key-prefix">{platformKey.key_prefix}…</code>
+              <div class="key-sub">
+                {$t('admin.createdAt')}: {fmtDate(platformKey.created_at)} · {$t('admin.lastUsedAt')}: {fmtDate(platformKey.last_used_at)}
+              </div>
+              <div class="key-row-actions">
+                <Button variant="secondary" onclick={revokePlatformKey}>{$t('admin.revokeKey')}</Button>
+              </div>
+            </div>
+            <p class="ix-hint replace-hint">{$t('admin.platformKeyReplaceHint')}</p>
+          {:else}
+            <p class="ix-hint">{$t('admin.platformKeyNotSet')}</p>
+          {/if}
+          <div class="key-create">
+            <Input bind:value={newPlatformKey} type="password" placeholder={$t('generator.ownKeyPlaceholder')} />
+            <Button onclick={savePlatformKey} loading={platformKeySaving} disabled={platformKeySaving}>
+              {platformKey ? $t('admin.replaceKey') : $t('admin.addKey')}
+            </Button>
+          </div>
+          {#if platformKeyError}<p class="ix-error">{platformKeyError}</p>{/if}
         </Card>
       </div>
     {/if}
@@ -907,6 +983,9 @@
   /* ── Settings / Credits forms ─────────────────────────────────────────── */
   .settings-wrap {
     max-width: 560px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
   }
 
   .form-stack {
@@ -929,6 +1008,16 @@
   .ix-success { color: #16a34a; font-size: 14px; margin-bottom: 16px; }
   .ix-loading { font-size: 14px; color: var(--ix-text-muted); }
   .ix-note    { font-size: 12px; color: var(--ix-text-muted); margin-top: 12px; }
+  .ix-hint    { font-size: 12px; color: var(--ix-text-muted); margin: 0 0 12px; line-height: 1.4; }
+
+  /* ── Platform LLM key ─────────────────────────────────────────────────── */
+  .key-row { border: 1px solid var(--border); border-radius: var(--radius-btn, 10px); padding: 12px 14px; margin-bottom: 10px; }
+  .key-prefix { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--text-muted, #6b6a80); }
+  .key-sub { font-size: 0.8rem; color: var(--text-muted, #6b6a80); margin-top: 4px; }
+  .key-row-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+  .replace-hint { margin-top: -2px; }
+  .key-create { display: flex; gap: 10px; align-items: flex-start; }
+  .key-create :global(.ix-field) { flex: 1; }
 
   /* ── Mobile ───────────────────────────────────────────────────────────── */
   @media (max-width: 768px) {

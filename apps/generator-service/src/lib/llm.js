@@ -2,8 +2,9 @@ const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1'
 
 // Model ids are OpenRouter slugs (provider-prefixed, dot-separated version),
 // not the bare Anthropic model names used when calling Anthropic directly.
+// Fallback only — the actual default is admin-configurable
+// (admin_settings.ai_generation_default_model, read in routes/generate.js).
 export const DEFAULT_MODEL = 'anthropic/claude-sonnet-5'
-export const ALLOWED_MODELS = ['anthropic/claude-haiku-4.5', 'anthropic/claude-sonnet-5', 'anthropic/claude-opus-4.8']
 
 // Structured-output schema for the generated exam. Mirrors exam-service's
 // Teacher API shape (POST /exams + POST /exams/:id/questions) so the result
