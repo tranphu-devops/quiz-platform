@@ -85,9 +85,13 @@ Yêu cầu:
 }
 
 export async function generateExam({ apiKey, model, documentBlock, questionCount, language, difficulty }) {
+  // Scale with questionCount — a fixed 16000 was getting hit (and silently
+  // truncating the JSON output, surfacing as a confusing "Unterminated
+  // string in JSON" parse error) once teachers asked for larger exams.
+  const maxTokens = Math.min(32000, 4000 + questionCount * 900)
   const body = {
     model,
-    max_tokens: 16000,
+    max_tokens: maxTokens,
     messages: [{
       role: 'user',
       content: [documentBlock, { type: 'text', text: buildPrompt({ questionCount, language, difficulty }) }]
@@ -124,11 +128,19 @@ export async function generateExam({ apiKey, model, documentBlock, questionCount
   if (choice.message?.refusal || choice.finish_reason === 'content_filter') {
     throw new Error('LLM từ chối sinh nội dung cho tài liệu này')
   }
+  if (choice.finish_reason === 'length') {
+    throw new Error('LLM output bị cắt do vượt giới hạn token — vui lòng giảm số câu hỏi mong muốn hoặc chọn model khác')
+  }
 
   const content = choice.message?.content
   if (!content) throw new Error('LLM không trả về nội dung hợp lệ')
 
-  const parsed = JSON.parse(content)
+  let parsed
+  try {
+    parsed = JSON.parse(content)
+  } catch {
+    throw new Error('LLM trả về JSON không hợp lệ, vui lòng thử lại')
+  }
   return { exam: normalizeExam(parsed), usage: data.usage }
 }
 
