@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] — 2026-07-24
 
 ### Added
+- **Khởi tạo `notification-service` (nền tảng cho hệ thống thông báo admin + người dùng qua Pushover/Email/Telegram, sắp tới)**: schema `quiz_notifications` mới (bảng `event_types` seed sẵn 20 loại sự kiện, `user_channel_targets`, `notification_subscriptions`, `notification_queue`) và service khung (`/health`, chưa có logic gửi thông báo) đã lên `docker-compose`. Đây là bước đầu trong nhiều PR — chưa có tính năng nào dùng được từ phía người dùng ở bước này.
 - **Enforce tự động 2 quy tắc bắt buộc trong `CLAUDE.md` bằng Claude Code hook** (`.claude/settings.json`, không phải code app): (1) chặn sửa file qua `Edit|Write` khi đang ở main worktree, trừ doc/config (`CLAUDE.md`, `CHANGELOG.md`, `README.md`, `DESIGN.md`, `.claude/*`) — buộc phải tạo git worktree/branch riêng trước khi sửa source code; (2) chặn `git commit` nếu `CHANGELOG.md` chưa được stage. Đồng thời rút gọn 2 mục "Git workflow" và "Changelog" trong `CLAUDE.md` xuống còn phần tóm tắt + ghi chú được enforce tự động, thay vì liệt kê từng bước.
 
 ### Changed

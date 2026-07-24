@@ -17,6 +17,7 @@ services:
       - submission-service
       - interaction-service
       - generator-service
+      - notification-service
       - frontend
     restart: unless-stopped
 
@@ -56,6 +57,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
       API_ENCRYPTION_KEY: ${API_ENCRYPTION_KEY:-}
+      NOTIFICATION_SERVICE_URL: http://notification-service:3007
       PORT: 3002
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
@@ -104,6 +106,7 @@ services:
       USER_SERVICE_URL: http://user-service:3002
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
       API_ENCRYPTION_KEY: ${API_ENCRYPTION_KEY:-}
+      NOTIFICATION_SERVICE_URL: http://notification-service:3007
       PORT: 3004
     depends_on:
       postgres:
@@ -121,6 +124,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       API_ENCRYPTION_KEY: ${API_ENCRYPTION_KEY:-}
       REDIS_URL: redis://redis:6379
+      NOTIFICATION_SERVICE_URL: http://notification-service:3007
       PORT: 3005
     depends_on:
       postgres:
@@ -143,7 +147,35 @@ services:
       USER_SERVICE_URL: http://user-service:3002
       GENERATOR_KEY_ENCRYPTION_KEY: ${GENERATOR_KEY_ENCRYPTION_KEY}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      NOTIFICATION_SERVICE_URL: http://notification-service:3007
       PORT: 3006
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # Admin event alerts + per-user activity notifications (Pushover/Email/
+  # Telegram). Hybrid service: Fastify HTTP API (internal enqueue endpoint +
+  # preference/admin CRUD) and a node-cron queue-worker loop in the same
+  # process — the queue itself is a Postgres table (notification_queue), not
+  # BullMQ/Redis, since the shared redis service below is a volatile
+  # allkeys-lru cache unsuitable for durable job storage.
+  notification-service:
+    image: ghcr.io/${GHCR_ORG:-tranphu-devops}/notification-service:${TAG:-latest}
+    build:
+      context: ./apps/notification-service
+    environment:
+      DATABASE_URL: ${NOTIFICATION_DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      API_ENCRYPTION_KEY: ${API_ENCRYPTION_KEY:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      NOTIFICATION_EMAIL_FROM: ${NOTIFICATION_EMAIL_FROM:-}
+      PUSHOVER_APP_TOKEN: ${PUSHOVER_APP_TOKEN:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      PORT: 3007
     depends_on:
       postgres:
         condition: service_healthy
@@ -159,6 +191,7 @@ services:
       DATABASE_URL: ${SUBMISSION_DATABASE_URL}
       EXAM_SERVICE_URL: http://exam-service:3003
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      NOTIFICATION_SERVICE_URL: http://notification-service:3007
     depends_on:
       postgres:
         condition: service_healthy
