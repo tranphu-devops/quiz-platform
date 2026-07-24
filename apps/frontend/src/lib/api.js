@@ -294,3 +294,10 @@ export const notificationApi = {
   adminRetryQueueItem: (id) =>
     apiFetch(`${NOTIFICATION_URL}/admin/queue/${id}/retry`, { method: 'POST', headers: authHeaders(false) })
 }
+
+export const systemApi = {
+  getServices: () => apiFetch(`${USER_URL}/admin/system/services`, { headers: authHeaders(false) }),
+  getDatabase: () => apiFetch(`${USER_URL}/admin/system/database`, { headers: authHeaders(false) }),
+  getLogs: (service, tail = 200) =>
+    apiFetch(`${USER_URL}/admin/system/logs?service=${encodeURIComponent(service)}&tail=${tail}`, { headers: authHeaders(false) })
+}

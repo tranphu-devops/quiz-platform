@@ -6,6 +6,7 @@ import internalRoutes from './routes/internal.js'
 import preferenceRoutes from './routes/preferences.js'
 import adminRoutes from './routes/admin.js'
 import { tick } from './lib/worker.js'
+import { pool } from './db.js'
 
 const fastify = Fastify({ logger: true, trustProxy: true })
 
@@ -21,11 +22,22 @@ await fastify.register(rateLimit, {
   })
 })
 
-fastify.get('/health', async () => ({
-  status: 'ok',
-  service: 'notification-service',
-  timestamp: new Date().toISOString()
-}))
+fastify.get('/health', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async () => {
+  let db = { ok: false }
+  try {
+    await pool.query('SELECT 1')
+    db = { ok: true }
+  } catch (err) {
+    db = { ok: false, error: err.message }
+  }
+  return {
+    status: 'ok',
+    service: 'notification-service',
+    timestamp: new Date().toISOString(),
+    db,
+    pool: { totalCount: pool.totalCount, idleCount: pool.idleCount, waitingCount: pool.waitingCount }
+  }
+})
 
 fastify.register(internalRoutes)
 fastify.register(preferenceRoutes)

@@ -7,6 +7,9 @@
   import Card from '$lib/components/ui/Card.svelte'
   import Button from '$lib/components/ui/Button.svelte'
   import Input from '$lib/components/ui/Input.svelte'
+  import SystemServicesPanel from '$lib/components/SystemServicesPanel.svelte'
+  import SystemDatabasePanel from '$lib/components/SystemDatabasePanel.svelte'
+  import SystemLogsPanel from '$lib/components/SystemLogsPanel.svelte'
   import { t, locale, localeCode } from '$lib/i18n'
 
   let tab = $state('users')
@@ -327,6 +330,7 @@
   <button class="tab-btn" class:active={tab === 'credits'}     onclick={() => tab = 'credits'}>{$t('admin.tabCredits')}</button>
   <button class="tab-btn" class:active={tab === 'ai'}          onclick={() => tab = 'ai'}>{$t('admin.tabAiGeneration')}</button>
   <button class="tab-btn" class:active={tab === 'notifications'} onclick={() => { tab = 'notifications'; loadNotificationSettings() }}>{$t('admin.tabNotifications')}</button>
+  <button class="tab-btn" class:active={tab === 'system'}        onclick={() => tab = 'system'}>{$t('admin.tabSystem')}</button>
 </div>
 
 <div class="admin-content">
@@ -840,6 +844,14 @@
         </Card>
       </div>
     {/if}
+
+    {#if tab === 'system'}
+      <div class="system-wrap">
+        <SystemServicesPanel />
+        <SystemDatabasePanel />
+        <SystemLogsPanel />
+      </div>
+    {/if}
 </div>
 
 <!-- ── Create user modal ──────────────────────────────────────────────── -->
@@ -1159,6 +1171,12 @@
   /* ── Settings / Credits forms ─────────────────────────────────────────── */
   .settings-wrap {
     max-width: 560px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .system-wrap {
     display: flex;
     flex-direction: column;
     gap: 20px;

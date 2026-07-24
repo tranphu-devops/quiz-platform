@@ -113,6 +113,10 @@ RESEND_API_KEY=
 NOTIFICATION_EMAIL_FROM=
 PUSHOVER_APP_TOKEN=
 TELEGRAM_BOT_TOKEN=
+# Admin System Overview screen (user-service -> docker-socket-proxy sidecar). Safe defaults set in docker-compose.yml.
+DOCKER_PROXY_HOST=docker-socket-proxy
+DOCKER_PROXY_PORT=2375
+COMPOSE_PROJECT_NAME=quiz-platform
 # Frontend Vite overrides (defaults point to /api/* via Nginx; override for direct service access)
 PUBLIC_EXAM_URL=
 PUBLIC_SUBMISSION_URL=
@@ -187,7 +191,7 @@ src/
 ```
 
 - Error format: `{ error: string, statusCode: number }`
-- Health: `GET /health` → `{ status: "ok", service: "...", timestamp: "..." }`
+- Health: `GET /health` → `{ status: "ok", service: "...", timestamp: "...", db: { ok }, pool: { totalCount, idleCount, waitingCount } }` (`db`/`pool` consumed by the admin System Overview screen, see below)
 - `db.js` applies `search_path` via `pool.on('connect')`, read from `?search_path=` in `DATABASE_URL`
 
 ### Redis cache (exam-service, user-service, interaction-service)
@@ -357,6 +361,21 @@ Standalone Node.js worker — no HTTP server, no Fastify. Runs `node-cron` every
 On each tick it queries `quiz_submissions.submissions WHERE status = 'in_progress' AND expires_at < NOW()`, fetches exam questions via `EXAM_SERVICE_URL/exams/internal/:id` (internal key), grades each submission using the same logic as submission-service, then `UPDATE ... SET status = 'timed_out'` (the `WHERE status = 'in_progress'` acts as an optimistic lock against races with the user submit endpoint). Also runs once at startup to catch submissions that expired while the service was down.
 
 Environment: `DATABASE_URL` (same as `SUBMISSION_DATABASE_URL`), `EXAM_SERVICE_URL`, `INTERNAL_API_KEY`.
+
+### Admin System Overview (`user-service` `/admin/system/*`, read-only)
+
+Gives admins live visibility into service health, container logs, and database status without SSH — a "System" tab on `/admin`. Lives entirely in `user-service` (which already owns `/admin/*`), gated by the same manual `req.user.role !== 'admin'` check as the other admin routes.
+
+- **`docker-socket-proxy`** (`docker-compose.yml`, `tecnativa/docker-socket-proxy` image) is the only thing with access to the real `/var/run/docker.sock` (mounted read-only into the proxy container). It's configured `CONTAINERS: 1, LOGS: 1, POST: 0` — only GET on container list/inspect/logs is reachable; exec/restart/create/image/network/volume endpoints are all default-denied. No published port, no nginx route — reachable only from other containers on the Compose network (same trust boundary as `postgres`/`redis`). This is what makes real Docker log history/container state safe to expose to an app service: even a fully compromised `user-service` can only read logs/inspect containers through this path, never control them.
+- `apps/user-service/src/lib/docker.js` — `dockerode` client pointed at the proxy (`DOCKER_PROXY_HOST`/`DOCKER_PROXY_PORT`, default `docker-socket-proxy`/`2375`). Looks up containers by **Compose label** (`com.docker.compose.service=<name>` + `com.docker.compose.project=${COMPOSE_PROJECT_NAME}`) rather than guessing container name strings, which vary by checkout directory (`deploy.sh` always uses the fixed `APP_DIR=/opt/quiz-platform`, so the label value is stable in prod).
+- `apps/user-service/src/lib/systemHealth.js` — calls each of the 6 HTTP services' own `/health` over the Docker network with a short timeout.
+- `apps/user-service/src/routes/admin-system.js`:
+  - `GET /admin/system/services` — combined container state (running/restarting/exited, uptime, restart count) + live `/health` result for each of the 6 HTTP services (user, exam, submission, interaction, generator, notification) plus container-only state for `grader-service` (no HTTP server, so no `/health` call for it).
+  - `GET /admin/system/logs?service=&tail=` — `service` must match one of the 7 known names (400 otherwise, prevents fishing for arbitrary containers on the host); `tail` default 200, max 2000. Docker's multiplexed log stream is demuxed and each line is best-effort JSON-parsed (pino output) with a raw-string fallback.
+  - `GET /admin/system/database` — Postgres-instance-wide stats over the existing `pool` (works cross-schema regardless of `search_path`, since `pg_catalog`/`information_schema` are always searchable): `pg_stat_activity` connection counts by state, `pg_database_size`, per-`quiz_*`-schema sizes, recent `public.schema_migrations` rows, and this pool's own stats.
+- `/health` on all 6 HTTP services (`apps/{exam,generator,interaction,submission,user,notification}-service/src/index.js`) additionally does a `pool.query('SELECT 1')` ping and reports pool stats (`totalCount/idleCount/waitingCount`) — `status` stays `'ok'` even if the DB ping fails, since that's a distinct signal from "process isn't answering HTTP" and the two must not be conflated.
+- Frontend: `systemApi` in `api.js`; `SystemServicesPanel.svelte` (polls ~25s), `SystemDatabasePanel.svelte` and `SystemLogsPanel.svelte` (both manual-refresh only — DB stats don't change fast enough to poll, and logs are the heaviest of the three panels on the proxy/response size) under `src/lib/components/`; wired as the "System" tab on `/admin`.
+- **Read-only by design, enforced at the infra layer, not just the UI**: there is no restart/stop/exec action anywhere in this feature, and the `docker-socket-proxy` config makes that true even for a compromised caller, not just "no button exists."
 
 ### Rich-text exam description
 Exam `description` field is rich HTML (not plain text). In the create/edit forms, `RichTextEditor.svelte` provides a lightweight WYSIWYG editor (toolbar: bold, italic, underline, lists, links). On save, the HTML is sanitized server-side via an allowlist before storing. On the exam detail page, it renders formatted HTML. `apps/frontend/src/lib/sanitizeHtml.js` defines the allowlist used in both sanitization and rendering. `htmlToText()` in the same file strips tags to plain text (used for collection tag aggregation and search snippets).

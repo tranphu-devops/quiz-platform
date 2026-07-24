@@ -66,6 +66,9 @@ services:
       AWS_ENDPOINT: ${AWS_ENDPOINT:-}
       AWS_PUBLIC_URL: ${AWS_PUBLIC_URL:-}
       REDIS_URL: redis://redis:6379
+      DOCKER_PROXY_HOST: docker-socket-proxy
+      DOCKER_PROXY_PORT: 2375
+      COMPOSE_PROJECT_NAME: ${COMPOSE_PROJECT_NAME:-quiz-platform}
     depends_on:
       postgres:
         condition: service_healthy
@@ -73,6 +76,8 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+      docker-socket-proxy:
+        condition: service_started
     restart: unless-stopped
 
   exam-service:
@@ -207,6 +212,22 @@ services:
       context: ./apps/frontend
     environment:
       PORT: 3000
+    restart: unless-stopped
+
+  # Read-only Docker API proxy for the admin System Overview screen
+  # (container status + logs for user-service's /admin/system/* routes).
+  # Holds the real docker.sock; only GET on container list/inspect/logs is
+  # allowed (POST/EXEC/IMAGES/NETWORKS/etc all default-deny) — a compromised
+  # caller can list/inspect/read-logs but never exec/restart/create anything.
+  # No published port, no nginx route: reachable only on the internal network.
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:0.2.0
+    environment:
+      CONTAINERS: 1
+      LOGS: 1
+      POST: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
 
   postgres:
