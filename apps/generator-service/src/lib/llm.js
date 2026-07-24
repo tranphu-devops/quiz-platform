@@ -176,14 +176,28 @@ export async function generateExam({ apiKey, model, documentBlock, questionCount
 // keys per question, correct_answer subset of option keys, order_index
 // assigned sequentially (exam-service defaults order_index to 0 for every
 // question if the caller omits it — must be set explicitly per question).
+// Shapes are also re-checked here (not just re-validated) because
+// `response_format.json_schema.strict` is honored inconsistently across
+// OpenRouter providers — some non-Anthropic/non-OpenAI models (teacher
+// "own key" generations accept any model slug) return best-effort JSON
+// that merely resembles the schema, so `options`/`correct_answer` can come
+// back as something other than an array and crash `.map`/`.filter` with an
+// opaque TypeError instead of a reportable validation error.
 function normalizeExam(exam) {
-  const questions = (exam.questions ?? []).map((q, index) => {
+  if (!Array.isArray(exam.questions) || exam.questions.length === 0) {
+    throw new Error('LLM không sinh được câu hỏi nào')
+  }
+  const questions = exam.questions.map((q, index) => {
+    if (!Array.isArray(q.options) || q.options.length === 0 || !q.options.every(o => o && typeof o.key === 'string' && typeof o.text === 'string')) {
+      throw new Error(`Câu hỏi #${index + 1} có "options" không đúng định dạng — model không tuân theo schema, vui lòng thử lại hoặc chọn model khác`)
+    }
     const optionKeys = q.options.map(o => o.key)
     const uniqueKeys = new Set(optionKeys)
     if (uniqueKeys.size !== optionKeys.length) {
       throw new Error(`Câu hỏi #${index + 1} có option key trùng lặp`)
     }
-    const correctAnswer = (q.correct_answer ?? []).filter(k => uniqueKeys.has(k))
+    const rawCorrectAnswer = Array.isArray(q.correct_answer) ? q.correct_answer : []
+    const correctAnswer = rawCorrectAnswer.filter(k => uniqueKeys.has(k))
     if (correctAnswer.length === 0) {
       throw new Error(`Câu hỏi #${index + 1} không có đáp án đúng hợp lệ`)
     }
@@ -200,8 +214,6 @@ function normalizeExam(exam) {
       order_index: index
     }
   })
-
-  if (questions.length === 0) throw new Error('LLM không sinh được câu hỏi nào')
 
   return {
     title: exam.title,

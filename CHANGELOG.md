@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased] — 2026-07-24
+
+### Fixed
+- **Sinh đề bằng AI crash với lỗi `q.options.map is not a function` khi dùng model OpenRouter không tuân thủ nghiêm ngặt structured output** (thường gặp với model bên thứ ba không phải Anthropic/OpenAI, chọn qua tính năng "key riêng" của giáo viên). Model trả về JSON không đúng shape đã khai báo (`options` không phải mảng, `correct_answer` không phải mảng...) khiến việc chuẩn hoá kết quả crash với lỗi khó hiểu thay vì báo lỗi rõ ràng. Giờ việc chuẩn hoá kiểm tra shape trước khi xử lý và báo lỗi cụ thể theo từng câu hỏi.
+
+---
+
 ## [Unreleased] — 2026-07-23
 
 ### Added
