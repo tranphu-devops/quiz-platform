@@ -5,7 +5,9 @@ import rateLimit from '@fastify/rate-limit'
 import userRoutes from './routes/users.js'
 import uploadRoutes from './routes/upload.js'
 import apiKeyRoutes from './routes/api-keys.js'
+import adminSystemRoutes from './routes/admin-system.js'
 import { encryptOnSend } from './lib/encryptResponse.js'
+import { pool } from './db.js'
 
 const fastify = Fastify({ logger: true, trustProxy: true })
 
@@ -23,15 +25,27 @@ await fastify.register(rateLimit, {
 })
 fastify.addHook('onSend', encryptOnSend)
 
-fastify.get('/health', async () => ({
-  status: 'ok',
-  service: 'user-service',
-  timestamp: new Date().toISOString()
-}))
+fastify.get('/health', async () => {
+  let db = { ok: false }
+  try {
+    await pool.query('SELECT 1')
+    db = { ok: true }
+  } catch (err) {
+    db = { ok: false, error: err.message }
+  }
+  return {
+    status: 'ok',
+    service: 'user-service',
+    timestamp: new Date().toISOString(),
+    db,
+    pool: { totalCount: pool.totalCount, idleCount: pool.idleCount, waitingCount: pool.waitingCount }
+  }
+})
 
 fastify.register(apiKeyRoutes, { prefix: '/' })
 fastify.register(userRoutes, { prefix: '/' })
 fastify.register(uploadRoutes, { prefix: '/' })
+fastify.register(adminSystemRoutes, { prefix: '/' })
 
 try {
   await fastify.listen({ port: Number(process.env.PORT) || 3002, host: '0.0.0.0' })

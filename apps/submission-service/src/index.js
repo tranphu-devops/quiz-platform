@@ -3,6 +3,7 @@ import cors from '@fastify/cors'
 import rateLimit from '@fastify/rate-limit'
 import submissionRoutes from './routes/submissions.js'
 import { encryptOnSend } from './lib/encryptResponse.js'
+import { pool } from './db.js'
 
 const fastify = Fastify({ logger: true, trustProxy: true })
 
@@ -19,11 +20,22 @@ await fastify.register(rateLimit, {
 })
 fastify.addHook('onSend', encryptOnSend)
 
-fastify.get('/health', async () => ({
-  status: 'ok',
-  service: 'submission-service',
-  timestamp: new Date().toISOString()
-}))
+fastify.get('/health', async () => {
+  let db = { ok: false }
+  try {
+    await pool.query('SELECT 1')
+    db = { ok: true }
+  } catch (err) {
+    db = { ok: false, error: err.message }
+  }
+  return {
+    status: 'ok',
+    service: 'submission-service',
+    timestamp: new Date().toISOString(),
+    db,
+    pool: { totalCount: pool.totalCount, idleCount: pool.idleCount, waitingCount: pool.waitingCount }
+  }
+})
 
 fastify.register(submissionRoutes)
 
