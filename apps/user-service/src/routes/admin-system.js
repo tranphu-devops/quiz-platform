@@ -18,9 +18,9 @@ async function getContainerState(serviceName) {
 }
 
 export default async function adminSystemRoutes(fastify) {
-  fastify.addHook('preHandler', verifyAuth)
-
   fastify.get('/admin/system/services', { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (req, reply) => {
+    await verifyAuth(req, reply)
+    if (reply.sent) return
     if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
 
     try {
@@ -39,6 +39,8 @@ export default async function adminSystemRoutes(fastify) {
   })
 
   fastify.get('/admin/system/logs', { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (req, reply) => {
+    await verifyAuth(req, reply)
+    if (reply.sent) return
     if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
 
     const { service } = req.query
@@ -68,6 +70,8 @@ export default async function adminSystemRoutes(fastify) {
   })
 
   fastify.get('/admin/system/database', { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (req, reply) => {
+    await verifyAuth(req, reply)
+    if (reply.sent) return
     if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
 
     try {

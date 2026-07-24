@@ -22,7 +22,7 @@ await fastify.register(rateLimit, {
   })
 })
 
-fastify.get('/health', async () => {
+fastify.get('/health', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async () => {
   let db = { ok: false }
   try {
     await pool.query('SELECT 1')
