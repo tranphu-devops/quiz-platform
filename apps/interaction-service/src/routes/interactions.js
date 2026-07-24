@@ -2,6 +2,7 @@ import { subject } from '@casl/ability'
 import { pool } from '../db.js'
 import { verifyAuth, optionalAuth } from '../middleware/auth.js'
 import { getOrSet, invalidate } from '../lib/cache.js'
+import { notify } from '../lib/notify.js'
 
 const COMMENTS_PER_PAGE = 10
 const REPORT_CATEGORIES = ['question_wrong', 'answer_wrong', 'image_issue', 'other']
@@ -177,7 +178,7 @@ export default async function interactionRoutes(fastify) {
     }
 
     // Denormalize exam owner for fast inbox filtering
-    const owner = await pool.query('SELECT created_by FROM quiz_exams.exams WHERE id = $1', [examId])
+    const owner = await pool.query('SELECT created_by, title FROM quiz_exams.exams WHERE id = $1', [examId])
     if (owner.rowCount === 0) return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
 
     const { rows } = await pool.query(
@@ -185,6 +186,17 @@ export default async function interactionRoutes(fastify) {
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
       [examId, owner.rows[0].created_by, req.user.id, category, description]
     )
+
+    notify('report.filed', {
+      recipients: owner.rows[0].created_by ? [{ role: 'teacher', user_id: owner.rows[0].created_by }] : [],
+      payload: {
+        reporterName: req.user.email,
+        examTitle: owner.rows[0].title,
+        examId,
+        category
+      }
+    })
+
     return reply.status(201).send(rows[0])
   })
 
@@ -266,6 +278,15 @@ export default async function interactionRoutes(fastify) {
        WHERE id = $4 RETURNING *`,
       [response, status, req.user.id, id]
     )
+
+    if (status === 'resolved' && report.status !== 'resolved') {
+      const exam = await pool.query('SELECT title FROM quiz_exams.exams WHERE id = $1', [report.exam_id])
+      notify('report.resolved', {
+        recipients: [{ role: 'reporter', user_id: report.reporter_id }],
+        payload: { examTitle: exam.rows[0]?.title, examId: report.exam_id, response }
+      })
+    }
+
     return upd.rows[0]
   })
 }

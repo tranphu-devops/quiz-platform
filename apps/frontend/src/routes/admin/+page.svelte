@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import { goto } from '$app/navigation'
   import { user } from '$lib/stores/auth'
-  import { userApi, collectionApi, generatorApi } from '$lib/api'
+  import { userApi, collectionApi, generatorApi, notificationApi } from '$lib/api'
   import PageHeader from '$lib/components/ui/PageHeader.svelte'
   import Card from '$lib/components/ui/Card.svelte'
   import Button from '$lib/components/ui/Button.svelte'
@@ -75,6 +75,19 @@
   // ── Collections tab ────────────────────────────────────────────────────────
   let collections = $state([])
   let collectionsLoading = $state(false)
+
+  // ── Notifications tab ─────────────────────────────────────────────────────
+  const NOTIF_CHANNELS = ['pushover', 'email', 'telegram']
+  let notifEventTypes = $state([])
+  let notifSubs = $state({})
+  let notifTargets = $state({ pushover_user_key: '', telegram_chat_id: '', email_override: '' })
+  let notifLoading = $state(false)
+  let notifSaving = $state(false)
+  let notifSuccess = $state(false)
+  let notifError = $state('')
+  let notifQueue = $state([])
+  let notifQueueStatus = $state('')
+  let notifQueueLoading = $state(false)
 
   onMount(async () => {
     if (!$user) { goto('/login'); return }
@@ -188,6 +201,60 @@
     } catch { aiError = $t('imageUpload.connectionError') } finally { aiSaving = false }
   }
 
+  async function loadNotificationSettings() {
+    if (notifEventTypes.length) return
+    notifLoading = true
+    try {
+      const res = await notificationApi.adminGetSubscriptions()
+      if (res.ok) {
+        const data = await res.json()
+        notifEventTypes = data.eventTypes ?? []
+        const map = {}
+        for (const s of data.subscriptions ?? []) map[`${s.event_type}:${s.channel}`] = s.enabled
+        notifSubs = map
+        notifTargets = {
+          pushover_user_key: data.targets?.pushover_user_key ?? '',
+          telegram_chat_id: data.targets?.telegram_chat_id ?? '',
+          email_override: data.targets?.email_override ?? ''
+        }
+      }
+    } catch {} finally { notifLoading = false }
+    loadNotifQueue()
+  }
+
+  function toggleNotifSub(eventKey, channel) {
+    const k = `${eventKey}:${channel}`
+    notifSubs = { ...notifSubs, [k]: !notifSubs[k] }
+  }
+
+  async function saveNotificationSettings() {
+    notifError = ''; notifSuccess = false; notifSaving = true
+    try {
+      const subscriptions = []
+      for (const evt of notifEventTypes) {
+        for (const ch of NOTIF_CHANNELS) {
+          subscriptions.push({ event_type: evt.key, channel: ch, enabled: !!notifSubs[`${evt.key}:${ch}`] })
+        }
+      }
+      const res = await notificationApi.adminUpdateSubscriptions({ subscriptions, targets: notifTargets })
+      if (!res.ok) { const d = await res.json(); notifError = d.error ?? $t('admin.saveConfigError'); return }
+      notifSuccess = true
+    } catch { notifError = $t('imageUpload.connectionError') } finally { notifSaving = false }
+  }
+
+  async function loadNotifQueue() {
+    notifQueueLoading = true
+    try {
+      const res = await notificationApi.adminListQueue(notifQueueStatus)
+      if (res.ok) { const d = await res.json(); notifQueue = d.items ?? [] }
+    } catch {} finally { notifQueueLoading = false }
+  }
+
+  async function retryNotifQueueItem(id) {
+    const res = await notificationApi.adminRetryQueueItem(id)
+    if (res.ok) loadNotifQueue()
+  }
+
   async function loadUsers() {
     loading = true; error = ''
     try {
@@ -259,6 +326,7 @@
   <button class="tab-btn" class:active={tab === 'settings'}    onclick={() => tab = 'settings'}>{$t('admin.tabUploadSettings')}</button>
   <button class="tab-btn" class:active={tab === 'credits'}     onclick={() => tab = 'credits'}>{$t('admin.tabCredits')}</button>
   <button class="tab-btn" class:active={tab === 'ai'}          onclick={() => tab = 'ai'}>{$t('admin.tabAiGeneration')}</button>
+  <button class="tab-btn" class:active={tab === 'notifications'} onclick={() => { tab = 'notifications'; loadNotificationSettings() }}>{$t('admin.tabNotifications')}</button>
 </div>
 
 <div class="admin-content">
@@ -664,6 +732,114 @@
         </Card>
       </div>
     {/if}
+
+    <!-- ── NOTIFICATIONS TAB ───────────────────────────────────────────── -->
+    {#if tab === 'notifications'}
+      <div class="settings-wrap">
+        <Card title={$t('admin.notifSubsTitle')} subtitle={$t('admin.notifSubsSubtitle')}>
+          {#if notifLoading}
+            <p class="ix-loading">{$t('common.loading')}</p>
+          {:else}
+            {#if notifError}<p class="ix-error">{notifError}</p>{/if}
+            {#if notifSuccess}<p class="ix-success">{$t('admin.notifSettingsSaved')}</p>{/if}
+
+            <div class="notif-table-wrap">
+              <table class="notif-table">
+                <thead>
+                  <tr>
+                    <th>{$t('admin.notifEventCol')}</th>
+                    {#each NOTIF_CHANNELS as ch}<th>{ch}</th>{/each}
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each notifEventTypes as evt (evt.key)}
+                    <tr>
+                      <td>{localeCode($locale) === 'en' ? evt.label_en : evt.label_vi}</td>
+                      {#each NOTIF_CHANNELS as ch}
+                        <td>
+                          <input
+                            type="checkbox"
+                            checked={!!notifSubs[`${evt.key}:${ch}`]}
+                            onchange={() => toggleNotifSub(evt.key, ch)}
+                          />
+                        </td>
+                      {/each}
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+
+            <div>
+              <Button onclick={saveNotificationSettings} loading={notifSaving} disabled={notifSaving}>
+                {$t('admin.saveSettings')}
+              </Button>
+            </div>
+          {/if}
+        </Card>
+
+        <Card title={$t('admin.notifTargetsTitle')} subtitle={$t('admin.notifTargetsSubtitle')}>
+          <div class="form-stack">
+            <Input id="notif_pushover_key" label="Pushover User Key" bind:value={notifTargets.pushover_user_key} placeholder="u1a2b3c..." />
+            <Input id="notif_telegram_chat" label="Telegram Chat ID" bind:value={notifTargets.telegram_chat_id} placeholder="123456789" />
+            <Input
+              id="notif_email_override"
+              label={$t('admin.notifEmailOverrideLabel')}
+              type="email"
+              bind:value={notifTargets.email_override}
+              placeholder="you@example.com"
+              hint={$t('admin.notifEmailOverrideHint')}
+            />
+          </div>
+        </Card>
+
+        <Card title={$t('admin.notifQueueTitle')} subtitle={$t('admin.notifQueueSubtitle')}>
+          <div class="notif-queue-filter">
+            <select bind:value={notifQueueStatus} onchange={loadNotifQueue}>
+              <option value="">{$t('admin.notifQueueAll')}</option>
+              <option value="pending">pending</option>
+              <option value="sent">sent</option>
+              <option value="failed">failed</option>
+              <option value="dead">dead</option>
+            </select>
+          </div>
+          {#if notifQueueLoading}
+            <p class="ix-loading">{$t('common.loading')}</p>
+          {:else if !notifQueue.length}
+            <p class="ix-hint">{$t('admin.notifQueueEmpty')}</p>
+          {:else}
+            <div class="notif-table-wrap">
+              <table class="notif-table">
+                <thead>
+                  <tr>
+                    <th>{$t('admin.notifEventCol')}</th>
+                    <th>channel</th>
+                    <th>status</th>
+                    <th>{$t('admin.notifQueueAttempts')}</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each notifQueue as item (item.id)}
+                    <tr>
+                      <td>{item.event_type}</td>
+                      <td>{item.channel}</td>
+                      <td>{item.status}</td>
+                      <td>{item.attempts}</td>
+                      <td>
+                        {#if item.status === 'dead'}
+                          <Button variant="secondary" onclick={() => retryNotifQueueItem(item.id)}>{$t('admin.notifQueueRetry')}</Button>
+                        {/if}
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {/if}
+        </Card>
+      </div>
+    {/if}
 </div>
 
 <!-- ── Create user modal ──────────────────────────────────────────────── -->
@@ -986,6 +1162,36 @@
     display: flex;
     flex-direction: column;
     gap: 20px;
+  }
+
+  .notif-table-wrap {
+    overflow-x: auto;
+    margin-bottom: 16px;
+  }
+  .notif-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  .notif-table th, .notif-table td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .notif-table th:first-child, .notif-table td:first-child {
+    white-space: normal;
+    min-width: 200px;
+  }
+  .notif-queue-filter {
+    margin-bottom: 12px;
+  }
+  .notif-queue-filter select {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
   }
 
   .form-stack {

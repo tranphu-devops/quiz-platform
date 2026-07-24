@@ -45,6 +45,14 @@ services:
     volumes:
       - ./apps/generator-service/src:/app/src
 
+  notification-service:
+    build:
+      context: ./apps/notification-service
+    ports:
+      - "4007:3007"
+    volumes:
+      - ./apps/notification-service/src:/app/src
+
   grader-service:
     build:
       context: ./apps/grader-service

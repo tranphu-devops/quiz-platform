@@ -1,3 +1,5 @@
+import { notify } from './lib/notify.js'
+
 function isCorrect(q, studentAnswer) {
   if (q.question_type === 'multiple') {
     const sorted = Array.isArray(studentAnswer) ? [...studentAnswer].sort().join(',') : ''
@@ -31,10 +33,16 @@ async function awardBadgesIfEarned(pool, userId, examId) {
     )
     const passedCount = parseInt(r.rows[0]?.passed_count ?? 0, 10)
     if (passedCount >= examIds.length) {
-      await pool.query(
-        `INSERT INTO student_badges (user_id, collection_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      const insertRes = await pool.query(
+        `INSERT INTO student_badges (user_id, collection_id) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING user_id`,
         [userId, col.id]
       )
+      if (insertRes.rowCount > 0) {
+        notify('badge.earned', {
+          recipients: [{ role: 'owner', user_id: userId }],
+          payload: { collectionTitle: col.title, collectionId: col.id }
+        })
+      }
     }
   }
 }
@@ -96,6 +104,14 @@ export async function runAutoGrade(pool) {
         if (passed) {
           await awardBadgesIfEarned(pool, sub.user_id, sub.exam_id).catch(() => {})
         }
+
+        notify('submission.timed_out', {
+          recipients: [
+            { role: 'owner', user_id: sub.user_id },
+            ...(exam.created_by ? [{ role: 'teacher', user_id: exam.created_by }] : [])
+          ],
+          payload: { examTitle: exam.title, examId: exam.id, submissionId: sub.id, percentage }
+        })
       }
     } catch (err) {
       console.error(`[grader] Failed to grade submission ${sub.id}:`, err.message)

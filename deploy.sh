@@ -387,7 +387,7 @@ hr
 info "Phase 9: Health check + Nginx restart"
 hr
 
-SERVICES=("user-service" "exam-service" "submission-service" "interaction-service" "generator-service")
+SERVICES=("user-service" "exam-service" "submission-service" "interaction-service" "generator-service" "notification-service")
 
 sleep 8  # give Postgres + services time to initialize
 
