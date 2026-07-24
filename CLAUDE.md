@@ -4,20 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Changelog
 
-**Mỗi lần chuẩn bị push/commit**, cập nhật `CHANGELOG.md`:
-- Thêm mục `## [Unreleased] — YYYY-MM-DD` (hoặc cập nhật mục đang có) với các thay đổi theo nhóm `Added / Changed / Fixed / Removed`
-- Viết ngắn gọn, tập trung vào **what & why** từ góc nhìn người dùng/developer, không liệt kê từng file đã sửa
-- Khi release, đổi `[Unreleased]` thành số phiên bản theo SemVer
+Trước khi commit/push, cập nhật `CHANGELOG.md` (mục `## [Unreleased] — YYYY-MM-DD`, nhóm `Added/Changed/Fixed/Removed`, ngắn gọn theo góc nhìn user/dev — không liệt kê từng file). Đổi `[Unreleased]` → version SemVer khi release.
+
+> Enforced tự động bởi hook `PreToolUse`/`Bash` — chặn `git commit` nếu `CHANGELOG.md` chưa được stage (`.claude/settings.json`).
 
 ## Git workflow (bắt buộc)
 
-**Trước khi thay đổi bất kỳ source code nào**, phải làm việc trong một **git worktree riêng**, không sửa trực tiếp trên cây làm việc chính:
+Mỗi task = một **git worktree riêng** + một branch mới từ `main` (`origin/main` mới nhất) — không sửa source code trực tiếp trên main worktree, không commit thẳng lên `main`. Xong việc: push branch + mở PR vào `main` (không merge thẳng).
 
-1. **Tạo git worktree + nhánh mới từ `main`**: mỗi task = một worktree + một nhánh xuất phát từ `main` (cập nhật `origin/main` mới nhất). Không commit thẳng lên `main`.
-2. **Làm toàn bộ thay đổi trong worktree đó** — tách biệt, tránh xung đột khi có nhiều luồng làm việc song song trên cùng repo.
-3. **Khi hoàn thành**: `push` nhánh lên `origin` và **mở Pull Request** vào `main` để review; không merge thẳng.
+Lý do: cô lập từng luồng việc (nhiều tiến trình có thể cùng sinh code trên một repo), giữ `main` sạch, mọi thay đổi đi qua review.
 
-Lý do: cô lập từng luồng công việc (nhiều tiến trình có thể cùng sinh code trên một repo), giữ `main` luôn sạch, và mọi thay đổi đều đi qua PR.
+> Enforced tự động bởi hook `PreToolUse`/`Edit|Write` — chặn sửa file khi đang ở main worktree, trừ doc/config (`CLAUDE.md`, `CHANGELOG.md`, `README.md`, `DESIGN.md`, `.claude/*`) (`.claude/settings.json`).
 
 ## Commands
 
@@ -284,7 +281,7 @@ Teacher/admin uploads a document (PDF, DOCX, or plain text) on `/exams/generate`
 - **Why OpenRouter instead of calling Anthropic directly** — the generator-service used to call `api.anthropic.com` directly via `@anthropic-ai/sdk`. On at least one deployment (AWS Lightsail), outbound requests to `api.anthropic.com` were rejected with a `403 {"type":"forbidden","message":"Request not allowed"}` from Cloudflare's edge in front of that API — reproduced even with a bare `curl` from the host (no app code involved), and after rotating the Lightsail static IP, so it's an IP/ASN-reputation block outside our control, not something fixable in this repo. Routing through OpenRouter (`https://openrouter.ai/api/v1/chat/completions`, OpenAI-compatible) sidesteps it entirely since our server only talks to OpenRouter's API — OpenRouter's own infrastructure makes the upstream call to Anthropic.
 - **Document handling** — PDF and plain text are sent as OpenAI-compatible `file`/`text` content blocks (base64 data URL for PDF, via OpenRouter's `file-parser` plugin with `engine: 'native'` so Claude models parse the PDF natively instead of OpenRouter's paid OCR fallback). **DOCX has no native file content type** — `lib/docParse.js` extracts its text with `mammoth` first and sends that as a `text` block. Max upload size is `admin_settings.ai_generation_max_file_size_mb` (default 20MB); Nginx's `/api/generator/` location raises `client_max_body_size` to `20m` and `proxy_read_timeout`/`proxy_send_timeout` to `180s` (generation + sequential question import is slower than a typical API call).
 - **LLM call** (`lib/llm.js`) — plain `fetch` to OpenRouter's chat completions endpoint (no SDK dependency), `response_format: { type: 'json_schema', json_schema: { strict: true, schema } }` forces a structured `{ title, description, tags, questions[] }` result (schema mirrors the Teacher API's question shape: `content, options[{key,text}], correct_answer[] , question_type, explanation, points`). Model ids are OpenRouter slugs, e.g. default `anthropic/claude-sonnet-5`. The result is re-validated locally (unique option keys, `correct_answer` ⊆ option keys, `multiple` needs ≥2 correct, `order_index` assigned sequentially 0..n-1) before import — exam-service defaults `order_index` to `0` for every question if the caller omits it, so this must always be sent explicitly.
-- **`credit_cost` gotcha on import** — exam-service's `POST /exams` inserts `credit_cost` as literally given rather than falling back to its own column default when omitted (an explicit `NULL` still violates the `NOT NULL` constraint). `importExam()` therefore always resolves and sends a concrete `credit_cost` itself (from `admin_settings.default_exam_cost`) rather than relying on exam-service to apply a fallback — this is a real, pre-existing exam-service quirk, not something to "fix" by touching exam-service.
+- **`credit_cost` gotcha on import** — see Conventions below; `importExam()` always resolves a concrete `credit_cost` from `admin_settings.default_exam_cost` itself, never relies on exam-service's own fallback.
 - **Model choice differs by key source** — `platform`-key generations always use the admin-configured default (`admin_settings.ai_generation_default_model`, settable on the "Tạo đề bằng AI" tab in `/admin`; falls back to `DEFAULT_MODEL` in `lib/llm.js` if unset) and ignore any `model` sent by the client — admin controls platform spend, no per-request choice. `own`-key generations accept **any** OpenRouter model slug the teacher types (loosely validated — non-empty, contains `/`, <100 chars — falling back to the same default on a bad value); there's no allowlist since it's the teacher's own key/cost.
 - **LLM key sourcing** — two modes, chosen per-request (`params.key_source`), both stored in `quiz_generator.llm_keys` (same encrypted-at-rest shape) distinguished by a `scope` column (`'user'` | `'platform'`):
   - `own` — teacher's own OpenRouter API key (`sk-or-v1-...`, from openrouter.ai/keys), saved via `POST /generate/keys` (`scope='user'`, selected by `user_id`) and encrypted at rest with **AES-256-GCM** (`lib/keyCrypto.js`, key from `GENERATOR_KEY_ENCRYPTION_KEY` — 32 bytes hex). This is a **reversible** encryption, unlike `quiz_users.api_keys`' one-way SHA-256 hash and unlike the ECDH *response* encryption below — the plaintext must be recoverable to actually call the provider. Plaintext is returned once at save time only; `GET /generate/keys` returns metadata + `key_prefix` only. A user can hold several non-revoked keys (listed by `GET /generate/keys`), but generation always uses the most recently created one.

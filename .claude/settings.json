@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path'); case \"$f\" in */CLAUDE.md|*/CHANGELOG.md|*/.claude/*|*/DESIGN.md|*/README.md|*/MEMORY.md) exit 0 ;; esac; d=$(dirname \"$f\"); top=$(git -C \"$d\" rev-parse --show-toplevel 2>/dev/null); if [ -n \"$top\" ] && [ -d \"$top/.git\" ]; then jq -n '{hookSpecificOutput:{hookEventName:\"PreToolUse\",permissionDecision:\"deny\",permissionDecisionReason:\"CLAUDE.md: phải làm việc trong git worktree riêng (branch mới từ main) trước khi sửa source code — không sửa trực tiếp trên main worktree. Tạo worktree/branch mới rồi thử lại.\"}}'; fi",
+            "statusMessage": "Checking git worktree policy..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cmd=$(jq -r '.tool_input.command'); case \"$cmd\" in *\"git commit\"*) staged=$(git diff --cached --name-only 2>/dev/null); if ! printf '%s\\n' \"$staged\" | grep -qi 'CHANGELOG.md' && ! printf '%s' \"$cmd\" | grep -qi 'CHANGELOG.md'; then jq -n '{hookSpecificOutput:{hookEventName:\"PreToolUse\",permissionDecision:\"deny\",permissionDecisionReason:\"CLAUDE.md: mỗi lần chuẩn bị commit/push phải cập nhật CHANGELOG.md (mục Unreleased) trước — thêm thay đổi vào CHANGELOG.md, git add, rồi commit lại.\"}}'; fi ;; esac",
+            "statusMessage": "Checking CHANGELOG.md policy..."
+          }
+        ]
+      }
+    ]
+  }
+}
