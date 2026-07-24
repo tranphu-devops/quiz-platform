@@ -1,6 +1,9 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import rateLimit from '@fastify/rate-limit'
+import cron from 'node-cron'
+import internalRoutes from './routes/internal.js'
+import { tick } from './lib/worker.js'
 
 const fastify = Fastify({ logger: true, trustProxy: true })
 
@@ -22,9 +25,11 @@ fastify.get('/health', async () => ({
   timestamp: new Date().toISOString()
 }))
 
-// Routes (internal enqueue, preferences, admin) and the queue-worker
-// node-cron schedule are wired up in a later change once the queue/channel
-// logic lands — this skeleton only proves the service boots and migrates.
+fastify.register(internalRoutes)
+
+// Preferences/admin CRUD routes land in a later change once the frontend
+// dashboard needs them — the internal enqueue endpoint above is enough for
+// producer services to start firing events.
 
 try {
   await fastify.listen({ port: Number(process.env.PORT) || 3007, host: '0.0.0.0' })
@@ -32,3 +37,11 @@ try {
   fastify.log.error(err)
   process.exit(1)
 }
+
+// Queue worker loop lives in this same process as the Fastify listener (see
+// docker-compose.yml's notification-service comment for why: Postgres queue,
+// no separate BullMQ/Redis service). Polls every 10s; also runs once at
+// startup to drain anything queued while the service was down, same as
+// grader-service's tick() precedent.
+cron.schedule('*/10 * * * * *', tick)
+tick()
