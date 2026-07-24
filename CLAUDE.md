@@ -91,6 +91,7 @@ EXAM_DATABASE_URL=postgres://postgres:<pw>@postgres:5432/quizdb?search_path=quiz
 SUBMISSION_DATABASE_URL=postgres://postgres:<pw>@postgres:5432/quizdb?search_path=quiz_submissions
 INTERACTION_DATABASE_URL=postgres://postgres:<pw>@postgres:5432/quizdb?search_path=quiz_interactions
 GENERATOR_DATABASE_URL=postgres://postgres:<pw>@postgres:5432/quizdb?search_path=quiz_generator
+NOTIFICATION_DATABASE_URL=postgres://postgres:<pw>@postgres:5432/quizdb?search_path=quiz_notifications
 
 # AWS / Lightsail Object Storage (for image uploads)
 AWS_ACCESS_KEY_ID=
@@ -106,12 +107,19 @@ GHCR_ORG=tranphu-devops      # GHCR org prefix for docker-compose image names
 SENTRY_AUTH_TOKEN=           # Build-time secret for Sentry source map upload; passed via BuildKit secret, never in image
 GENERATOR_KEY_ENCRYPTION_KEY= # 32 bytes hex; encrypts teacher-supplied ("bring your own") LLM API keys at rest (AES-256-GCM). Generate: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 OPENROUTER_API_KEY=           # Optional platform-wide OpenRouter API key, used only when a teacher opts into the platform key (deducts credits)
+# Notification service (notification-service) — platform-level channel credentials only;
+# each recipient's own Pushover user-key / Telegram chat-id is entered via /profile or /admin, never here.
+RESEND_API_KEY=
+NOTIFICATION_EMAIL_FROM=
+PUSHOVER_APP_TOKEN=
+TELEGRAM_BOT_TOKEN=
 # Frontend Vite overrides (defaults point to /api/* via Nginx; override for direct service access)
 PUBLIC_EXAM_URL=
 PUBLIC_SUBMISSION_URL=
 PUBLIC_USER_URL=
 PUBLIC_INTERACTION_URL=
 PUBLIC_GENERATOR_URL=
+PUBLIC_NOTIFICATION_URL=
 ```
 
 ## Architecture
@@ -127,6 +135,7 @@ Browser → Nginx :80
   /api/submissions/ → submission-service:3004
   /api/interactions/ → interaction-service:3005  (comments / likes / reports)
   /api/generator/   → generator-service:3006  (AI exam generation from an uploaded document)
+  /api/notifications/ → notification-service:3007  (admin event alerts + per-user activity notifications via Pushover/Email/Telegram; Nginx blocks /api/notifications/internal/)
   /                 → frontend:3000
 ```
 
@@ -167,7 +176,7 @@ Role rules:
 In routes: `req.ability.cannot('action', subject('Type', plainObject))`. Always import `subject` from `@casl/ability` for condition-based checks.
 
 ### Backend services (Fastify + Node.js 24)
-There are five HTTP backends (user, exam, submission, interaction, generator) — plus `grader-service` (a non-HTTP cron worker, see below). All five HTTP services share the same layout:
+There are six HTTP backends (user, exam, submission, interaction, generator, notification) — plus `grader-service` (a non-HTTP cron worker, see below). All six HTTP services share the same layout:
 ```
 src/
   index.js           # Fastify setup, /health, plugin registration
@@ -290,11 +299,23 @@ Teacher/admin uploads a document (PDF, DOCX, or plain text) on `/exams/generate`
 - **Admin settings** (`quiz_users.admin_settings`, same table/pattern as upload/credit config): `ai_generation_enabled`, `ai_generation_credit_cost`, `ai_generation_max_file_size_mb`, `ai_generation_max_questions`, `ai_generation_default_model`. Configured on the "Tạo đề bằng AI" tab in `/admin`. `GET /api/users/public/settings` also exposes `ai_generation_enabled`/`ai_generation_credit_cost`/`ai_generation_default_model` (no auth) so the generate page can decide whether to offer the platform-key option and prefill the model field without an admin call.
 - Frontend: `generatorApi` in `api.js`; `DocumentUpload.svelte` (plain file-picker/drag-drop, distinct from `ImageUpload.svelte` — no auto-upload-on-select, no image preview); page at `/exams/generate` (sidebar entry "Tạo đề thi bằng AI", teacher/admin only). On success the page redirects to `/exams/[id]/edit` so the teacher reviews/edits the generated questions and sets passing score, time limit, publish, etc. through the existing edit flow. Key management lives at `/exams/generate/keys` (sidebar entry "Quản lý AI Key", teacher/admin only) — own-key list/create/revoke for all staff, plus an admin-only platform-key card (same platform-key card is also duplicated on the `/admin` AI Generation tab for one-stop access there).
 
+### Notification service (`apps/notification-service`, port 3007)
+Admin event alerts + per-user "my activity" notifications, delivered via Pushover / Email (Resend) / Telegram. A **hybrid** of the two existing service templates — a Fastify HTTP API (like `interaction-service`) plus a `node-cron` queue-worker loop (like `grader-service`), both running in the **same process/container** (one deploy unit, no separate queue service).
+
+- **Queue = Postgres, not BullMQ/Redis** — the shared `redis` compose service is a volatile `allkeys-lru` cache with no persistence (see Redis cache section above), unsuitable for durable job storage. Instead, `quiz_notifications.notification_queue` is the queue itself: producer services enqueue via `POST /internal/notify`, and a `node-cron` tick (`lib/worker.js`, every 10s, also runs once at startup) claims due rows with `SELECT ... FOR UPDATE SKIP LOCKED`, dispatches outside the claiming transaction (so a slow Pushover/Resend/Telegram call never holds a DB lock), then marks `sent` or applies exponential backoff (`30s * 2^attempts`, capped at 5 attempts before `status = 'dead'`).
+- **Event taxonomy** — `event_type` keys follow `<domain>.<event>.<audience>`, e.g. `submission.completed.owner` (the student) vs `submission.completed.teacher` (the exam owner) vs `submission.completed.admin` (platform-wide ops visibility) — three independently-toggleable rows for the same business event, since each audience's "do I care" boundary differs. Catalog lives in `quiz_notifications.event_types` (seeded by migration `0016_notifications.sql`), so the frontend never hardcodes event labels.
+- **Fan-out happens at enqueue time, not dispatch time** — `POST /internal/notify` (`lib/queue.js`) receives `{ event, recipients: [{ role, user_id }], payload }` from the calling service, looks up which admins are subscribed to `${event}.admin` plus which channels each named recipient enabled for `${event}.${role}`, and inserts one fully-resolved `notification_queue` row per (recipient, channel). The worker never re-joins subscriptions per tick.
+- **Producer-side hooks** — each producer service (`user-service`, `submission-service`, `grader-service`, `interaction-service`, `generator-service`) has its own copy-pasted `src/lib/notify.js` (same convention as `lib/cache.js` being duplicated across services) exporting a fire-and-forget `notify(event, { recipients, payload })` that no-ops if `NOTIFICATION_SERVICE_URL` is unset and never throws into the caller. Hooked into: submission completed/timed_out (student + exam owner), badge earned, report filed/resolved, AI generation completed/failed, credit deduction failed, teacher upgrade succeeded.
+- **Channel adapters** (`lib/channels/{pushover,email,telegram}.js`) — plain `fetch` calls, no SDK dependency (same rationale as generator-service calling OpenRouter directly): Pushover's `/1/messages.json`, Resend's `/emails` REST endpoint, Telegram Bot API's `/sendMessage`. Platform-level credentials (`PUSHOVER_APP_TOKEN`, `RESEND_API_KEY`, `NOTIFICATION_EMAIL_FROM`, `TELEGRAM_BOT_TOKEN`) are env vars, not `admin_settings` rows — deploy-time secrets, not runtime-toggleable config (same treatment as `OPENROUTER_API_KEY`). Each **recipient's own** delivery target (Pushover user-key, Telegram chat-id, optional email override) is stored in `quiz_notifications.user_channel_targets`, kept in this service's own schema rather than `quiz_users.profiles` — same boundary as `quiz_generator.llm_keys`.
+- **Self-service preferences** (`routes/preferences.js`) — `GET/PUT /preferences` lets any authenticated user manage their own `audience = 'user'` subscriptions, filtered to `event_types.applicable_roles` matching their role, plus their own channel targets. Frontend: a "Notification preferences" `<Card>` on `/profile` (independent save state from the rest of the profile form, since it hits a different service/schema).
+- **Admin subscriptions + ops log** (`routes/admin.js`, manual `req.user.role !== 'admin'` check, matching generator-service's platform-key routes) — `GET/PUT /admin/subscriptions` lets each admin manage their own `audience = 'admin'` opt-ins independently (no single "the admin setting" — multiple admins may want different alerts); `GET /admin/queue` is a read-only paginated log viewer (filter by status) and `POST /admin/queue/:id/retry` resurrects a `dead` row. Frontend: a "Notifications" tab on `/admin`.
+- Internal enqueue endpoint is blocked from external access by Nginx (`/api/notifications/internal/ { return 403; }`), same precedent as `/api/exams/exams/internal/`.
+
 ### Exam notes (frontend-only, not persisted)
 On `/exams/[id]/take` there is a **single scratch note for the whole exam session** (one `note` string in per-tab Svelte `$state`), shared across all questions and unchanged when navigating between them. It lives in a floating widget (`.note-widget`) anchored bottom-right, **hidden by default**, toggled by a FAB (the FAB shows a dot when the note is non-empty). The note is **intentionally not sent to any server** — lost on refresh (F5); a helper line states this. There is no notes table or endpoint.
 
 ### Database schemas
-Schema is defined by the ordered migration files in `infra/postgres/migrations/` (see **Database migrations** above), all idempotent (`IF NOT EXISTS` + `ALTER TABLE … ADD COLUMN IF NOT EXISTS`) and applied automatically by the `migrate` service. `0001_init.sql` is the base; later files (`0002_image_upload` … `0013_generator`) add columns/tables incrementally.
+Schema is defined by the ordered migration files in `infra/postgres/migrations/` (see **Database migrations** above), all idempotent (`IF NOT EXISTS` + `ALTER TABLE … ADD COLUMN IF NOT EXISTS`) and applied automatically by the `migrate` service. `0001_init.sql` is the base; later files (`0002_image_upload` … `0016_notifications`) add columns/tables incrementally.
 
 Never manually create tables in `auth` / `quiz_auth` — GoTrue manages that schema (the `auth` schema is created by `0001_init.sql` so it exists before GoTrue starts).
 
@@ -312,6 +333,10 @@ Schema summary:
 - `quiz_interactions.reports` — `id, exam_id, exam_owner_id, reporter_id, category, description, status` (`open`|`resolved`), `response, responded_by, responded_at, created_at`
 - `quiz_generator.llm_keys` — teacher-supplied ("bring your own") and admin-managed platform-wide LLM API keys: `id, user_id, provider, encrypted_key` (AES-256-GCM, reversible), `key_prefix, created_at, last_used_at, revoked_at, scope` (`'user'` | `'platform'` — distinguishes a teacher's own key, selected by `user_id`, from the admin-managed platform-wide key, selected by `scope` alone)
 - `quiz_generator.generation_jobs` — one row per AI exam generation attempt: `id, user_id, status` (`processing`|`completed`|`failed`), `key_source` (`own`|`platform`), `model, source_filename, source_file_type, question_count, exam_id, credits_charged, error_message, error_detail` (JSONB, structured failure context), `created_at, completed_at`
+- `quiz_notifications.event_types` — catalog: `key` (PK, `<domain>.<event>.<audience>`), `audience` (`admin`|`user`), `label_vi, label_en, label_ja, description_vi, applicable_roles TEXT[]` (which roles see this row on `/profile`; `NULL` for admin-audience rows)
+- `quiz_notifications.user_channel_targets` — `user_id` (PK), `email_override, pushover_user_key, telegram_chat_id, updated_at`
+- `quiz_notifications.notification_subscriptions` — `(user_id, event_type, channel)` unique; `enabled` — shared shape for both admin-monitoring and user-activity opt-ins
+- `quiz_notifications.notification_queue` — the queue itself: `event_type, channel, recipient_user_id, payload JSONB, status` (`pending`|`processing`|`sent`|`failed`|`dead`), `attempts, max_attempts, last_error, available_at` (backoff gate), `created_at, sent_at`
 
 Seed files in `infra/postgres/`: `seed.sql` (sample data), `seed_aws_saa.sql` (AWS SAA exam with 45 questions), `seed_exam_01.sql`.
 
@@ -352,7 +377,7 @@ Custom SvelteKit error pages (`+error.svelte`) handle 404 and 5xx responses with
 
 ### CI/CD
 Three GitHub Actions workflows:
-- `build-push.yml` — triggered on push to `main`; builds multi-platform (amd64 + arm64) Docker images to GHCR. Matrix: `auth-service` (legacy, built but not deployed), `user-service`, `exam-service`, `submission-service`, `interaction-service`, `generator-service`, `grader-service`, `frontend`.
+- `build-push.yml` — triggered on push to `main`; builds multi-platform (amd64 + arm64) Docker images to GHCR. Matrix: `auth-service` (legacy, built but not deployed), `user-service`, `exam-service`, `submission-service`, `interaction-service`, `generator-service`, `notification-service`, `grader-service`, `frontend`.
 - `deploy.yml` — triggered after `build-push.yml` succeeds; SSHs into the production server and runs `deploy.sh --update`.
 - `cleanup-images.yml` — runs weekly (Sunday 00:00 ICT); deletes GHCR image versions beyond the 5 most recent, keeping all semver-tagged releases.
 

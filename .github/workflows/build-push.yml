@@ -28,6 +28,7 @@ jobs:
           - submission-service
           - interaction-service
           - generator-service
+          - notification-service
           - grader-service
           - frontend
 
