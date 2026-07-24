@@ -8,6 +8,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - **`POST /api/generator/generate` chuyển sang xử lý bất đồng bộ** — trả về ngay `202 {job_id}` với status `processing` thay vì chờ LLM sinh xong đề (có thể mất 30s-vài phút tuỳ model) rồi mới trả response. Trước đây, với model chậm, kết nối bị Cloudflare tự cắt ở lớp edge sau ~100s (giới hạn riêng của Cloudflare, độc lập và ngắn hơn `proxy_read_timeout` 180s của Nginx) và trả `524` cho client dù backend vẫn đang xử lý bình thường phía sau. Trang `/exams/generate` giờ poll `GET /generate/jobs/:id` mỗi 3 giây tới khi có kết quả; người dùng có thể rời trang và xem lại ở `/exams/generate/jobs` sau. Giới hạn đã biết: nếu generator-service restart/crash giữa lúc đang xử lý, job sẽ kẹt ở trạng thái `processing` vĩnh viễn (chưa có cơ chế reconcile lúc khởi động như grader-service) — chấp nhận đánh đổi ở v1, giáo viên chỉ cần thử tạo lại.
+### Fixed
+- **Sinh đề bằng AI crash với lỗi `q.options.map is not a function` khi dùng model OpenRouter không tuân thủ nghiêm ngặt structured output** (thường gặp với model bên thứ ba không phải Anthropic/OpenAI, chọn qua tính năng "key riêng" của giáo viên). Model trả về JSON không đúng shape đã khai báo (`options` không phải mảng, `correct_answer` không phải mảng...) khiến việc chuẩn hoá kết quả crash với lỗi khó hiểu thay vì báo lỗi rõ ràng. Giờ việc chuẩn hoá kiểm tra shape trước khi xử lý và báo lỗi cụ thể theo từng câu hỏi.
 
 ---
 
