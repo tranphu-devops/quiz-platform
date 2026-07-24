@@ -2,6 +2,7 @@ import crypto from 'node:crypto'
 import { subject } from '@casl/ability'
 import { pool } from '../db.js'
 import { verifyAuth } from '../middleware/auth.js'
+import { notify } from '../lib/notify.js'
 
 // Session is considered "stale" if no heartbeat in this many seconds.
 // Allows legitimate re-login/crash recovery without manual intervention.
@@ -82,11 +83,17 @@ async function awardBadgesIfEarned(userId, examId, log) {
       )
       const passedCount = parseInt(r.rows[0]?.passed_count ?? 0, 10)
       if (passedCount >= examIds.length) {
-        await pool.query(
+        const insertRes = await pool.query(
           `INSERT INTO quiz_submissions.student_badges (user_id, collection_id)
-           VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+           VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING user_id`,
           [userId, col.id]
         )
+        if (insertRes.rowCount > 0) {
+          notify('badge.earned', {
+            recipients: [{ role: 'owner', user_id: userId }],
+            payload: { collectionTitle: col.title, collectionId: col.id }
+          })
+        }
       }
     }
   } catch (err) {
@@ -378,6 +385,21 @@ export default async function submissionRoutes(fastify) {
 
       const passed = exam.passing_score == null || percentage >= exam.passing_score
       if (passed) awardBadgesIfEarned(req.user.id, sub.exam_id, fastify.log).catch(() => {})
+
+      notify('submission.completed', {
+        recipients: [
+          { role: 'owner', user_id: req.user.id },
+          ...(exam.created_by ? [{ role: 'teacher', user_id: exam.created_by }] : [])
+        ],
+        payload: {
+          studentName: req.user.email,
+          examTitle: exam.title,
+          examId: exam.id,
+          submissionId: id,
+          percentage,
+          passed
+        }
+      })
 
       return reply.status(200).send(updateRes.rows[0])
     } catch (err) {

@@ -3,6 +3,7 @@ import { verifyAuth } from '../middleware/auth.js'
 import { encryptKey, decryptKey, keyPrefix } from '../lib/keyCrypto.js'
 import { extractDocxText } from '../lib/docParse.js'
 import { buildDocumentBlock, generateExam, DEFAULT_MODEL } from '../lib/llm.js'
+import { notify } from '../lib/notify.js'
 
 const EXAM_SERVICE_URL = process.env.EXAM_SERVICE_URL
 const USER_SERVICE_URL = process.env.USER_SERVICE_URL
@@ -350,10 +351,18 @@ export default async function generateRoutes(fastify) {
         const { exam } = await generateExam({ apiKey, model, documentBlock, questionCount, language, difficulty })
         const examId = await importExam(authHeader, exam, defaultExamCost)
         await finalizeJob(job.id, { status: 'completed', questionCount: exam.questions.length, examId })
+        notify('generation.completed', {
+          recipients: [{ role: 'owner', user_id: req.user.id }],
+          payload: { teacherName: req.user.email, examTitle: exam.title, examId, questionCount: exam.questions.length }
+        })
       } catch (err) {
         fastify.log.error(err)
         const errorDetail = err.detail ?? { source: 'generator-service', message: err.message }
         await finalizeJob(job.id, { status: 'failed', errorMessage: err.message, errorDetail }).catch(() => {})
+        notify('generation.failed', {
+          recipients: [{ role: 'owner', user_id: req.user.id }],
+          payload: { teacherName: req.user.email, errorMessage: err.message }
+        })
       }
     })()
   })

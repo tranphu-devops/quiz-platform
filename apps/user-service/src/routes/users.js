@@ -44,6 +44,10 @@ export default async function userRoutes(fastify) {
         [amount, user_id]
       )
       if (result.rows.length === 0) {
+        notify('credit.deduct_failed', {
+          recipients: [{ role: 'owner', user_id }],
+          payload: { amount, reason: 'exam_or_generation' }
+        })
         return reply.status(402).send({ error: 'Không đủ credit', statusCode: 402 })
       }
       return { success: true, new_balance: result.rows[0].credits }
@@ -214,6 +218,10 @@ export default async function userRoutes(fastify) {
         [cost, req.user.id]
       )
       if (deductResult.rows.length === 0) {
+        notify('credit.deduct_failed', {
+          recipients: [{ role: 'owner', user_id: req.user.id }],
+          payload: { userName: req.user.email, amount: cost, reason: 'teacher_upgrade' }
+        })
         return reply.status(402).send({ error: `Không đủ credit. Cần ${cost} credit để nâng cấp.`, statusCode: 402 })
       }
 
