@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { pool } from '../db.js'
 import { verifyAuth } from '../middleware/auth.js'
 import { getOrSet, invalidate } from '../lib/cache.js'
+import { notify } from '../lib/notify.js'
 
 // Cached at first call — deriving public key from private is deterministic
 let _backendPublicKey = null
@@ -221,6 +222,11 @@ export default async function userRoutes(fastify) {
         [req.user.id]
       )
       await pool.query('UPDATE profiles SET role = $1 WHERE id = $2', ['teacher', req.user.id])
+
+      notify('teacher_upgrade.succeeded', {
+        recipients: [{ role: 'owner', user_id: req.user.id }],
+        payload: { userName: req.user.email, newBalance: deductResult.rows[0].credits }
+      })
 
       return {
         success: true,
