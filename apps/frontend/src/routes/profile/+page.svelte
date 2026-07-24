@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import { goto } from '$app/navigation'
   import { user } from '$lib/stores/auth'
-  import { userApi, badgeApi, reportApi, apiKeyApi } from '$lib/api'
+  import { userApi, badgeApi, reportApi, apiKeyApi, notificationApi } from '$lib/api'
   import ImageUpload from '$lib/components/ImageUpload.svelte'
   import PageHeader from '$lib/components/ui/PageHeader.svelte'
   import Card from '$lib/components/ui/Card.svelte'
@@ -59,6 +59,17 @@
   let keyLoading   = $state(false)
   let copiedKey    = $state(false)
 
+  // Notification preferences ("my activity" — separate service/schema from
+  // the profile fields above, so it gets its own independent save flow.
+  const NOTIF_CHANNELS = ['pushover', 'email', 'telegram']
+  let notifEventTypes = $state([])
+  let notifSubs        = $state({})
+  let notifTargets     = $state({ pushover_user_key: '', telegram_chat_id: '', email_override: '' })
+  let notifLoading     = $state(true)
+  let notifSaving      = $state(false)
+  let notifSuccess     = $state(false)
+  let notifError       = $state('')
+
   onMount(async () => {
     if (!$user) { goto('/login'); return }
     try {
@@ -106,7 +117,43 @@
         if (keysRes.ok) apiKeys = await keysRes.json()
       } catch {}
     }
+
+    try {
+      const notifRes = await notificationApi.getPreferences()
+      if (notifRes.ok) {
+        const data = await notifRes.json()
+        notifEventTypes = data.eventTypes ?? []
+        const map = {}
+        for (const s of data.subscriptions ?? []) map[`${s.event_type}:${s.channel}`] = s.enabled
+        notifSubs = map
+        notifTargets = {
+          pushover_user_key: data.targets?.pushover_user_key ?? '',
+          telegram_chat_id: data.targets?.telegram_chat_id ?? '',
+          email_override: data.targets?.email_override ?? ''
+        }
+      }
+    } catch {} finally { notifLoading = false }
   })
+
+  function toggleNotifSub(eventKey, channel) {
+    const k = `${eventKey}:${channel}`
+    notifSubs = { ...notifSubs, [k]: !notifSubs[k] }
+  }
+
+  async function saveNotificationPreferences() {
+    notifError = ''; notifSuccess = false; notifSaving = true
+    try {
+      const subscriptions = []
+      for (const evt of notifEventTypes) {
+        for (const ch of NOTIF_CHANNELS) {
+          subscriptions.push({ event_type: evt.key, channel: ch, enabled: !!notifSubs[`${evt.key}:${ch}`] })
+        }
+      }
+      const res = await notificationApi.updatePreferences({ subscriptions, targets: notifTargets })
+      if (!res.ok) { const d = await res.json(); notifError = d.error ?? $t('profile.notifSaveError'); return }
+      notifSuccess = true
+    } catch { notifError = $t('imageUpload.connectionError') } finally { notifSaving = false }
+  }
 
   async function createKey() {
     keyError = ''; createdKey = ''; copiedKey = false
@@ -340,6 +387,67 @@
               </div>
             </div>
           </div>
+        </Card>
+
+        <!-- Tuỳ chọn thông báo về hoạt động của chính bạn -->
+        <Card title={$t('profile.notifTitle')} subtitle={$t('profile.notifSubtitle')}>
+          {#if notifLoading}
+            <p class="ix-loading">{$t('common.loading')}</p>
+          {:else}
+            {#if notifError}<p class="ix-error">{notifError}</p>{/if}
+            {#if notifSuccess}<p class="ix-success">{$t('profile.notifSaved')}</p>{/if}
+
+            {#if notifEventTypes.length === 0}
+              <p class="ix-hint">{$t('profile.notifNoEvents')}</p>
+            {:else}
+              <div class="notif-table-wrap">
+                <table class="notif-table">
+                  <thead>
+                    <tr>
+                      <th>{$t('profile.notifEventCol')}</th>
+                      {#each NOTIF_CHANNELS as ch}<th>{ch}</th>{/each}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {#each notifEventTypes as evt (evt.key)}
+                      <tr>
+                        <td>{localeCode($locale) === 'en' ? evt.label_en : evt.label_vi}</td>
+                        {#each NOTIF_CHANNELS as ch}
+                          <td>
+                            <input
+                              type="checkbox"
+                              checked={!!notifSubs[`${evt.key}:${ch}`]}
+                              onchange={() => toggleNotifSub(evt.key, ch)}
+                            />
+                          </td>
+                        {/each}
+                      </tr>
+                    {/each}
+                  </tbody>
+                </table>
+              </div>
+            {/if}
+
+            <div class="two-col">
+              <div class="field-group">
+                <label class="ix-label" for="notif_pushover_key">Pushover User Key</label>
+                <input id="notif_pushover_key" class="ix-input" type="text" bind:value={notifTargets.pushover_user_key} placeholder="u1a2b3c..." />
+              </div>
+              <div class="field-group">
+                <label class="ix-label" for="notif_telegram_chat">Telegram Chat ID</label>
+                <input id="notif_telegram_chat" class="ix-input" type="text" bind:value={notifTargets.telegram_chat_id} placeholder="123456789" />
+              </div>
+            </div>
+            <div class="field-group">
+              <label class="ix-label" for="notif_email_override">{$t('profile.notifEmailOverrideLabel')}</label>
+              <input id="notif_email_override" class="ix-input" type="email" bind:value={notifTargets.email_override} placeholder="you@example.com" />
+              <p class="ix-hint">{$t('profile.notifEmailOverrideHint')}</p>
+            </div>
+
+            <Button onclick={saveNotificationPreferences} loading={notifSaving} disabled={notifSaving}>
+              {$t('profile.notifSave')}
+            </Button>
+          {/if}
         </Card>
 
         <!-- Huy hiệu (student only) -->
@@ -681,6 +789,26 @@
   @media (max-width: 600px) {
     .social-grid { grid-template-columns: 1fr; }
     .social-full { grid-column: auto; }
+  }
+
+  .notif-table-wrap {
+    overflow-x: auto;
+    margin-bottom: 16px;
+  }
+  .notif-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  .notif-table th, .notif-table td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .notif-table th:first-child, .notif-table td:first-child {
+    white-space: normal;
+    min-width: 180px;
   }
 
   .ix-textarea {

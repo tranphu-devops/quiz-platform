@@ -7,6 +7,7 @@ const SUB_URL = import.meta.env.PUBLIC_SUBMISSION_URL ?? '/api/submissions'
 const USER_URL = import.meta.env.PUBLIC_USER_URL ?? '/api/users'
 const INTERACTION_URL = import.meta.env.PUBLIC_INTERACTION_URL ?? '/api/interactions'
 const GENERATOR_URL = import.meta.env.PUBLIC_GENERATOR_URL ?? '/api/generator'
+const NOTIFICATION_URL = import.meta.env.PUBLIC_NOTIFICATION_URL ?? '/api/notifications'
 
 function authHeaders(json = true) {
   const t = get(token)
@@ -279,4 +280,17 @@ export const generatorApi = {
     }),
   deletePlatformKey: () =>
     apiFetch(`${GENERATOR_URL}/generate/platform-key`, { method: 'DELETE', headers: authHeaders(false) })
+}
+
+export const notificationApi = {
+  getPreferences: () => apiFetch(`${NOTIFICATION_URL}/preferences`, { headers: authHeaders(false) }),
+  updatePreferences: (data) =>
+    apiFetch(`${NOTIFICATION_URL}/preferences`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify(data) }),
+  adminGetSubscriptions: () => apiFetch(`${NOTIFICATION_URL}/admin/subscriptions`, { headers: authHeaders(false) }),
+  adminUpdateSubscriptions: (data) =>
+    apiFetch(`${NOTIFICATION_URL}/admin/subscriptions`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify(data) }),
+  adminListQueue: (status) =>
+    apiFetch(`${NOTIFICATION_URL}/admin/queue${status ? `?status=${status}` : ''}`, { headers: authHeaders(false) }),
+  adminRetryQueueItem: (id) =>
+    apiFetch(`${NOTIFICATION_URL}/admin/queue/${id}/retry`, { method: 'POST', headers: authHeaders(false) })
 }

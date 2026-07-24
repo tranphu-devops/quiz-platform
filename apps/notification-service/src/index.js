@@ -3,6 +3,8 @@ import cors from '@fastify/cors'
 import rateLimit from '@fastify/rate-limit'
 import cron from 'node-cron'
 import internalRoutes from './routes/internal.js'
+import preferenceRoutes from './routes/preferences.js'
+import adminRoutes from './routes/admin.js'
 import { tick } from './lib/worker.js'
 
 const fastify = Fastify({ logger: true, trustProxy: true })
@@ -26,10 +28,8 @@ fastify.get('/health', async () => ({
 }))
 
 fastify.register(internalRoutes)
-
-// Preferences/admin CRUD routes land in a later change once the frontend
-// dashboard needs them — the internal enqueue endpoint above is enough for
-// producer services to start firing events.
+fastify.register(preferenceRoutes)
+fastify.register(adminRoutes)
 
 try {
   await fastify.listen({ port: Number(process.env.PORT) || 3007, host: '0.0.0.0' })
