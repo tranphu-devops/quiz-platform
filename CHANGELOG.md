@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased] — 2026-07-26
+
+### Changed
+- **Setup SSL/TLS cho `novaquiz.net` bằng Cloudflare certs (full DNS + edge protection)**: Nginx config cập nhật, server block mới lắng nghe port 443 với chứng chỉ PEM/key từ Cloudflare (`/opt/nginx/ssl/novaquiz.net.{pem,key}`), include `cloudflare.conf` (CA root + cấu hình edge security), HTTP traffic tự động redirect về HTTPS. Landing page và app quiz đều tuân theo setup này.
+
+---
+
 ## [Unreleased] — 2026-07-25
 
 ### Added
