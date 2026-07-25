@@ -140,6 +140,12 @@ export const userApi = {
       method: 'POST',
       headers: authHeaders(false)
     }),
+  getReferral: () => apiFetch(`${USER_URL}/referrals/me`, { headers: authHeaders(false) }),
+  claimReferral: () =>
+    apiFetch(`${USER_URL}/referrals/claim`, {
+      method: 'POST',
+      headers: authHeaders(false)
+    }),
   getPublicSettings: () => apiFetch(`${USER_URL}/public/settings`),
   getSettings: () => apiFetch(`${USER_URL}/admin/settings`, { headers: authHeaders(false) }),
   updateSettings: (data) =>

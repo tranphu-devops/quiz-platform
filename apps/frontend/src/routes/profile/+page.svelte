@@ -51,6 +51,14 @@
   let teacherUpgradeCost  = $state(100)
   let showUpgradeConfirm  = $state(false)
 
+  // Referral / invite friends
+  let referral       = $state(null)  // { referral_code, referred_count, unclaimed_count, reward_per_referral, unclaimed_credits, claimed_credits }
+  let refOrigin      = $state('')
+  let claimingRef    = $state(false)
+  let refCopied      = $state(false)
+  let refError       = $state('')
+  const referralLink = $derived(referral?.referral_code && refOrigin ? `${refOrigin}/register?ref=${referral.referral_code}` : '')
+
   // API keys (teacher/admin)
   let apiKeys      = $state([])
   let newKeyName   = $state('')
@@ -73,11 +81,14 @@
   onMount(async () => {
     if (!$user) { goto('/login'); return }
     try {
-      const [profileRes, settingsRes, badgeRes] = await Promise.all([
+      refOrigin = window.location.origin
+      const [profileRes, settingsRes, badgeRes, referralRes] = await Promise.all([
         userApi.getProfile($user.id),
         userApi.getPublicSettings(),
-        badgeApi.list($user.id)
+        badgeApi.list($user.id),
+        userApi.getReferral()
       ])
+      if (referralRes.ok) referral = await referralRes.json()
       if (profileRes.ok) {
         const profile = await profileRes.json()
         full_name     = profile.full_name ?? ''
@@ -153,6 +164,32 @@
       if (!res.ok) { const d = await res.json(); notifError = d.error ?? $t('profile.notifSaveError'); return }
       notifSuccess = true
     } catch { notifError = $t('imageUpload.connectionError') } finally { notifSaving = false }
+  }
+
+  async function claimReferral() {
+    refError = ''; claimingRef = true
+    try {
+      const res = await userApi.claimReferral()
+      const d = await res.json()
+      if (!res.ok) { refError = d.error ?? $t('imageUpload.connectionError'); return }
+      credits = d.new_balance
+      if (referral) {
+        referral = {
+          ...referral,
+          unclaimed_count: 0,
+          unclaimed_credits: 0,
+          claimed_credits: (referral.claimed_credits ?? 0) + d.claimed_amount
+        }
+      }
+    } catch { refError = $t('imageUpload.connectionError') } finally { claimingRef = false }
+  }
+
+  async function copyReferralLink() {
+    try {
+      await navigator.clipboard.writeText(referralLink)
+      refCopied = true
+      setTimeout(() => refCopied = false, 2000)
+    } catch {}
   }
 
   async function createKey() {
@@ -319,6 +356,45 @@
             <p class="ix-note" style="margin-top:12px">{@html $t('profile.accountNoUpgrade', { role: $t(`roles.${$user?.role}`) })}</p>
           {/if}
         </Card>
+
+        <!-- Referral / giới thiệu bạn bè -->
+        {#if referral}
+          <Card title={$t('profile.referralTitle')} subtitle={$t('profile.referralSubtitle')}>
+            <div class="ref-stats">
+              <div class="ref-stat">
+                <div class="ref-stat-num">{referral.referred_count}</div>
+                <div class="ref-stat-lbl">{$t('profile.referralInvited')}</div>
+              </div>
+              <div class="ref-stat">
+                <div class="ref-stat-num">{referral.unclaimed_credits}</div>
+                <div class="ref-stat-lbl">{$t('profile.referralPending')}</div>
+              </div>
+            </div>
+
+            <label class="ref-field-lbl" for="ref-link">{$t('profile.referralYourLink')}</label>
+            <div class="ref-link-row">
+              <input id="ref-link" class="ref-link-input" readonly value={referralLink} />
+              <Button variant="secondary" onclick={copyReferralLink}>
+                {refCopied ? $t('common.copied') : $t('common.copy')}
+              </Button>
+            </div>
+            <p class="ix-note">{$t('profile.referralCodeLbl')}: <strong>{referral.referral_code}</strong></p>
+            <p class="ix-note">{$t('profile.referralHint', { n: referral.reward_per_referral })}</p>
+
+            {#if refError}<p class="ix-error">{refError}</p>{/if}
+            <Button
+              variant="cta"
+              onclick={claimReferral}
+              disabled={claimingRef || referral.unclaimed_credits <= 0}
+              loading={claimingRef}
+            >
+              {$t('profile.referralClaimBtn', { n: referral.unclaimed_credits })}
+            </Button>
+            {#if referral.claimed_credits > 0}
+              <p class="ix-note" style="margin-top:8px">{$t('profile.referralClaimed', { n: referral.claimed_credits })}</p>
+            {/if}
+          </Card>
+        {/if}
 
       </div>
 
@@ -883,6 +959,57 @@
   .credits-lbl {
     font-size: 14px;
     color: var(--ix-text-muted);
+  }
+
+  /* ── Referral card ────────────────────────────────────────────────────── */
+  .ref-stats {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .ref-stat {
+    flex: 1;
+    background: var(--ix-bg-app);
+    border: 1px solid var(--ix-border);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+  }
+  .ref-stat-num {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--ix-text-primary);
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+  .ref-stat-lbl {
+    font-size: 12px;
+    color: var(--ix-text-muted);
+    margin-top: 4px;
+  }
+  .ref-field-lbl {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ix-text-primary);
+    margin-bottom: 6px;
+  }
+  .ref-link-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+    margin-bottom: 8px;
+  }
+  .ref-link-input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 12px;
+    font-size: 13px;
+    border: 1px solid var(--ix-border);
+    border-radius: 8px;
+    background: var(--ix-bg-app);
+    color: var(--ix-text-primary);
+    font-family: var(--ix-font-mono, monospace);
   }
 
   .upgrade-box {
