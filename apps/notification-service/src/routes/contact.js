@@ -1,6 +1,19 @@
 import { sendEmail } from '../lib/channels/email.js'
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+// ReDoS-safe email check. The single '@' is excluded from both character
+// classes, so it acts as a hard separator with no ambiguity — the engine
+// can't backtrack across it, keeping this linear-time (unlike the classic
+// /[^\s@]+@[^\s@]+\.[^\s@]+/, where '.' also matches [^\s@] and creates
+// polynomial backtracking, flagged by CodeQL). The required TLD dot is
+// checked separately on the already-split domain. Caller must bound length
+// before calling.
+function isValidEmail(email) {
+  const at = email.indexOf('@')
+  if (at <= 0 || at !== email.lastIndexOf('@')) return false
+  const domain = email.slice(at + 1)
+  if (domain.length < 3 || !domain.includes('.')) return false
+  return /^[^\s@]+@[^\s@]+$/.test(email)
+}
 
 function escapeHtml(str) {
   return str
@@ -22,7 +35,7 @@ export default async function contactRoutes(fastify) {
     if (typeof name !== 'string' || !name.trim() || name.length > 100) {
       return reply.status(400).send({ error: 'Vui lòng nhập họ tên hợp lệ', statusCode: 400 })
     }
-    if (typeof email !== 'string' || !EMAIL_RE.test(email) || email.length > 200) {
+    if (typeof email !== 'string' || email.length > 200 || !isValidEmail(email)) {
       return reply.status(400).send({ error: 'Vui lòng nhập email hợp lệ', statusCode: 400 })
     }
     if (typeof message !== 'string' || !message.trim() || message.length > 4000) {

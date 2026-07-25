@@ -11,6 +11,9 @@ All notable changes to this project will be documented in this file.
 - **Bộ nhận diện thương hiệu đầy đủ** (logo, favicon, banner) ở các kích thước chuẩn web hiện đại: icon mark SVG nguồn dùng để xuất `favicon.ico` đa độ phân giải (16/32/48px), `apple-touch-icon.png` (180px), icon PWA/Android (192/512px, có `manifest.webmanifest`), và banner OG/social-share (1200×630px, dùng cho thẻ `og:image`/`twitter:image` ở cả app lẫn landing page). Logo dạng lockup ngang có bản cho nền sáng và nền tối. Toàn bộ nguồn SVG + PNG xuất sẵn được công khai tải về tại trang mới `/brand`.
 - **Trang "Thương hiệu" (`/brand`) và "Liên hệ" (`/contact`) trên landing page**, cùng logic Nginx phục vụ static page mới. Trang `/brand` giới thiệu logo, bảng màu, typography và nguyên tắc sử dụng. Trang `/contact` có form liên hệ (họ tên, email, nội dung) gửi thẳng email tới admin qua endpoint công khai mới `POST /api/notifications/contact` (notification-service) — endpoint này là ngoại lệ duy nhất không cần đăng nhập trong notification-service, gửi trực tiếp qua Resend thay vì qua hàng đợi/subscription (không có user đăng nhập để tra cứu), có giới hạn tần suất riêng (5 lần/phút) để chống spam. Nhận email tại `CONTACT_EMAIL_TO` (fallback `NOTIFICATION_EMAIL_FROM` nếu chưa cấu hình).
 
+### Fixed
+- **Validate email của form liên hệ dùng regex an toàn trước ReDoS** — regex email cũ (`[^\s@]+@[^\s@]+\.[^\s@]+`) có thể backtracking đa thức với chuỗi độc hại (CodeQL `js/polynomial-redos`) và lại chạy trước cả khi kiểm tra độ dài. Giờ tách `@` làm phân tách cứng (regex tuyến tính, không overlap), kiểm tra dấu chấm ở domain riêng, và chặn độ dài (>200 ký tự) trước khi chạy regex.
+
 ---
 
 ## [Unreleased] — 2026-07-24
