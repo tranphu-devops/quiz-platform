@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased] — 2026-07-26
+
+### Added
+- **Landing page đa ngôn ngữ đầy đủ trên cả 3 trang** (`/`, `/brand`, `/contact`) với 3 thứ tiếng: English, Tiếng Việt, 日本語. Trước đây trang Thương hiệu và Liên hệ mới thêm chỉ có tiếng Việt.
+
+### Changed
+- **Bộ chọn ngôn ngữ đổi từ nút bấm-xoay-vòng sang selectbox** (chọn trực tiếp cho dễ), xuất hiện thống nhất trên cả 3 trang landing. **Ngôn ngữ mặc định giờ là English** (trước đây tự đoán theo trình duyệt). Lựa chọn ngôn ngữ được **lưu vào `localStorage`** (khoá `landing-lang`, dùng chung giữa 3 trang) nên các lần truy cập sau hiển thị đúng ngôn ngữ đã chọn; tiêu đề tab (`<title>`) của trang Thương hiệu/Liên hệ cũng đổi theo ngôn ngữ.
+- **Liên kết tới trang Thương hiệu/Liên hệ chuyển hẳn xuống footer** (bỏ khỏi thanh header) trên cả 3 trang, để header gọn hơn — người dùng cần thì click ở footer.
+
+---
+
 ## [Unreleased] — 2026-07-25
 
 ### Added

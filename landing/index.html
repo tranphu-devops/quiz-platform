@@ -57,17 +57,17 @@
     .btn-nav:hover { opacity: .92; transform: translateY(-1px); }
     @media (max-width: 640px) { .nav-hide { display: none; } }
 
-    /* ─── LANG SWITCH ─── */
-    .lang-switch {
-      display: inline-flex; align-items: center; gap: 4px;
+    /* ─── LANG SELECT ─── */
+    .lang-select {
       border: 1.5px solid var(--border); background: white; color: var(--muted);
-      border-radius: 8px; padding: .4rem .6rem; font-size: .78rem; font-weight: 700;
-      cursor: pointer; letter-spacing: .02em; transition: all .15s;
+      border-radius: 8px; padding: .4rem 1.9rem .4rem .7rem; font-size: .82rem; font-weight: 600;
+      font-family: inherit; cursor: pointer; transition: all .15s;
+      -webkit-appearance: none; -moz-appearance: none; appearance: none;
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23595d72' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right .6rem center;
     }
-    .lang-switch:hover { border-color: var(--accent); color: var(--primary); }
-    .lang-switch span { opacity: .5; }
-    .lang-switch span.active { opacity: 1; color: var(--primary); }
-    .lang-switch .lang-sep { opacity: .35; }
+    .lang-select:hover { border-color: var(--accent); color: var(--primary); }
+    .lang-select:focus { outline: none; border-color: var(--accent); }
 
     /* ─── HERO ─── */
     .hero {
@@ -331,11 +331,11 @@
     <a href="#security" class="nav-hide" data-i18n="nav.security">Bảo mật</a>
     <a href="#how" class="nav-hide" data-i18n="nav.how">Cách dùng</a>
     <a href="#faq" class="nav-hide" data-i18n="nav.faq">FAQ</a>
-    <a href="/brand" class="nav-hide" data-i18n="nav.brand">Thương hiệu</a>
-    <a href="/contact" class="nav-hide" data-i18n="nav.contact">Liên hệ</a>
-    <button class="lang-switch" onclick="toggleLang()" aria-label="Switch language">
-      <span data-lang-mark="vi">VI</span><span class="lang-sep">/</span><span data-lang-mark="en">EN</span><span class="lang-sep">/</span><span data-lang-mark="ja">JA</span>
-    </button>
+    <select class="lang-select" onchange="applyLang(this.value)" aria-label="Language">
+      <option value="en">English</option>
+      <option value="vi">Tiếng Việt</option>
+      <option value="ja">日本語</option>
+    </select>
     <a href="https://app.novaquiz.net/login" class="btn-nav" data-i18n="nav.cta">Bắt đầu khám phá</a>
   </div>
 </nav>
@@ -1134,8 +1134,12 @@
     }
   };
 
+  var LANGS = ['en', 'vi', 'ja'];
+  var DEFAULT_LANG = 'en';
+
   function applyLang(lang) {
-    var dict = I18N[lang] || I18N.vi;
+    if (LANGS.indexOf(lang) === -1) lang = DEFAULT_LANG;
+    var dict = I18N[lang] || I18N[DEFAULT_LANG];
     document.documentElement.lang = lang;
     document.querySelectorAll('[data-i18n]').forEach(function (el) {
       var key = el.getAttribute('data-i18n');
@@ -1144,26 +1148,14 @@
       if (el.getAttribute('data-i18n-html') === 'true') el.innerHTML = val;
       else el.textContent = val;
     });
-    document.querySelectorAll('[data-lang-mark]').forEach(function (el) {
-      el.classList.toggle('active', el.getAttribute('data-lang-mark') === lang);
-    });
+    document.querySelectorAll('.lang-select').forEach(function (el) { el.value = lang; });
     try { localStorage.setItem('landing-lang', lang); } catch (e) {}
-  }
-
-  var LANG_ORDER = ['vi', 'en', 'ja'];
-
-  function toggleLang() {
-    var current = LANG_ORDER.indexOf(document.documentElement.lang);
-    if (current === -1) current = 0;
-    applyLang(LANG_ORDER[(current + 1) % LANG_ORDER.length]);
   }
 
   (function initLang() {
     var saved = null;
     try { saved = localStorage.getItem('landing-lang'); } catch (e) {}
-    var browserLang = (navigator.language || '').toLowerCase();
-    var detected = browserLang.indexOf('ja') === 0 ? 'ja' : browserLang.indexOf('en') === 0 ? 'en' : 'vi';
-    applyLang(saved || detected);
+    applyLang(LANGS.indexOf(saved) !== -1 ? saved : DEFAULT_LANG);
   })();
 </script>
 
