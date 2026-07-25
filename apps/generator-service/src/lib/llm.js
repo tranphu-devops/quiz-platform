@@ -119,8 +119,8 @@ export async function generateExam({ apiKey, model, documentBlock, questionCount
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://phutx.top',
-      'X-Title': 'Quiz Platform - AI Exam Generator'
+      'HTTP-Referer': 'https://novaquiz.net',
+      'X-Title': 'NovaQuiz - AI Exam Generator'
     },
     body: JSON.stringify(body)
   })

@@ -26,9 +26,9 @@
 >
   <!-- Brand + collapse toggle -->
   <div class="ix-brand-row">
-    <a href="/" class="ix-brand" title="QuizPlatform">
+    <a href="/" class="ix-brand" title="NovaQuiz">
       <img src="/favicon.svg" alt="logo" class="ix-brand-icon" />
-      {#if !collapsed}<span class="ix-brand-text">QuizPlatform</span>{/if}
+      {#if !collapsed}<span class="ix-brand-text">NovaQuiz</span>{/if}
     </a>
     <button
       class="ix-collapse-btn"

@@ -1,5 +1,5 @@
 {
-  "_comment": "Mẫu JSON để import câu hỏi vào QuizPlatform. Xoá trường _comment trước khi dùng.",
+  "_comment": "Mẫu JSON để import câu hỏi vào NovaQuiz. Xoá trường _comment trước khi dùng.",
   "_format_version": "1",
   "questions": [
     {

@@ -473,7 +473,7 @@
         <button class="mobile-ham" onclick={() => mobileSidebarOpen = true} aria-label={$t('nav.openMenu')}>
           {@html I.menu}
         </button>
-        <a href="/dashboard" class="mobile-brand">QuizPlatform</a>
+        <a href="/dashboard" class="mobile-brand">NovaQuiz</a>
         <div style="display:flex; gap:6px; align-items:center;">
           <LanguageSwitcher variant="compact" />
           <button class="sb-theme-btn" onclick={toggleTheme} aria-label={themeLabel}>{themeIcon}</button>

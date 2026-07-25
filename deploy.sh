@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Quiz Platform — Production Deploy Script
+# NovaQuiz — Production Deploy Script
 # Ubuntu 24.04 | Docker Compose
 # Usage: bash deploy.sh [--update]
 # =============================================================================
@@ -61,7 +61,7 @@ fi
 
 echo ""
 echo -e "${BOLD}╔══════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}║      Quiz Platform — Deploy Script       ║${NC}"
+echo -e "${BOLD}║         NovaQuiz — Deploy Script         ║${NC}"
 echo -e "${BOLD}╚══════════════════════════════════════════╝${NC}"
 echo ""
 

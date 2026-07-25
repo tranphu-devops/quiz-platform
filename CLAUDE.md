@@ -113,6 +113,7 @@ RESEND_API_KEY=
 NOTIFICATION_EMAIL_FROM=
 PUSHOVER_APP_TOKEN=
 TELEGRAM_BOT_TOKEN=
+CONTACT_EMAIL_TO=             # inbox for the public "Contact us" form (landing/contact.html); falls back to NOTIFICATION_EMAIL_FROM if unset
 # Admin System Overview screen (user-service -> docker-socket-proxy sidecar). Safe defaults set in docker-compose.yml.
 DOCKER_PROXY_HOST=docker-socket-proxy
 DOCKER_PROXY_PORT=2375
@@ -143,7 +144,7 @@ Browser → Nginx :80
   /                 → frontend:3000
 ```
 
-Nginx has two `server` blocks: one for `phutx.top` / `www.phutx.top` (production domain, serves a landing page at `/`) and one `default_server` for all other hosts (used locally). The routing above applies to both.
+Nginx has two `server` blocks: one for `novaquiz.net` / `www.novaquiz.net` (production landing domain, serves a landing page at `/`) and one `default_server` for all other hosts — used locally, and in production for the app domain `app.novaquiz.net` (no explicit `server_name`, matched by the fallback block). The routing above applies to both.
 
 Internal service-to-service calls use Docker network hostnames directly (e.g., `http://exam-service:3003`), never going through Nginx.
 
@@ -392,7 +393,9 @@ Custom SvelteKit error pages (`+error.svelte`) handle 404 and 5xx responses with
 - To rotate the Sentry DSN or org/project slugs, update `hooks.client.js`, `hooks.server.js`, and `vite.config.js` together.
 
 ### Landing page
-`landing/` contains a static HTML landing page served by Nginx for the production domain (`phutx.top` / `www.phutx.top`). The `default_server` block (used locally) skips it and goes straight to the frontend SPA.
+`landing/` contains static HTML pages served by Nginx for the production domain (`novaquiz.net` / `www.novaquiz.net`): `index.html` (`/`), `brand.html` (`/brand` — brand kit: logo lockups, color palette, typography, usage rules) and `contact.html` (`/contact` — contact form). Each is its own self-contained file (inline `<style>`/`<script>`, no build step, no shared includes) matched by an **exact** Nginx `location` block (`location = /brand { try_files /brand.html =404; }`, etc.) — adding another top-level landing page means adding both the `.html` file and its `location` block. `landing/brand-assets/` holds the downloadable brand kit (logo SVG/PNG at standard sizes, multi-res `favicon.ico`, `apple-touch-icon.png`, OG banner) served via `location /brand-assets/ { root /var/www/landing; }`. The `default_server` block (used locally, and for `app.novaquiz.net` in production) skips all of this and goes straight to the frontend SPA.
+
+The contact form (`landing/contact.html`) posts JSON (`name`, `email`, `message`) to `POST /api/notifications/contact` — same-origin through the landing server block's existing `/api/notifications/` proxy, no CORS needed. That route (`apps/notification-service/src/routes/contact.js`) is the one unauthenticated, public endpoint in notification-service; unlike every other notification path it bypasses the subscription/queue system entirely (there's no logged-in recipient to look up) and sends straight through the Resend channel adapter (`lib/channels/email.js`) to `CONTACT_EMAIL_TO` (falls back to `NOTIFICATION_EMAIL_FROM` if unset). Rate-limited at the route level (5/min via Fastify's `config.rateLimit`, tighter than the service's global 300/min) since it's a spam-prone public form.
 
 ### CI/CD
 Three GitHub Actions workflows:
