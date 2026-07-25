@@ -19,6 +19,12 @@
     theme = localStorage.getItem('quiz-theme') || 'light'
     document.documentElement.dataset.theme = theme
     sidebarCollapsed = localStorage.getItem('quiz-sidebar-collapsed') === 'true'
+
+    // Capture a referral code from ?ref= before any redirect/OAuth round-trip
+    // discards it. Attribution happens later when the new user's profile is
+    // first created (see the $effect below).
+    const ref = new URLSearchParams(window.location.search).get('ref')
+    if (ref) localStorage.setItem('quiz_referral_code', ref)
   })
 
   function toggleSidebar() {
@@ -47,11 +53,14 @@
         avatarUrl = p?.avatar_url ?? null
       } else if (r.status === 404) {
         const meta = s?.user?.user_metadata ?? {}
+        const referral_code = localStorage.getItem('quiz_referral_code')
         const res = await userApi.updateProfile(u.id, {
           full_name: meta.full_name ?? meta.name ?? null,
-          avatar_url: meta.avatar_url ?? meta.picture ?? null
+          avatar_url: meta.avatar_url ?? meta.picture ?? null,
+          referral_code: referral_code || undefined
         })
         if (res.ok) {
+          localStorage.removeItem('quiz_referral_code')
           const p = await res.json()
           avatarUrl = p?.avatar_url ?? null
         }

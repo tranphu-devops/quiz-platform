@@ -8,6 +8,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - **Setup SSL/TLS cho `novaquiz.net` bằng Cloudflare certs (full DNS + edge protection)**: Nginx config cập nhật, server block mới lắng nghe port 443 với chứng chỉ PEM/key từ Cloudflare (`/opt/nginx/ssl/novaquiz.net.{pem,key}`), include `cloudflare.conf` (CA root + cấu hình edge security), HTTP traffic tự động redirect về HTTPS. Landing page và app quiz đều tuân theo setup này.
+### Added
+- **Hệ thống giới thiệu (referral) cộng credit**: mỗi người dùng có mã và link giới thiệu riêng (hiện ở card "Giới thiệu bạn bè" trên `/profile`, kèm số người đã giới thiệu). Khi có người mới đăng ký qua link: người mới được cộng thẳng một khoản credit thưởng vào tài khoản ngay khi tạo tài khoản, còn người giới thiệu tích luỹ credit và phải bấm **Nhận (claim)** mới cộng vào số dư — số credit thưởng cho người giới thiệu tính theo mức admin đang đặt tại thời điểm claim. Người giới thiệu cũng nhận được thông báo (Pushover/Email/Telegram, nếu đã bật) khi có người đăng ký qua link. Admin cấu hình 2 mức thưởng (thưởng người giới thiệu / thưởng người đăng ký mới) ở tab **Credits** trong `/admin`. Chống lạm dụng: mỗi người chỉ được ghi nhận giới thiệu một lần và không tự giới thiệu chính mình.
 
 ---
 

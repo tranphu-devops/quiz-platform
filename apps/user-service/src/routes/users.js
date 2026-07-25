@@ -27,6 +27,38 @@ function isValidEmail(email) {
   return dot > 0 && dot < domain.length - 1
 }
 
+// Best-effort referral attribution, called only when a profile is first created.
+// Records the referral for the referrer (claimable later) and, two-sided, credits
+// the new user a signup bonus immediately. Never throws into the caller.
+async function applyReferral(fastify, newUserId, rawCode, referredName) {
+  const code = String(rawCode).trim().toUpperCase()
+  if (!code) return
+
+  const ref = await pool.query('SELECT id FROM profiles WHERE referral_code = $1', [code])
+  const referrerId = ref.rows[0]?.id
+  if (!referrerId || referrerId === newUserId) return  // unknown code or self-referral
+
+  const inserted = await pool.query(
+    `INSERT INTO referrals (referrer_id, referred_user_id) VALUES ($1, $2)
+     ON CONFLICT (referred_user_id) DO NOTHING RETURNING id`,
+    [referrerId, newUserId]
+  )
+  if (inserted.rows.length === 0) return  // this user was already referred
+
+  const bonusRes = await pool.query(
+    "SELECT COALESCE(value::int, 0) AS bonus FROM admin_settings WHERE key = 'referral_signup_bonus_credits'"
+  )
+  const bonus = bonusRes.rows[0]?.bonus ?? 0
+  if (bonus > 0) {
+    await pool.query('UPDATE profiles SET credits = credits + $1 WHERE id = $2', [bonus, newUserId])
+  }
+
+  notify('referral.completed', {
+    recipients: [{ role: 'owner', user_id: referrerId }],
+    payload: { referredName: referredName ?? null }
+  })
+}
+
 export default async function userRoutes(fastify) {
   // Internal endpoint — no JWT auth, uses x-internal-key
   fastify.post('/internal/credits/deduct', { config: { rateLimit: { max: 100, timeWindow: '1 minute' } } }, async (req, reply) => {
@@ -159,7 +191,8 @@ export default async function userRoutes(fastify) {
     const {
       full_name, avatar_url,
       bio, birth_year, gender, interests,
-      facebook_url, zalo, tiktok_url, youtube_url, instagram_url, linkedin_url, website_url
+      facebook_url, zalo, tiktok_url, youtube_url, instagram_url, linkedin_url, website_url,
+      referral_code
     } = req.body ?? {}
 
     if (req.user.id !== id && req.user.role !== 'admin') {
@@ -188,14 +221,23 @@ export default async function userRoutes(fastify) {
              linkedin_url   = EXCLUDED.linkedin_url,
              website_url    = EXCLUDED.website_url,
              updated_at     = NOW()
-         RETURNING *`,
+         RETURNING *, (xmax = 0) AS was_inserted`,
         [id, full_name ?? null, avatar_url ?? null,
          bio ?? null, birth_year ?? null, gender ?? null, interests ?? null,
          facebook_url ?? null, zalo ?? null, tiktok_url ?? null,
          youtube_url ?? null, instagram_url ?? null, linkedin_url ?? null, website_url ?? null]
       )
       invalidate(`public:profile:${id}`)
-      return result.rows[0]
+
+      // Referral attribution — only on genuine first creation of this profile
+      // (was_inserted), so a returning user re-sending a code can't farm rewards.
+      // Best-effort: never let a referral failure break profile creation.
+      if (result.rows[0]?.was_inserted && referral_code) {
+        applyReferral(fastify, id, referral_code, result.rows[0].full_name).catch((e) => fastify.log.error(e))
+      }
+
+      const { was_inserted, ...profile } = result.rows[0]
+      return profile
     } catch (err) {
       fastify.log.error(err)
       return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
@@ -244,6 +286,96 @@ export default async function userRoutes(fastify) {
     } catch (err) {
       fastify.log.error(err)
       return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
+    }
+  })
+
+  // GET /referrals/me — the caller's own referral code, invite stats, and
+  // claimable balance. Reward is computed at read time from the current admin
+  // setting (× number of unclaimed referrals).
+  fastify.get('/referrals/me', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
+    try {
+      const sel = await pool.query('SELECT referral_code FROM profiles WHERE id = $1', [req.user.id])
+      let referral_code = sel.rows[0]?.referral_code ?? null
+      // Defensive: mint a code if this profile somehow lacks one (e.g. a row
+      // created before the migration DEFAULT existed). Common case is a no-op.
+      if (sel.rows.length > 0 && !referral_code) {
+        const minted = await pool.query(
+          `UPDATE profiles
+             SET referral_code = upper(substr(md5(id::text || random()::text), 1, 8))
+           WHERE id = $1 AND referral_code IS NULL
+           RETURNING referral_code`,
+          [req.user.id]
+        )
+        referral_code = minted.rows[0]?.referral_code ?? referral_code
+      }
+
+      const rewardRes = await pool.query(
+        "SELECT COALESCE(value::int, 0) AS reward FROM admin_settings WHERE key = 'referral_reward_credits'"
+      )
+      const reward_per_referral = rewardRes.rows[0]?.reward ?? 0
+
+      const stats = await pool.query(
+        `SELECT
+           COUNT(*)::int AS referred_count,
+           COUNT(*) FILTER (WHERE claimed_at IS NULL)::int AS unclaimed_count,
+           COALESCE(SUM(claimed_reward) FILTER (WHERE claimed_at IS NOT NULL), 0)::int AS claimed_credits
+         FROM referrals WHERE referrer_id = $1`,
+        [req.user.id]
+      )
+      const { referred_count, unclaimed_count, claimed_credits } = stats.rows[0]
+
+      return {
+        referral_code,
+        referred_count,
+        unclaimed_count,
+        reward_per_referral,
+        unclaimed_credits: unclaimed_count * reward_per_referral,
+        claimed_credits
+      }
+    } catch (err) {
+      fastify.log.error(err)
+      return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
+    }
+  })
+
+  // POST /referrals/claim — claim all pending referral rewards at once. Reward is
+  // the current admin setting × number of unclaimed referrals, added to credits.
+  fastify.post('/referrals/claim', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
+      const rewardRes = await client.query(
+        "SELECT COALESCE(value::int, 0) AS reward FROM admin_settings WHERE key = 'referral_reward_credits'"
+      )
+      const reward = rewardRes.rows[0]?.reward ?? 0
+
+      const claimed = await client.query(
+        `UPDATE referrals SET claimed_at = NOW(), claimed_reward = $1
+         WHERE referrer_id = $2 AND claimed_at IS NULL RETURNING id`,
+        [reward, req.user.id]
+      )
+      const n = claimed.rows.length
+
+      let new_balance
+      if (n > 0 && reward > 0) {
+        const bal = await client.query(
+          'UPDATE profiles SET credits = credits + $1 WHERE id = $2 RETURNING credits',
+          [reward * n, req.user.id]
+        )
+        new_balance = bal.rows[0]?.credits
+      } else {
+        const bal = await client.query('SELECT credits FROM profiles WHERE id = $1', [req.user.id])
+        new_balance = bal.rows[0]?.credits
+      }
+
+      await client.query('COMMIT')
+      return { claimed_amount: n * reward, claimed_count: n, new_balance }
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {})
+      fastify.log.error(err)
+      return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
+    } finally {
+      client.release()
     }
   })
 

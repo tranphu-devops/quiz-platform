@@ -52,7 +52,7 @@
   let settingsError = $state('')
 
   // ── Credits tab ────────────────────────────────────────────────────────────
-  let creditSettings = $state({ default_credits: '20', teacher_upgrade_cost: '100', default_exam_cost: '10' })
+  let creditSettings = $state({ default_credits: '20', teacher_upgrade_cost: '100', default_exam_cost: '10', referral_reward_credits: '20', referral_signup_bonus_credits: '10' })
   let creditSaving = $state(false)
   let creditSuccess = $state(false)
   let creditError = $state('')
@@ -165,7 +165,7 @@
       if (res.ok) {
         const all = await res.json()
         settings = { upload_max_size_mb: all.upload_max_size_mb ?? '5', upload_allowed_types: all.upload_allowed_types ?? 'image/jpeg,image/png,image/webp,image/gif' }
-        creditSettings = { default_credits: all.default_credits ?? '20', teacher_upgrade_cost: all.teacher_upgrade_cost ?? '100', default_exam_cost: all.default_exam_cost ?? '10' }
+        creditSettings = { default_credits: all.default_credits ?? '20', teacher_upgrade_cost: all.teacher_upgrade_cost ?? '100', default_exam_cost: all.default_exam_cost ?? '10', referral_reward_credits: all.referral_reward_credits ?? '20', referral_signup_bonus_credits: all.referral_signup_bonus_credits ?? '10' }
         aiSettings = {
           ai_generation_enabled: all.ai_generation_enabled ?? 'false',
           ai_generation_credit_cost: all.ai_generation_credit_cost ?? '5',
@@ -634,6 +634,26 @@
                 min="0"
                 step="1"
                 hint={$t('admin.defaultExamCostHint')}
+                style="width:120px"
+              />
+              <Input
+                id="referral_reward_credits"
+                label={$t('admin.referralRewardLabel')}
+                type="number"
+                bind:value={creditSettings.referral_reward_credits}
+                min="0"
+                step="1"
+                hint={$t('admin.referralRewardHint')}
+                style="width:120px"
+              />
+              <Input
+                id="referral_signup_bonus_credits"
+                label={$t('admin.referralSignupBonusLabel')}
+                type="number"
+                bind:value={creditSettings.referral_signup_bonus_credits}
+                min="0"
+                step="1"
+                hint={$t('admin.referralSignupBonusHint')}
                 style="width:120px"
               />
               <div>
