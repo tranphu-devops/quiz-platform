@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Liên hệ — NovaQuiz</title>
-  <meta name="description" content="Liên hệ với đội ngũ NovaQuiz — gửi câu hỏi, góp ý hoặc yêu cầu hợp tác." />
+  <title>Contact — NovaQuiz</title>
+  <meta name="description" content="Contact the NovaQuiz team — send questions, feedback or partnership requests." />
   <link rel="icon" href="/brand-assets/favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -25,11 +25,21 @@
       display: flex; align-items: center; justify-content: space-between;
     }
     .nav-brand { font-size: 1.2rem; font-weight: 800; background: linear-gradient(135deg,var(--primary),var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: -.03em; text-decoration: none; }
-    .nav-links { display: flex; align-items: center; gap: .25rem; }
-    .nav-links a { text-decoration: none; font-size: .875rem; font-weight: 500; padding: .4rem .75rem; border-radius: 8px; color: var(--text); transition: color .15s, background .15s; }
-    .nav-links a:hover { color: var(--primary); background: var(--bg); }
+    .nav-links { display: flex; align-items: center; gap: .6rem; }
     .btn-nav { padding: .5rem 1.1rem; border-radius: 8px; border: none; background: linear-gradient(135deg,var(--primary),var(--accent)); color: white; font-size: .875rem; font-weight: 700; cursor: pointer; text-decoration: none; transition: opacity .15s, transform .15s; box-shadow: 0 2px 8px rgba(86,37,209,.3); }
     .btn-nav:hover { opacity: .92; transform: translateY(-1px); }
+
+    /* Language select */
+    .lang-select {
+      border: 1.5px solid var(--border); background: white; color: var(--muted);
+      border-radius: 8px; padding: .4rem 1.9rem .4rem .7rem; font-size: .82rem; font-weight: 600;
+      font-family: inherit; cursor: pointer; transition: all .15s;
+      -webkit-appearance: none; -moz-appearance: none; appearance: none;
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23595d72' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right .6rem center;
+    }
+    .lang-select:hover { border-color: var(--accent); color: var(--primary); }
+    .lang-select:focus { outline: none; border-color: var(--accent); }
 
     .page-hero { padding: 4.5rem 1.5rem 3rem; text-align: center; background: linear-gradient(165deg, #f0f0ff 0%, #ede6ff 35%, #f2edff 65%, #fdf4ff 100%); }
     .page-hero h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 900; letter-spacing: -.05em; margin-bottom: 1rem; }
@@ -82,61 +92,158 @@
 <nav>
   <a class="nav-brand" href="/">NovaQuiz</a>
   <div class="nav-links">
-    <a href="/">Trang chủ</a>
-    <a href="/brand">Thương hiệu</a>
-    <a href="https://app.novaquiz.net/login" class="btn-nav">Bắt đầu khám phá</a>
+    <select class="lang-select" onchange="applyLang(this.value)" aria-label="Language">
+      <option value="en">English</option>
+      <option value="vi">Tiếng Việt</option>
+      <option value="ja">日本語</option>
+    </select>
+    <a href="https://app.novaquiz.net/login" class="btn-nav" data-i18n="nav.cta">Get started</a>
   </div>
 </nav>
 
 <div class="page-hero">
-  <h1>Liên hệ với chúng tôi</h1>
-  <p>Có câu hỏi, góp ý hay muốn hợp tác? Gửi tin nhắn cho đội ngũ NovaQuiz — chúng tôi sẽ phản hồi sớm nhất có thể.</p>
+  <h1 data-i18n="hero.title">Contact us</h1>
+  <p data-i18n="hero.sub">Have a question, feedback or want to partner up? Send the NovaQuiz team a message — we'll get back to you as soon as we can.</p>
 </div>
 
 <div class="wrap">
   <div class="contact-card">
     <form id="contact-form" novalidate>
       <div class="field">
-        <label for="name">Họ tên</label>
+        <label for="name" data-i18n="form.name">Full name</label>
         <input type="text" id="name" name="name" maxlength="100" required autocomplete="name" />
       </div>
       <div class="field">
-        <label for="email">Email</label>
+        <label for="email" data-i18n="form.email">Email</label>
         <input type="email" id="email" name="email" maxlength="200" required autocomplete="email" />
       </div>
       <div class="field">
-        <label for="message">Nội dung</label>
+        <label for="message" data-i18n="form.message">Message</label>
         <textarea id="message" name="message" maxlength="4000" required></textarea>
-        <div class="hint">Tối đa 4000 ký tự.</div>
+        <div class="hint" data-i18n="form.hint">Up to 4000 characters.</div>
       </div>
-      <button type="submit" class="submit-btn" id="submit-btn">Gửi liên hệ</button>
+      <button type="submit" class="submit-btn" id="submit-btn" data-i18n="form.submit">Send message</button>
       <div class="form-msg" id="form-msg" role="status"></div>
     </form>
   </div>
 
   <p class="alt-contact">
-    Hoặc email trực tiếp tới <a href="mailto:tranphu.dev@gmail.com">tranphu.dev@gmail.com</a>
+    <span data-i18n="alt.text">Or email us directly at</span> <a href="mailto:tranphu.dev@gmail.com">tranphu.dev@gmail.com</a>
   </p>
 </div>
 
 <!-- FOOTER -->
 <footer>
   <div class="footer-links">
-    <a href="https://app.novaquiz.net/login">Bắt đầu khám phá</a>
+    <a href="https://app.novaquiz.net/login" data-i18n="nav.cta">Get started</a>
     <span class="footer-divider">·</span>
-    <a href="/">Trang chủ</a>
+    <a href="/" data-i18n="footer.home">Home</a>
     <span class="footer-divider">·</span>
-    <a href="/brand">Thương hiệu</a>
+    <a href="/brand" data-i18n="footer.brand">Brand</a>
   </div>
-  <p style="margin-bottom:.75rem">© 2026 <strong>NovaQuiz</strong> · Nền tảng thi trực tuyến thông minh</p>
+  <p style="margin-bottom:.75rem">© 2026 <strong>NovaQuiz</strong> · <span data-i18n="footer.tagline">Smart online exam platform</span></p>
   <p style="font-size:.8rem;opacity:.6">
-    Được xây dựng bởi <strong style="color:#94a3b8">Trần Phú</strong>
+    <span data-i18n="footer.builtBy">Built by</span> <strong style="color:#94a3b8">Trần Phú</strong>
     &nbsp;·&nbsp; <a href="mailto:tranphu.dev@gmail.com" style="color:#94a3b8;text-decoration:none">tranphu.dev@gmail.com</a>
     &nbsp;·&nbsp; <a href="https://novaquiz.net" style="color:#94a3b8;text-decoration:none">novaquiz.net</a>
   </p>
 </footer>
 
 <script>
+  var I18N = {
+    en: {
+      'nav.cta': 'Get started',
+      'hero.title': 'Contact us',
+      'hero.sub': "Have a question, feedback or want to partner up? Send the NovaQuiz team a message — we'll get back to you as soon as we can.",
+      'form.name': 'Full name',
+      'form.email': 'Email',
+      'form.message': 'Message',
+      'form.hint': 'Up to 4000 characters.',
+      'form.submit': 'Send message',
+      'form.sending': 'Sending...',
+      'form.success': 'Message sent successfully! We will get back to you as soon as we can.',
+      'form.error': 'Failed to send message, please try again.',
+      'form.network': 'Could not reach the server, please try again later.',
+      'alt.text': 'Or email us directly at',
+      'footer.home': 'Home',
+      'footer.brand': 'Brand',
+      'footer.tagline': 'Smart online exam platform',
+      'footer.builtBy': 'Built by',
+      'doc.title': 'Contact — NovaQuiz'
+    },
+    vi: {
+      'nav.cta': 'Bắt đầu khám phá',
+      'hero.title': 'Liên hệ với chúng tôi',
+      'hero.sub': 'Có câu hỏi, góp ý hay muốn hợp tác? Gửi tin nhắn cho đội ngũ NovaQuiz — chúng tôi sẽ phản hồi sớm nhất có thể.',
+      'form.name': 'Họ tên',
+      'form.email': 'Email',
+      'form.message': 'Nội dung',
+      'form.hint': 'Tối đa 4000 ký tự.',
+      'form.submit': 'Gửi liên hệ',
+      'form.sending': 'Đang gửi...',
+      'form.success': 'Đã gửi liên hệ thành công! Chúng tôi sẽ phản hồi sớm nhất có thể.',
+      'form.error': 'Gửi liên hệ thất bại, vui lòng thử lại.',
+      'form.network': 'Không thể kết nối máy chủ, vui lòng thử lại sau.',
+      'alt.text': 'Hoặc email trực tiếp tới',
+      'footer.home': 'Trang chủ',
+      'footer.brand': 'Thương hiệu',
+      'footer.tagline': 'Nền tảng thi trực tuyến thông minh',
+      'footer.builtBy': 'Được xây dựng bởi',
+      'doc.title': 'Liên hệ — NovaQuiz'
+    },
+    ja: {
+      'nav.cta': '始める',
+      'hero.title': 'お問い合わせ',
+      'hero.sub': 'ご質問、ご意見、または提携をご希望ですか？NovaQuiz チームにメッセージをお送りください — できるだけ早くご返信いたします。',
+      'form.name': 'お名前',
+      'form.email': 'メールアドレス',
+      'form.message': 'メッセージ',
+      'form.hint': '最大 4000 文字。',
+      'form.submit': '送信する',
+      'form.sending': '送信中...',
+      'form.success': 'メッセージを送信しました！できるだけ早くご返信いたします。',
+      'form.error': '送信に失敗しました。もう一度お試しください。',
+      'form.network': 'サーバーに接続できませんでした。しばらくしてからもう一度お試しください。',
+      'alt.text': 'または直接メールでお問い合わせください：',
+      'footer.home': 'ホーム',
+      'footer.brand': 'ブランド',
+      'footer.tagline': 'スマートなオンライン試験プラットフォーム',
+      'footer.builtBy': '開発者',
+      'doc.title': 'お問い合わせ — NovaQuiz'
+    }
+  };
+
+  var LANGS = ['en', 'vi', 'ja'];
+  var DEFAULT_LANG = 'en';
+  var currentLang = DEFAULT_LANG;
+
+  function t(key) {
+    var dict = I18N[currentLang] || I18N[DEFAULT_LANG];
+    return dict[key] !== undefined ? dict[key] : (I18N[DEFAULT_LANG][key] || key);
+  }
+
+  function applyLang(lang) {
+    if (LANGS.indexOf(lang) === -1) lang = DEFAULT_LANG;
+    currentLang = lang;
+    var dict = I18N[lang] || I18N[DEFAULT_LANG];
+    document.documentElement.lang = lang;
+    if (dict['doc.title']) document.title = dict['doc.title'];
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      var val = dict[el.getAttribute('data-i18n')];
+      if (val === undefined) return;
+      if (el.getAttribute('data-i18n-html') === 'true') el.innerHTML = val;
+      else el.textContent = val;
+    });
+    document.querySelectorAll('.lang-select').forEach(function (el) { el.value = lang; });
+    try { localStorage.setItem('landing-lang', lang); } catch (e) {}
+  }
+
+  (function initLang() {
+    var saved = null;
+    try { saved = localStorage.getItem('landing-lang'); } catch (e) {}
+    applyLang(LANGS.indexOf(saved) !== -1 ? saved : DEFAULT_LANG);
+  })();
+
   var form = document.getElementById('contact-form');
   var btn = document.getElementById('submit-btn');
   var msg = document.getElementById('form-msg');
@@ -153,7 +260,7 @@
     };
 
     btn.disabled = true;
-    btn.textContent = 'Đang gửi...';
+    btn.textContent = t('form.sending');
 
     fetch('/api/notifications/contact', {
       method: 'POST',
@@ -166,20 +273,20 @@
       .then(function (result) {
         if (result.ok) {
           msg.className = 'form-msg success';
-          msg.textContent = 'Đã gửi liên hệ thành công! Chúng tôi sẽ phản hồi sớm nhất có thể.';
+          msg.textContent = t('form.success');
           form.reset();
         } else {
           msg.className = 'form-msg error';
-          msg.textContent = (result.data && result.data.error) || 'Gửi liên hệ thất bại, vui lòng thử lại.';
+          msg.textContent = t('form.error');
         }
       })
       .catch(function () {
         msg.className = 'form-msg error';
-        msg.textContent = 'Không thể kết nối máy chủ, vui lòng thử lại sau.';
+        msg.textContent = t('form.network');
       })
       .finally(function () {
         btn.disabled = false;
-        btn.textContent = 'Gửi liên hệ';
+        btn.textContent = t('form.submit');
       });
   });
 </script>
