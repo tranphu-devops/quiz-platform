@@ -1,4 +1,4 @@
-# Quiz Platform
+# NovaQuiz
 
 Ứng dụng tạo & thi trắc nghiệm trực tuyến, kiến trúc microservices. Một PostgreSQL dùng chung (mỗi service một schema riêng), Nginx là ingress duy nhất, auth qua GoTrue (SSO + Google OAuth).
 

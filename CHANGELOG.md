@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased] — 2026-07-25
+
+### Added
+- **Đổi thương hiệu sang NovaQuiz, gắn với tên miền mới `novaquiz.net`** (landing) / `app.novaquiz.net` (ứng dụng), thay cho `QuizPlatform` / `phutx.top` cũ. Cập nhật đồng bộ: tên thương hiệu trong toàn bộ giao diện (sidebar, trang đăng nhập, API docs, landing page), domain trong Nginx (`server_name`, `GOTRUE_URI_ALLOW_LIST`), header `HTTP-Referer` gửi lên OpenRouter, và tài liệu (`README.md`, `DESIGN.md`, `CLAUDE.md`). Không đổi tên tổ chức/dự án trên các dịch vụ ngoài đã gắn với domain cũ (Zoho PageSense, Sentry org/project) — cần đăng ký lại thủ công trên các nền tảng đó khi domain mới lên production.
+- **Bộ nhận diện thương hiệu đầy đủ** (logo, favicon, banner) ở các kích thước chuẩn web hiện đại: icon mark SVG nguồn dùng để xuất `favicon.ico` đa độ phân giải (16/32/48px), `apple-touch-icon.png` (180px), icon PWA/Android (192/512px, có `manifest.webmanifest`), và banner OG/social-share (1200×630px, dùng cho thẻ `og:image`/`twitter:image` ở cả app lẫn landing page). Logo dạng lockup ngang có bản cho nền sáng và nền tối. Toàn bộ nguồn SVG + PNG xuất sẵn được công khai tải về tại trang mới `/brand`.
+- **Trang "Thương hiệu" (`/brand`) và "Liên hệ" (`/contact`) trên landing page**, cùng logic Nginx phục vụ static page mới. Trang `/brand` giới thiệu logo, bảng màu, typography và nguyên tắc sử dụng. Trang `/contact` có form liên hệ (họ tên, email, nội dung) gửi thẳng email tới admin qua endpoint công khai mới `POST /api/notifications/contact` (notification-service) — endpoint này là ngoại lệ duy nhất không cần đăng nhập trong notification-service, gửi trực tiếp qua Resend thay vì qua hàng đợi/subscription (không có user đăng nhập để tra cứu), có giới hạn tần suất riêng (5 lần/phút) để chống spam. Nhận email tại `CONTACT_EMAIL_TO` (fallback `NOTIFICATION_EMAIL_FROM` nếu chưa cấu hình).
+
+---
+
 ## [Unreleased] — 2026-07-24
 
 ### Added

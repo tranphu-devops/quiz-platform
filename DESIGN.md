@@ -1,5 +1,5 @@
 ---
-name: QuizPlatform
+name: NovaQuiz
 description: >
   Adaptive dark/light design system for a Vietnamese online quiz & exam platform.
   Deep-purple brand palette (Udemy-inspired), Inter typography, clean card surfaces
@@ -183,7 +183,7 @@ components:
 
 ## Overview
 
-**QuizPlatform** là nền tảng thi trực tuyến cho người dùng Việt Nam — học sinh, giáo viên và admin. Bộ nhận diện thương hiệu xây dựng trên bộ màu deep-purple (`#5625d1 → #6d29d3`) lấy cảm hứng từ Udemy, phản ánh sự chuyên nghiệp, tin cậy và học thuật.
+**NovaQuiz** là nền tảng thi trực tuyến cho người dùng Việt Nam — học sinh, giáo viên và admin. Bộ nhận diện thương hiệu xây dựng trên bộ màu deep-purple (`#5625d1 → #6d29d3`) lấy cảm hứng từ Udemy, phản ánh sự chuyên nghiệp, tin cậy và học thuật.
 
 Nguyên tắc cốt lõi:
 - **Nhất quán**: Cùng một bộ token áp dụng cho cả landing page và quiz app.

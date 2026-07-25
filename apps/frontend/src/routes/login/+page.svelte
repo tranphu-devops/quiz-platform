@@ -130,7 +130,7 @@
 <div class="login-wrap">
   <div class="panel-left">
     <div class="inner">
-      <div class="hero-logo">QuizPlatform</div>
+      <div class="hero-logo">NovaQuiz</div>
       <p class="hero-sub">{@html $t('login.heroSub')}</p>
       <div class="deco-dots">
         {#each Array(12) as _}
@@ -142,7 +142,7 @@
 
   <div class="panel-right">
     <div class="card">
-      <div class="card-logo">QuizPlatform</div>
+      <div class="card-logo">NovaQuiz</div>
       <h1>{$t('login.welcome')}</h1>
       <p class="sub">{$t('login.subtitle')}</p>
       <div class="divider">{$t('login.signInWith')}</div>

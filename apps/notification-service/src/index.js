@@ -5,6 +5,7 @@ import cron from 'node-cron'
 import internalRoutes from './routes/internal.js'
 import preferenceRoutes from './routes/preferences.js'
 import adminRoutes from './routes/admin.js'
+import contactRoutes from './routes/contact.js'
 import { tick } from './lib/worker.js'
 import { pool } from './db.js'
 
@@ -42,6 +43,7 @@ fastify.get('/health', { config: { rateLimit: { max: 60, timeWindow: '1 minute' 
 fastify.register(internalRoutes)
 fastify.register(preferenceRoutes)
 fastify.register(adminRoutes)
+fastify.register(contactRoutes)
 
 try {
   await fastify.listen({ port: Number(process.env.PORT) || 3007, host: '0.0.0.0' })

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 60" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#e879f9"/>
+    </linearGradient>
+  </defs>
+  <!-- Icon mark -->
+  <rect x="0" y="8" width="44" height="44" rx="10" fill="url(#bg)"/>
+  <rect x="11" y="15" width="22" height="28" rx="3.5" fill="#202331" opacity="0.92"/>
+  <line x1="15" y1="22" x2="29" y2="22" stroke="#c084fc" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+  <line x1="15" y1="27" x2="23" y2="27" stroke="#c084fc" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+  <path d="M15 36l4.5 4 7.5-9" stroke="#c084fc" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Wordmark -->
+  <text x="58" y="34" font-family="Inter, system-ui, sans-serif" font-size="24" letter-spacing="-0.5"><tspan font-weight="800" fill="#ffffff">Nova</tspan><tspan font-weight="600" fill="#c084fc">Quiz</tspan></text>
+  <!-- Tagline -->
+  <text x="59" y="49" font-family="Inter, system-ui, sans-serif" font-size="9.5" font-weight="400" fill="rgba(255,255,255,0.6)" letter-spacing="0.2">Nền tảng thi trực tuyến thông minh</text>
+</svg>

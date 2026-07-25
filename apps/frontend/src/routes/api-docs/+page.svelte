@@ -60,7 +60,7 @@
   ])
 </script>
 
-<svelte:head><title>API Docs · QuizPlatform</title></svelte:head>
+<svelte:head><title>API Docs · NovaQuiz</title></svelte:head>
 
 <PageHeader title={$t('apiDocs.pageTitle')} subtitle={$t('apiDocs.pageSubtitle')} />
 
