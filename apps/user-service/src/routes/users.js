@@ -34,7 +34,7 @@ async function applyReferral(fastify, newUserId, rawCode, referredName) {
   const code = String(rawCode).trim().toUpperCase()
   if (!code) return
 
-  const ref = await pool.query('SELECT id FROM profiles WHERE referral_code = $1', [code])
+  const ref = await pool.query('SELECT id, full_name FROM profiles WHERE referral_code = $1', [code])
   const referrerId = ref.rows[0]?.id
   if (!referrerId || referrerId === newUserId) return  // unknown code or self-referral
 
@@ -53,9 +53,38 @@ async function applyReferral(fastify, newUserId, rawCode, referredName) {
     await pool.query('UPDATE profiles SET credits = credits + $1 WHERE id = $2', [bonus, newUserId])
   }
 
+  // Everything the referral email reports on. Gathered here (one extra query
+  // each) rather than in notification-service, which owns delivery, not
+  // business data — same split as every other producer's notify() payload.
+  // Cross-schema read of auth.users for the email, same precedent as the
+  // teacher-upgrade route updating auth.users directly.
+  const [emailRes, rewardRes, statsRes] = await Promise.all([
+    pool.query('SELECT email FROM auth.users WHERE id = $1', [newUserId]),
+    pool.query("SELECT COALESCE(value::int, 0) AS reward FROM admin_settings WHERE key = 'referral_reward_credits'"),
+    pool.query(
+      `SELECT COUNT(*)::int AS total,
+              COUNT(*) FILTER (WHERE claimed_at IS NULL)::int AS unclaimed
+         FROM referrals WHERE referrer_id = $1`,
+      [referrerId]
+    )
+  ])
+  const reward = rewardRes.rows[0]?.reward ?? 0
+  const unclaimed = statsRes.rows[0]?.unclaimed ?? 0
+
   notify('referral.completed', {
     recipients: [{ role: 'owner', user_id: referrerId }],
-    payload: { referredName: referredName ?? null }
+    payload: {
+      referredName: referredName ?? null,
+      referredEmail: emailRes.rows[0]?.email ?? null,
+      referredAt: new Date().toISOString(),
+      referrerName: ref.rows[0]?.full_name ?? null,
+      referralCode: code,
+      signupBonus: bonus,
+      rewardCredits: reward,
+      totalReferrals: statsRes.rows[0]?.total ?? null,
+      unclaimedReferrals: unclaimed,
+      unclaimedCredits: unclaimed * reward
+    }
   })
 }
 
@@ -76,9 +105,19 @@ export default async function userRoutes(fastify) {
         [amount, user_id]
       )
       if (result.rows.length === 0) {
+        // The UPDATE matched nothing, so the balance is unknown here — read it
+        // for the notification ("you have X, you need Y" is the whole point of
+        // the message). Best-effort: a failed read just omits the row.
+        const balRes = await pool.query('SELECT credits, full_name FROM profiles WHERE id = $1', [user_id]).catch(() => null)
         notify('credit.deduct_failed', {
           recipients: [{ role: 'owner', user_id }],
-          payload: { amount, reason: 'exam_or_generation' }
+          payload: {
+            userName: balRes?.rows[0]?.full_name ?? null,
+            amount,
+            balance: balRes?.rows[0]?.credits ?? null,
+            reason: 'exam_or_generation',
+            occurredAt: new Date().toISOString()
+          }
         })
         return reply.status(402).send({ error: 'Không đủ credit', statusCode: 402 })
       }
@@ -260,9 +299,16 @@ export default async function userRoutes(fastify) {
         [cost, req.user.id]
       )
       if (deductResult.rows.length === 0) {
+        const balRes = await pool.query('SELECT credits FROM profiles WHERE id = $1', [req.user.id]).catch(() => null)
         notify('credit.deduct_failed', {
           recipients: [{ role: 'owner', user_id: req.user.id }],
-          payload: { userName: req.user.email, amount: cost, reason: 'teacher_upgrade' }
+          payload: {
+            userName: req.user.email,
+            amount: cost,
+            balance: balRes?.rows[0]?.credits ?? null,
+            reason: 'teacher_upgrade',
+            occurredAt: new Date().toISOString()
+          }
         })
         return reply.status(402).send({ error: `Không đủ credit. Cần ${cost} credit để nâng cấp.`, statusCode: 402 })
       }
@@ -275,7 +321,12 @@ export default async function userRoutes(fastify) {
 
       notify('teacher_upgrade.succeeded', {
         recipients: [{ role: 'owner', user_id: req.user.id }],
-        payload: { userName: req.user.email, newBalance: deductResult.rows[0].credits }
+        payload: {
+          userName: req.user.email,
+          cost,
+          newBalance: deductResult.rows[0].credits,
+          upgradedAt: new Date().toISOString()
+        }
       })
 
       return {

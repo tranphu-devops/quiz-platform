@@ -353,7 +353,17 @@ export default async function generateRoutes(fastify) {
         await finalizeJob(job.id, { status: 'completed', questionCount: exam.questions.length, examId })
         notify('generation.completed', {
           recipients: [{ role: 'owner', user_id: req.user.id }],
-          payload: { teacherName: req.user.email, examTitle: exam.title, examId, questionCount: exam.questions.length }
+          payload: {
+            teacherName: req.user.email,
+            examTitle: exam.title,
+            examId,
+            questionCount: exam.questions.length,
+            model,
+            keySource,
+            jobId: job.id,
+            sourceFilename: data.filename,
+            completedAt: new Date().toISOString()
+          }
         })
       } catch (err) {
         fastify.log.error(err)
@@ -361,7 +371,15 @@ export default async function generateRoutes(fastify) {
         await finalizeJob(job.id, { status: 'failed', errorMessage: err.message, errorDetail }).catch(() => {})
         notify('generation.failed', {
           recipients: [{ role: 'owner', user_id: req.user.id }],
-          payload: { teacherName: req.user.email, errorMessage: err.message }
+          payload: {
+            teacherName: req.user.email,
+            errorMessage: err.message,
+            model,
+            keySource,
+            jobId: job.id,
+            sourceFilename: data.filename,
+            failedAt: new Date().toISOString()
+          }
         })
       }
     })()

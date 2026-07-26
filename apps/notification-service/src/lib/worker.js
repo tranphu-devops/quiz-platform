@@ -1,5 +1,5 @@
 import { pool } from '../db.js'
-import { renderMessage } from './events.js'
+import { renderMessage, renderEmail } from './events.js'
 import { sendPushover } from './channels/pushover.js'
 import { sendEmail } from './channels/email.js'
 import { sendTelegram } from './channels/telegram.js'
@@ -55,13 +55,17 @@ async function dispatchOne(row) {
     const target = await resolveTarget(row.recipient_user_id, row.channel)
     if (!target) throw new Error(`no ${row.channel} target configured for user ${row.recipient_user_id}`)
 
-    const { title, body, url } = renderMessage(row.event_type, row.payload)
-
-    if (row.channel === 'pushover') {
+    if (row.channel === 'email') {
+      // Email gets the full branded layout (subject + HTML + text
+      // alternative); the push channels get the short single-message form.
+      const reasonLabel = await eventLabel(row.event_type)
+      const { subject, html, text } = renderEmail(row.event_type, row.payload, { reasonLabel })
+      await sendEmail({ to: target, subject, html, text })
+    } else if (row.channel === 'pushover') {
+      const { title, body, url } = renderMessage(row.event_type, row.payload)
       await sendPushover({ userKey: target, title, message: body, url })
-    } else if (row.channel === 'email') {
-      await sendEmail({ to: target, subject: title, html: body })
     } else if (row.channel === 'telegram') {
+      const { title, body } = renderMessage(row.event_type, row.payload)
       await sendTelegram({ chatId: target, text: `${title}\n\n${body}` })
     } else {
       throw new Error(`unknown channel ${row.channel}`)
@@ -74,6 +78,23 @@ async function dispatchOne(row) {
   } catch (err) {
     await handleFailure(row, err)
   }
+}
+
+// event_types is a static catalog seeded by migrations, so the English label
+// used in the email footer ("you got this because <label> is enabled") is
+// cached for the process lifetime instead of re-queried per dispatched row.
+const labelCache = new Map()
+async function eventLabel(eventType) {
+  if (labelCache.has(eventType)) return labelCache.get(eventType)
+  let label = null
+  try {
+    const { rows } = await pool.query('SELECT label_en FROM event_types WHERE key = $1', [eventType])
+    label = rows[0]?.label_en ?? null
+  } catch {
+    // Non-fatal: the footer just falls back to generic wording.
+  }
+  labelCache.set(eventType, label)
+  return label
 }
 
 async function resolveTarget(userId, channel) {

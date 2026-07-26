@@ -55,7 +55,7 @@ function buildGradeResult(exam, answers) {
   return { score, total_points, percentage, results_detail }
 }
 
-async function awardBadgesIfEarned(userId, examId, log) {
+async function awardBadgesIfEarned(userId, examId, log, studentName = null) {
   if (!isUuid(examId)) return
   try {
     const collectionsRes = await fetch(
@@ -91,7 +91,14 @@ async function awardBadgesIfEarned(userId, examId, log) {
         if (insertRes.rowCount > 0) {
           notify('badge.earned', {
             recipients: [{ role: 'owner', user_id: userId }],
-            payload: { collectionTitle: col.title, collectionId: col.id }
+            payload: {
+              collectionTitle: col.title,
+              collectionId: col.id,
+              badgeImageUrl: col.badge_image_url ?? null,
+              examCount: examIds.length,
+              studentName,
+              earnedAt: new Date().toISOString()
+            }
           })
         }
       }
@@ -384,7 +391,7 @@ export default async function submissionRoutes(fastify) {
       }
 
       const passed = exam.passing_score == null || percentage >= exam.passing_score
-      if (passed) awardBadgesIfEarned(req.user.id, sub.exam_id, fastify.log).catch(() => {})
+      if (passed) awardBadgesIfEarned(req.user.id, sub.exam_id, fastify.log, req.user.email).catch(() => {})
 
       notify('submission.completed', {
         recipients: [
@@ -397,7 +404,12 @@ export default async function submissionRoutes(fastify) {
           examId: exam.id,
           submissionId: id,
           percentage,
-          passed
+          passed,
+          score,
+          totalPoints: total_points,
+          passingScore: exam.passing_score ?? null,
+          questionCount: exam.questions?.length ?? null,
+          submittedAt: updateRes.rows[0].submitted_at
         }
       })
 

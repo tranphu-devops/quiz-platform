@@ -193,7 +193,10 @@ export default async function interactionRoutes(fastify) {
         reporterName: req.user.email,
         examTitle: owner.rows[0].title,
         examId,
-        category
+        category,
+        description,
+        reportId: rows[0].id,
+        filedAt: rows[0].created_at
       }
     })
 
@@ -283,7 +286,14 @@ export default async function interactionRoutes(fastify) {
       const exam = await pool.query('SELECT title FROM quiz_exams.exams WHERE id = $1', [report.exam_id])
       notify('report.resolved', {
         recipients: [{ role: 'reporter', user_id: report.reporter_id }],
-        payload: { examTitle: exam.rows[0]?.title, examId: report.exam_id, response }
+        payload: {
+          examTitle: exam.rows[0]?.title,
+          examId: report.exam_id,
+          category: report.category,
+          response,
+          reportId: report.id,
+          respondedAt: upd.rows[0]?.responded_at ?? new Date().toISOString()
+        }
       })
     }
 

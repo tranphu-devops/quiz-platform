@@ -8,6 +8,19 @@ function isCorrect(q, studentAnswer) {
   return studentAnswer === q.correct_answer
 }
 
+// Notification payloads name the student ("<who> ran out of time on <exam>"),
+// but this worker has no request context to read an email from — unlike
+// submission-service, which gets it from the JWT. Cross-schema read of
+// auth.users, same precedent as the auth middleware's ban check.
+async function studentEmail(pool, userId) {
+  try {
+    const { rows } = await pool.query('SELECT email FROM auth.users WHERE id = $1', [userId])
+    return rows[0]?.email ?? null
+  } catch {
+    return null
+  }
+}
+
 async function awardBadgesIfEarned(pool, userId, examId) {
   const collectionsRes = await fetch(
     `${process.env.EXAM_SERVICE_URL}/collections/internal/check-badge?exam_id=${examId}`,
@@ -40,7 +53,14 @@ async function awardBadgesIfEarned(pool, userId, examId) {
       if (insertRes.rowCount > 0) {
         notify('badge.earned', {
           recipients: [{ role: 'owner', user_id: userId }],
-          payload: { collectionTitle: col.title, collectionId: col.id }
+          payload: {
+            collectionTitle: col.title,
+            collectionId: col.id,
+            badgeImageUrl: col.badge_image_url ?? null,
+            examCount: examIds.length,
+            studentName: await studentEmail(pool, userId),
+            earnedAt: new Date().toISOString()
+          }
         })
       }
     }
@@ -110,7 +130,19 @@ export async function runAutoGrade(pool) {
             { role: 'owner', user_id: sub.user_id },
             ...(exam.created_by ? [{ role: 'teacher', user_id: exam.created_by }] : [])
           ],
-          payload: { examTitle: exam.title, examId: exam.id, submissionId: sub.id, percentage }
+          payload: {
+            studentName: await studentEmail(pool, sub.user_id),
+            examTitle: exam.title,
+            examId: exam.id,
+            submissionId: sub.id,
+            percentage,
+            passed,
+            score,
+            totalPoints: total_points,
+            passingScore: exam.passing_score ?? null,
+            questionCount: exam.questions?.length ?? null,
+            submittedAt: new Date().toISOString()
+          }
         })
       }
     } catch (err) {
