@@ -1,5 +1,24 @@
 import { pool } from '../db.js'
 
+export const ALL_CHANNELS = ['pushover', 'email', 'telegram']
+
+// Pushover/Telegram need a per-recipient user-key / chat-id, which only makes
+// sense for the ops-facing admin screens — every other role is reachable at
+// their account email, which worker.js resolves on its own. Keeping the list
+// role-derived (instead of a UI constant) means the server, not the client,
+// decides what may be stored.
+export function channelsForRole(role) {
+  return role === 'admin' ? ALL_CHANNELS : ['email']
+}
+
+// Channels whose destination the recipient has to supply by hand. Email isn't
+// one: worker.js falls back to auth.users.email. So a caller limited to email
+// has nothing to store in user_channel_targets.
+const TARGET_CHANNELS = ['pushover', 'telegram']
+export function needsChannelTargets(channels) {
+  return channels.some((c) => TARGET_CHANNELS.includes(c))
+}
+
 export async function listEventTypes(audience, role) {
   const { rows } = await pool.query(
     `SELECT key, label_vi, label_en, label_ja, description_vi, applicable_roles
@@ -42,6 +61,17 @@ export async function replaceSubscriptions(userId, entries) {
   } finally {
     client.release()
   }
+}
+
+// replaceSubscriptions() only upserts, so narrowing the channel list can't
+// clear rows the UI no longer submits — a leftover enabled pushover/telegram
+// row would keep fanning out and dead-lettering for lack of a target.
+export async function disableChannelsExcept(userId, allowed) {
+  await pool.query(
+    `UPDATE notification_subscriptions SET enabled = false
+     WHERE user_id = $1 AND enabled AND NOT (channel = ANY($2))`,
+    [userId, allowed]
+  )
 }
 
 export async function getTargets(userId) {

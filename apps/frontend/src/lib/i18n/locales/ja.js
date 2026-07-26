@@ -544,6 +544,8 @@ export const ja = {
     websiteLabel: 'ウェブサイト / ブログ',
     notifTitle: '通知設定',
     notifSubtitle: '自分の活動について通知を受け取りたいイベントとチャンネルを選択してください。',
+    notifEmailOnlySubtitle: 'アカウントに関する動きがあったらメールでお知らせします。',
+    notifSendTo: '通知の送信先:',
     notifSaved: '通知設定を保存しました！',
     notifSaveError: '通知設定の保存に失敗しました',
     notifNoEvents: 'あなたのロールに該当するイベントはありません。',
