@@ -59,9 +59,6 @@
 
   const SOCIAL = [
     { key: 'facebook_url',  label: 'Facebook',   icon: '📘', prefix: '' },
-    { key: 'zalo',          label: 'Zalo',        icon: '💬', prefix: 'https://zalo.me/' },
-    { key: 'tiktok_url',    label: 'TikTok',      icon: '🎵', prefix: '' },
-    { key: 'youtube_url',   label: 'YouTube',     icon: '▶️',  prefix: '' },
     { key: 'instagram_url', label: 'Instagram',   icon: '📸', prefix: '' },
     { key: 'linkedin_url',  label: 'LinkedIn',    icon: '💼', prefix: '' },
     { key: 'website_url',   label: 'Website',     icon: '🌐', prefix: '' },
