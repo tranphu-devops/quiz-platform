@@ -69,14 +69,18 @@
 
   // Notification preferences ("my activity" — separate service/schema from
   // the profile fields above, so it gets its own independent save flow.
-  const NOTIF_CHANNELS = ['pushover', 'email', 'telegram']
-  let notifEventTypes = $state([])
+  // The channel list comes from the server (role-derived), not a constant here:
+  // non-admins get email only, delivered to their account email.
+  let notifChannels    = $state(['email'])
+  let notifEmail       = $state('')
+  let notifEventTypes  = $state([])
   let notifSubs        = $state({})
   let notifTargets     = $state({ pushover_user_key: '', telegram_chat_id: '', email_override: '' })
   let notifLoading     = $state(true)
   let notifSaving      = $state(false)
   let notifSuccess     = $state(false)
   let notifError       = $state('')
+  const emailOnly = $derived(notifChannels.length === 1 && notifChannels[0] === 'email')
 
   onMount(async () => {
     if (!$user) { goto('/login'); return }
@@ -134,6 +138,8 @@
       if (notifRes.ok) {
         const data = await notifRes.json()
         notifEventTypes = data.eventTypes ?? []
+        notifChannels = data.channels?.length ? data.channels : ['email']
+        notifEmail = data.email ?? $user.email ?? ''
         const map = {}
         for (const s of data.subscriptions ?? []) map[`${s.event_type}:${s.channel}`] = s.enabled
         notifSubs = map
@@ -146,6 +152,15 @@
     } catch {} finally { notifLoading = false }
   })
 
+  // label_ja is nullable in event_types (no migration has filled it yet), so
+  // the ja locale falls back to Vietnamese rather than rendering blank.
+  function evtLabel(evt) {
+    const code = localeCode($locale)
+    if (code === 'en') return evt.label_en ?? evt.label_vi
+    if (code === 'ja') return evt.label_ja ?? evt.label_vi
+    return evt.label_vi
+  }
+
   function toggleNotifSub(eventKey, channel) {
     const k = `${eventKey}:${channel}`
     notifSubs = { ...notifSubs, [k]: !notifSubs[k] }
@@ -156,11 +171,14 @@
     try {
       const subscriptions = []
       for (const evt of notifEventTypes) {
-        for (const ch of NOTIF_CHANNELS) {
+        for (const ch of notifChannels) {
           subscriptions.push({ event_type: evt.key, channel: ch, enabled: !!notifSubs[`${evt.key}:${ch}`] })
         }
       }
-      const res = await notificationApi.updatePreferences({ subscriptions, targets: notifTargets })
+      // Email-only recipients have no targets to send — the server ignores the
+      // field for them anyway, and omitting it keeps the intent explicit.
+      const body = emailOnly ? { subscriptions } : { subscriptions, targets: notifTargets }
+      const res = await notificationApi.updatePreferences(body)
       if (!res.ok) { const d = await res.json(); notifError = d.error ?? $t('profile.notifSaveError'); return }
       notifSuccess = true
     } catch { notifError = $t('imageUpload.connectionError') } finally { notifSaving = false }
@@ -454,7 +472,10 @@
         </Card>
 
         <!-- Tuỳ chọn thông báo về hoạt động của chính bạn -->
-        <Card title={$t('profile.notifTitle')} subtitle={$t('profile.notifSubtitle')}>
+        <Card
+          title={$t('profile.notifTitle')}
+          subtitle={emailOnly ? $t('profile.notifEmailOnlySubtitle') : $t('profile.notifSubtitle')}
+        >
           {#if notifLoading}
             <p class="ix-loading">{$t('common.loading')}</p>
           {:else}
@@ -463,20 +484,37 @@
 
             {#if notifEventTypes.length === 0}
               <p class="ix-hint">{$t('profile.notifNoEvents')}</p>
+            {:else if emailOnly}
+              <!-- Một kênh duy nhất → danh sách toggle, không cần bảng -->
+              <ul class="notif-list">
+                {#each notifEventTypes as evt (evt.key)}
+                  <li>
+                    <label class="notif-list-row">
+                      <input
+                        type="checkbox"
+                        checked={!!notifSubs[`${evt.key}:email`]}
+                        onchange={() => toggleNotifSub(evt.key, 'email')}
+                      />
+                      <span>{evtLabel(evt)}</span>
+                    </label>
+                  </li>
+                {/each}
+              </ul>
+              <p class="ix-hint notif-sendto">{$t('profile.notifSendTo')} <strong>{notifEmail}</strong></p>
             {:else}
               <div class="notif-table-wrap">
                 <table class="notif-table">
                   <thead>
                     <tr>
                       <th>{$t('profile.notifEventCol')}</th>
-                      {#each NOTIF_CHANNELS as ch}<th>{ch}</th>{/each}
+                      {#each notifChannels as ch}<th>{ch}</th>{/each}
                     </tr>
                   </thead>
                   <tbody>
                     {#each notifEventTypes as evt (evt.key)}
                       <tr>
-                        <td>{localeCode($locale) === 'en' ? evt.label_en : evt.label_vi}</td>
-                        {#each NOTIF_CHANNELS as ch}
+                        <td>{evtLabel(evt)}</td>
+                        {#each notifChannels as ch}
                           <td>
                             <input
                               type="checkbox"
@@ -492,21 +530,23 @@
               </div>
             {/if}
 
-            <div class="two-col">
-              <div class="field-group">
-                <label class="ix-label" for="notif_pushover_key">Pushover User Key</label>
-                <input id="notif_pushover_key" class="ix-input" type="text" bind:value={notifTargets.pushover_user_key} placeholder="u1a2b3c..." />
+            {#if !emailOnly}
+              <div class="two-col">
+                <div class="field-group">
+                  <label class="ix-label" for="notif_pushover_key">Pushover User Key</label>
+                  <input id="notif_pushover_key" class="ix-input" type="text" bind:value={notifTargets.pushover_user_key} placeholder="u1a2b3c..." />
+                </div>
+                <div class="field-group">
+                  <label class="ix-label" for="notif_telegram_chat">Telegram Chat ID</label>
+                  <input id="notif_telegram_chat" class="ix-input" type="text" bind:value={notifTargets.telegram_chat_id} placeholder="123456789" />
+                </div>
               </div>
               <div class="field-group">
-                <label class="ix-label" for="notif_telegram_chat">Telegram Chat ID</label>
-                <input id="notif_telegram_chat" class="ix-input" type="text" bind:value={notifTargets.telegram_chat_id} placeholder="123456789" />
+                <label class="ix-label" for="notif_email_override">{$t('profile.notifEmailOverrideLabel')}</label>
+                <input id="notif_email_override" class="ix-input" type="email" bind:value={notifTargets.email_override} placeholder="you@example.com" />
+                <p class="ix-hint">{$t('profile.notifEmailOverrideHint')}</p>
               </div>
-            </div>
-            <div class="field-group">
-              <label class="ix-label" for="notif_email_override">{$t('profile.notifEmailOverrideLabel')}</label>
-              <input id="notif_email_override" class="ix-input" type="email" bind:value={notifTargets.email_override} placeholder="you@example.com" />
-              <p class="ix-hint">{$t('profile.notifEmailOverrideHint')}</p>
-            </div>
+            {/if}
 
             <Button onclick={saveNotificationPreferences} loading={notifSaving} disabled={notifSaving}>
               {$t('profile.notifSave')}
@@ -873,6 +913,32 @@
   .notif-table th:first-child, .notif-table td:first-child {
     white-space: normal;
     min-width: 180px;
+  }
+
+  /* Email-only (non-admin): one toggle per event, no channel columns */
+  .notif-list {
+    list-style: none;
+    margin: 0 0 12px;
+    padding: 0;
+  }
+  .notif-list-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 2px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .notif-list li:last-child .notif-list-row {
+    border-bottom: none;
+  }
+  .notif-list-row input {
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .notif-sendto {
+    margin-bottom: 16px;
   }
 
   .ix-textarea {

@@ -545,6 +545,8 @@ export const vi = {
     websiteLabel: 'Website / Blog',
     notifTitle: 'Tuỳ chọn thông báo',
     notifSubtitle: 'Chọn sự kiện và kênh bạn muốn nhận thông báo về hoạt động của chính mình.',
+    notifEmailOnlySubtitle: 'Nhận email khi có hoạt động liên quan tới bạn.',
+    notifSendTo: 'Thông báo sẽ gửi tới:',
     notifSaved: 'Đã lưu tuỳ chọn thông báo!',
     notifSaveError: 'Lỗi lưu tuỳ chọn thông báo',
     notifNoEvents: 'Không có sự kiện nào áp dụng cho vai trò của bạn.',

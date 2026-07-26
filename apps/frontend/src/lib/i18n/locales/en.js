@@ -545,6 +545,8 @@ export const en = {
     websiteLabel: 'Website / Blog',
     notifTitle: 'Notification preferences',
     notifSubtitle: 'Choose which events and channels you want to be notified about your own activity.',
+    notifEmailOnlySubtitle: 'Get an email when something happens on your account.',
+    notifSendTo: 'Notifications are sent to:',
     notifSaved: 'Notification preferences saved!',
     notifSaveError: 'Failed to save notification preferences',
     notifNoEvents: 'No events apply to your role.',
