@@ -438,18 +438,6 @@
                 <input id="facebook_url" class="ix-input" type="url" bind:value={facebook_url} placeholder="https://facebook.com/username" />
               </div>
               <div class="field-group">
-                <label class="ix-label" for="zalo"><span class="social-icon">💬</span> Zalo</label>
-                <input id="zalo" class="ix-input" type="text" bind:value={zalo} placeholder="0901234567" />
-              </div>
-              <div class="field-group">
-                <label class="ix-label" for="tiktok_url"><span class="social-icon">🎵</span> TikTok</label>
-                <input id="tiktok_url" class="ix-input" type="url" bind:value={tiktok_url} placeholder="https://tiktok.com/@username" />
-              </div>
-              <div class="field-group">
-                <label class="ix-label" for="youtube_url"><span class="social-icon">▶️</span> YouTube</label>
-                <input id="youtube_url" class="ix-input" type="url" bind:value={youtube_url} placeholder="https://youtube.com/@channel" />
-              </div>
-              <div class="field-group">
                 <label class="ix-label" for="instagram_url"><span class="social-icon">📸</span> Instagram</label>
                 <input id="instagram_url" class="ix-input" type="url" bind:value={instagram_url} placeholder="https://instagram.com/username" />
               </div>
