@@ -68,6 +68,7 @@ export const vi = {
     collapse: 'Thu gọn',
     expandAria: 'Mở sidebar',
     collapseAria: 'Thu sidebar',
+    credits: 'Tín chỉ',
     logout: 'Đăng xuất',
   },
   imageUpload: {

@@ -13,6 +13,7 @@
   let mobileSidebarOpen = $state(false)
   let sidebarCollapsed = $state(false)
   let avatarUrl = $state(null)
+  let credits = $state(0)
   let theme = $state('light')
 
   onMount(() => {
@@ -45,12 +46,13 @@
   $effect(() => {
     const u = $user
     const s = $session
-    if (!u?.id) { avatarUrl = null; return }
+    if (!u?.id) { avatarUrl = null; credits = 0; return }
 
     userApi.getProfile(u.id).then(async (r) => {
       if (r.ok) {
         const p = await r.json()
         avatarUrl = p?.avatar_url ?? null
+        credits = p?.credits ?? 0
       } else if (r.status === 404) {
         const meta = s?.user?.user_metadata ?? {}
         const referral_code = localStorage.getItem('quiz_referral_code')
@@ -63,6 +65,7 @@
           localStorage.removeItem('quiz_referral_code')
           const p = await res.json()
           avatarUrl = p?.avatar_url ?? null
+          credits = p?.credits ?? 0
         }
       }
     }).catch(() => {})
@@ -131,6 +134,7 @@
     email:    $user.email ?? '',
     role:     $user.role  ?? '',
     avatarUrl: avatarUrl,
+    credits: credits,
   })
 </script>
 
