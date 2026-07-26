@@ -223,18 +223,6 @@
               <Input id="facebook_url" type="url" bind:value={facebook_url} placeholder="https://facebook.com/..." />
             </div>
             <div class="field-group">
-              <label for="zalo">Zalo</label>
-              <Input id="zalo" bind:value={zalo} placeholder={$t('adminUserEdit.zaloPlaceholder')} />
-            </div>
-            <div class="field-group">
-              <label for="tiktok_url">TikTok</label>
-              <Input id="tiktok_url" type="url" bind:value={tiktok_url} placeholder="https://tiktok.com/@..." />
-            </div>
-            <div class="field-group">
-              <label for="youtube_url">YouTube</label>
-              <Input id="youtube_url" type="url" bind:value={youtube_url} placeholder="https://youtube.com/@..." />
-            </div>
-            <div class="field-group">
               <label for="instagram_url">Instagram</label>
               <Input id="instagram_url" type="url" bind:value={instagram_url} placeholder="https://instagram.com/..." />
             </div>
