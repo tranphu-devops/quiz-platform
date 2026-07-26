@@ -8,10 +8,27 @@ function llmError(message, detail) {
 }
 
 // Model ids are OpenRouter slugs (provider-prefixed, dot-separated version),
-// not the bare Anthropic model names used when calling Anthropic directly.
+// not the bare provider model names used when calling a provider directly.
 // Fallback only — the actual default is admin-configurable
 // (admin_settings.ai_generation_default_model, read in routes/generate.js).
-export const DEFAULT_MODEL = 'anthropic/claude-sonnet-5'
+//
+// Chosen on cost + what is actually reachable from the production server, in
+// that order. The Lightsail host is in Hong Kong, where BOTH `google/*` and
+// `openai/*` return `403 "This model is not available in your region"` —
+// routing through OpenRouter does not launder the provider's geo-restriction,
+// so every OpenAI/Google slug is unusable here no matter how well it scores
+// on price. Measured on one identical request from that host:
+// deepseek-v4-flash $0.000054, mistral-medium-3.1 $0.000184,
+// moonshotai/kimi-k2.5 (the previous production default) $0.00295 — i.e. Kimi
+// cost ~54x more for the same output, far worse than its sticker price
+// suggests because it emits many more tokens per answer.
+//
+// It has no `file` in its OpenRouter `input_modalities`, which is fine: the
+// default PDF engine is `cloudflare-ai` (OpenRouter parses the PDF to text
+// before the model sees it). Switching the PDF engine to `native` requires
+// swapping this for a file-capable model — from HK that means
+// `mistralai/mistral-medium-3.1`, not the obvious Gemini/GPT picks.
+export const DEFAULT_MODEL = 'deepseek/deepseek-v4-flash'
 
 // Structured-output schema for the generated exam. Mirrors exam-service's
 // Teacher API shape (POST /exams + POST /exams/:id/questions) so the result
