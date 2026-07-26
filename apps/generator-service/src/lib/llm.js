@@ -8,10 +8,17 @@ function llmError(message, detail) {
 }
 
 // Model ids are OpenRouter slugs (provider-prefixed, dot-separated version),
-// not the bare Anthropic model names used when calling Anthropic directly.
+// not the bare provider model names used when calling a provider directly.
 // Fallback only — the actual default is admin-configurable
 // (admin_settings.ai_generation_default_model, read in routes/generate.js).
-export const DEFAULT_MODEL = 'anthropic/claude-sonnet-5'
+//
+// Chosen for cost per generated exam, not raw capability: at $0.10/$0.40 per
+// 1M tokens it is ~6x cheaper than moonshotai/kimi-k2.5 (the previous
+// production default) and ~20x cheaper than anthropic/claude-sonnet-5, has a
+// 1M-token context so a long document fits whole, and — unlike the Kimi and
+// Qwen families — lists `file` in its OpenRouter `input_modalities`, so the
+// `native` PDF engine remains an option rather than a silent failure.
+export const DEFAULT_MODEL = 'google/gemini-2.5-flash-lite'
 
 // Structured-output schema for the generated exam. Mirrors exam-service's
 // Teacher API shape (POST /exams + POST /exams/:id/questions) so the result

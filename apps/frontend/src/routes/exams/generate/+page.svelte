@@ -15,8 +15,8 @@
   let language = $state('vi')
   let difficulty = $state('medium')
   let keySource = $state('own')
-  let model = $state('anthropic/claude-sonnet-5')
-  let defaultModel = $state('anthropic/claude-sonnet-5')
+  let model = $state('google/gemini-2.5-flash-lite')
+  let defaultModel = $state('google/gemini-2.5-flash-lite')
   let ownKeyInput = $state('')
 
   let platformEnabled = $state(false)
