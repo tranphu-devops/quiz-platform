@@ -63,7 +63,7 @@
     ai_generation_credit_cost: '5',
     ai_generation_max_file_size_mb: '20',
     ai_generation_max_questions: '30',
-    ai_generation_default_model: 'anthropic/claude-sonnet-5',
+    ai_generation_default_model: 'deepseek/deepseek-v4-flash',
     ai_generation_pdf_engine: 'cloudflare-ai'
   })
   const PDF_ENGINES = ['cloudflare-ai', 'mistral-ocr', 'native']
@@ -173,7 +173,7 @@
           ai_generation_credit_cost: all.ai_generation_credit_cost ?? '5',
           ai_generation_max_file_size_mb: all.ai_generation_max_file_size_mb ?? '20',
           ai_generation_max_questions: all.ai_generation_max_questions ?? '30',
-          ai_generation_default_model: all.ai_generation_default_model ?? 'anthropic/claude-sonnet-5',
+          ai_generation_default_model: all.ai_generation_default_model ?? 'deepseek/deepseek-v4-flash',
           ai_generation_pdf_engine: PDF_ENGINES.includes(all.ai_generation_pdf_engine) ? all.ai_generation_pdf_engine : 'cloudflare-ai'
         }
       }

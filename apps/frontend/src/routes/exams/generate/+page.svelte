@@ -15,8 +15,8 @@
   let language = $state('vi')
   let difficulty = $state('medium')
   let keySource = $state('own')
-  let model = $state('anthropic/claude-sonnet-5')
-  let defaultModel = $state('anthropic/claude-sonnet-5')
+  let model = $state('deepseek/deepseek-v4-flash')
+  let defaultModel = $state('deepseek/deepseek-v4-flash')
   let ownKeyInput = $state('')
 
   let platformEnabled = $state(false)
