@@ -68,6 +68,7 @@ export const en = {
     collapse: 'Collapse',
     expandAria: 'Open sidebar',
     collapseAria: 'Collapse sidebar',
+    credits: 'Credits',
     logout: 'Log out',
   },
   imageUpload: {

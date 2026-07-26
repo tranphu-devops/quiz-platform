@@ -80,6 +80,13 @@
     {/each}
   </nav>
 
+  {#if userInfo && !collapsed && userInfo.credits !== undefined}
+    <div class="ix-credits-row">
+      <div class="ix-credits-label">{$t('sidebar.credits')}</div>
+      <div class="ix-credits-value">{Math.floor(userInfo.credits)}</div>
+    </div>
+  {/if}
+
   {#if children && !collapsed}
     <div class="ix-sidebar-extra">
       {@render children()}
@@ -286,6 +293,37 @@
     padding: 12px;
     border-top: 1px solid var(--ix-border);
     flex-shrink: 0;
+  }
+
+  /* ── Credits row ─────────────────────────────────────────────────── */
+  .ix-credits-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: var(--primary-light);
+    border-top: 1px solid var(--ix-border);
+    flex-shrink: 0;
+    border-radius: 8px;
+    margin: 8px;
+  }
+
+  .ix-credits-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary);
+    text-transform: capitalize;
+  }
+
+  .ix-credits-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary);
+    background: rgba(255, 255, 255, 0.6);
+    padding: 3px 8px;
+    border-radius: 4px;
+    min-width: 40px;
+    text-align: center;
   }
 
   /* ── User row ────────────────────────────────────────────────────── */
