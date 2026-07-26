@@ -2,7 +2,7 @@ import { pool } from '../db.js'
 import { verifyAuth } from '../middleware/auth.js'
 import { encryptKey, decryptKey, keyPrefix } from '../lib/keyCrypto.js'
 import { extractDocxText } from '../lib/docParse.js'
-import { buildDocumentBlock, generateExam, DEFAULT_MODEL } from '../lib/llm.js'
+import { buildDocumentBlock, generateExam, DEFAULT_MODEL, PDF_ENGINES, DEFAULT_PDF_ENGINE } from '../lib/llm.js'
 import { notify } from '../lib/notify.js'
 
 const EXAM_SERVICE_URL = process.env.EXAM_SERVICE_URL
@@ -257,9 +257,13 @@ export default async function generateRoutes(fastify) {
 
     const settings = await getAdminSettings([
       'ai_generation_enabled', 'ai_generation_credit_cost', 'ai_generation_default_model',
-      'ai_generation_max_file_size_mb', 'ai_generation_max_questions', 'default_exam_cost'
+      'ai_generation_max_file_size_mb', 'ai_generation_max_questions', 'ai_generation_pdf_engine',
+      'default_exam_cost'
     ])
     const defaultModel = settings.ai_generation_default_model || DEFAULT_MODEL
+    const pdfEngine = PDF_ENGINES.includes(settings.ai_generation_pdf_engine)
+      ? settings.ai_generation_pdf_engine
+      : DEFAULT_PDF_ENGINE
     const maxFileSizeMb = Number(settings.ai_generation_max_file_size_mb ?? 20)
     const maxQuestions = Number(settings.ai_generation_max_questions ?? 30)
     const questionCount = Math.max(1, Math.min(Number(params.question_count) || 15, maxQuestions))
@@ -346,9 +350,10 @@ export default async function generateRoutes(fastify) {
         const documentBlock = buildDocumentBlock({
           mimetype: data.mimetype,
           buffer,
+          filename: data.filename,
           extractedText: fileType === 'docx' ? await extractDocxText(buffer) : undefined
         })
-        const { exam } = await generateExam({ apiKey, model, documentBlock, questionCount, language, difficulty })
+        const { exam } = await generateExam({ apiKey, model, documentBlock, questionCount, language, difficulty, pdfEngine })
         const examId = await importExam(authHeader, exam, defaultExamCost)
         await finalizeJob(job.id, { status: 'completed', questionCount: exam.questions.length, examId })
         notify('generation.completed', {
@@ -367,7 +372,15 @@ export default async function generateRoutes(fastify) {
         })
       } catch (err) {
         fastify.log.error(err)
-        const errorDetail = err.detail ?? { source: 'generator-service', message: err.message }
+        // Always stamp the input characteristics onto the stored detail — the
+        // most common failure ("model saw an empty document") can only be
+        // diagnosed from the file type/size and the PDF engine in use.
+        const errorDetail = {
+          ...(err.detail ?? { source: 'generator-service', message: err.message }),
+          file_type: fileType,
+          file_size_bytes: buffer.length,
+          ...(fileType === 'pdf' ? { pdf_engine: pdfEngine } : {})
+        }
         await finalizeJob(job.id, { status: 'failed', errorMessage: err.message, errorDetail }).catch(() => {})
         notify('generation.failed', {
           recipients: [{ role: 'owner', user_id: req.user.id }],

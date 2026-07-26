@@ -57,21 +57,52 @@ const EXAM_SCHEMA = {
   additionalProperties: false
 }
 
+// OpenRouter's file-parser engines for a PDF content block. `cloudflare-ai`
+// (free; the old `pdf-text` id is deprecated and redirects here) has
+// OpenRouter itself parse the PDF to markdown and inject it as text, so it
+// works with *any* model. `native` forwards the raw PDF to the provider and
+// therefore only works on models whose `input_modalities` include `file` —
+// on anything else the model receives the filename with no content and
+// politely reports an empty document instead of failing loudly.
+// `mistral-ocr` is the paid OCR path, needed for scanned/image-only PDFs.
+export const PDF_ENGINES = ['cloudflare-ai', 'mistral-ocr', 'native']
+export const DEFAULT_PDF_ENGINE = 'cloudflare-ai'
+
+// Below this, a text document is treated as "nothing to work with".
+const MIN_DOCUMENT_CHARS = 30
+
+// The model is told the real filename (it often carries topic information),
+// but only ever the basename with a guaranteed .pdf suffix — OpenRouter keys
+// its parser off the extension.
+function pdfFilename(filename) {
+  const base = String(filename ?? '').split(/[\\/]/).pop().trim().slice(-120)
+  if (!base) return 'document.pdf'
+  return base.toLowerCase().endsWith('.pdf') ? base : `${base}.pdf`
+}
+
 // PDF and plain text go to the model as OpenAI-compatible file/text content
 // blocks (OpenRouter's chat completions API). DOCX must already be
 // pre-extracted to plain text by lib/docParse.js — there is no native .docx
 // content block.
-export function buildDocumentBlock({ mimetype, buffer, extractedText }) {
+export function buildDocumentBlock({ mimetype, buffer, extractedText, filename }) {
   if (mimetype === 'application/pdf') {
     return {
       type: 'file',
       file: {
-        filename: 'document.pdf',
+        filename: pdfFilename(filename),
         file_data: `data:application/pdf;base64,${buffer.toString('base64')}`
       }
     }
   }
-  const text = extractedText ?? buffer.toString('utf8')
+  const text = (extractedText ?? buffer.toString('utf8')).trim()
+  // Fail here rather than asking the model to invent an exam from nothing —
+  // an empty .docx/.txt otherwise comes back as a "please provide the
+  // document" answer that only trips the downstream questions-array check.
+  if (text.length < MIN_DOCUMENT_CHARS) {
+    throw llmError('Không trích xuất được nội dung văn bản từ tài liệu — file có thể rỗng hoặc chỉ chứa ảnh', {
+      source: 'validation', reason: 'empty_document', extracted_chars: text.length
+    })
+  }
   return { type: 'text', text: `Nội dung tài liệu nguồn:\n\n${text}` }
 }
 
@@ -88,10 +119,11 @@ Yêu cầu:
 - Mỗi câu có "explanation" ngắn gọn giải thích vì sao đáp án đúng.
 - Không bịa thông tin ngoài tài liệu nguồn; câu hỏi phải kiểm tra đúng nội dung tài liệu.
 - "tags" là 3-6 từ khoá chủ đề ngắn gọn rút ra từ tài liệu.
-- Không có hai câu hỏi trùng hoặc gần giống nhau.`
+- Không có hai câu hỏi trùng hoặc gần giống nhau.
+- Nếu bạn KHÔNG đọc được nội dung tài liệu đính kèm (tệp rỗng, không trích xuất được chữ), hãy trả về "questions" là mảng rỗng và ghi lý do vào "description" — tuyệt đối không tạo câu hỏi giả, không tạo câu hỏi có nội dung là lời xin lỗi hay yêu cầu gửi lại tài liệu.`
 }
 
-export async function generateExam({ apiKey, model, documentBlock, questionCount, language, difficulty }) {
+export async function generateExam({ apiKey, model, documentBlock, questionCount, language, difficulty, pdfEngine = DEFAULT_PDF_ENGINE }) {
   // Scale with questionCount — a fixed 16000 was getting hit (and silently
   // truncating the JSON output, surfacing as a confusing "Unterminated
   // string in JSON" parse error) once teachers asked for larger exams.
@@ -107,11 +139,12 @@ export async function generateExam({ apiKey, model, documentBlock, questionCount
       type: 'json_schema',
       json_schema: { name: 'exam', strict: true, schema: EXAM_SCHEMA }
     },
-    // Only relevant when documentBlock is a PDF file block — "native" hands
-    // the PDF to the underlying model directly (Claude models support it
-    // natively) instead of OpenRouter's default OCR parsing, which costs
-    // extra and isn't needed here.
-    ...(documentBlock.type === 'file' ? { plugins: [{ id: 'file-parser', pdf: { engine: 'native' } }] } : {})
+    // Only relevant when documentBlock is a PDF file block. Engine is
+    // admin-configurable (see PDF_ENGINES) because the right choice depends
+    // on the model and the document: `native` needs a file-capable model,
+    // `mistral-ocr` is the only one that reads scanned pages, and the
+    // `cloudflare-ai` default works everywhere for free.
+    ...(documentBlock.type === 'file' ? { plugins: [{ id: 'file-parser', pdf: { engine: pdfEngine } }] } : {})
   }
 
   const res = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
@@ -168,8 +201,32 @@ export async function generateExam({ apiKey, model, documentBlock, questionCount
   try {
     return { exam: normalizeExam(parsed), usage: data.usage }
   } catch (err) {
-    throw llmError(err.message, { source: 'validation', model })
+    // Keep what the model itself said. When a document doesn't reach the
+    // model it answers *inside* the schema ("tệp document.pdf xuất hiện
+    // trống…") with an empty questions array, so its own title/description
+    // is the only explanation of the failure — without this the job history
+    // showed a bare "LLM không sinh được câu hỏi nào" and the real reason
+    // was only visible in OpenRouter's dashboard.
+    const isPdf = documentBlock.type === 'file'
+    const reason = err.detail?.reason ?? 'invalid_exam'
+    const message = reason === 'empty_exam' && isPdf
+      ? `Model không đọc được nội dung file PDF (engine "${pdfEngine}"). Nếu PDF là bản scan hãy đổi engine sang "mistral-ocr"; nếu model không hỗ trợ đọc file thì dùng engine "cloudflare-ai".`
+      : err.message
+    throw llmError(message, {
+      source: 'validation',
+      reason,
+      model,
+      llm_title: truncate(parsed.title),
+      llm_description: truncate(parsed.description),
+      finish_reason: choice.finish_reason,
+      ...(isPdf ? { pdf_engine: pdfEngine } : {})
+    })
   }
+}
+
+function truncate(value, max = 500) {
+  if (typeof value !== 'string') return undefined
+  return value.length > max ? `${value.slice(0, max)}…` : value
 }
 
 // Defensive re-validation on top of the schema guarantee: unique option
@@ -185,7 +242,13 @@ export async function generateExam({ apiKey, model, documentBlock, questionCount
 // opaque TypeError instead of a reportable validation error.
 function normalizeExam(exam) {
   if (!Array.isArray(exam.questions) || exam.questions.length === 0) {
-    throw new Error('LLM không sinh được câu hỏi nào')
+    throw llmError('LLM không sinh được câu hỏi nào', { reason: 'empty_exam' })
+  }
+  // A model that couldn't read the document sometimes answers with a single
+  // optionless "please resend the file" pseudo-question instead of an empty
+  // array — same failure, so report it as the same reason.
+  if (exam.questions.every(q => !Array.isArray(q.options) || q.options.length === 0)) {
+    throw llmError('LLM không sinh được câu hỏi nào (mọi câu đều không có đáp án)', { reason: 'empty_exam' })
   }
   const questions = exam.questions.map((q, index) => {
     if (!Array.isArray(q.options) || q.options.length === 0 || !q.options.every(o => o && typeof o.key === 'string' && typeof o.text === 'string')) {
