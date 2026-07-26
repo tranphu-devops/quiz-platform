@@ -63,8 +63,10 @@
     ai_generation_credit_cost: '5',
     ai_generation_max_file_size_mb: '20',
     ai_generation_max_questions: '30',
-    ai_generation_default_model: 'anthropic/claude-sonnet-5'
+    ai_generation_default_model: 'anthropic/claude-sonnet-5',
+    ai_generation_pdf_engine: 'cloudflare-ai'
   })
+  const PDF_ENGINES = ['cloudflare-ai', 'mistral-ocr', 'native']
   let aiSaving = $state(false)
   let aiSuccess = $state(false)
 
@@ -171,7 +173,8 @@
           ai_generation_credit_cost: all.ai_generation_credit_cost ?? '5',
           ai_generation_max_file_size_mb: all.ai_generation_max_file_size_mb ?? '20',
           ai_generation_max_questions: all.ai_generation_max_questions ?? '30',
-          ai_generation_default_model: all.ai_generation_default_model ?? 'anthropic/claude-sonnet-5'
+          ai_generation_default_model: all.ai_generation_default_model ?? 'anthropic/claude-sonnet-5',
+          ai_generation_pdf_engine: PDF_ENGINES.includes(all.ai_generation_pdf_engine) ? all.ai_generation_pdf_engine : 'cloudflare-ai'
         }
       }
     } catch {} finally { settingsLoading = false }
@@ -722,6 +725,19 @@
                 bind:value={aiSettings.ai_generation_default_model}
                 hint={$t('admin.aiDefaultModelHint')}
               />
+              <div class="setting-field">
+                <label class="ix-label" for="ai_generation_pdf_engine">{$t('admin.aiPdfEngineLabel')}</label>
+                <select
+                  id="ai_generation_pdf_engine"
+                  class="modal-select"
+                  bind:value={aiSettings.ai_generation_pdf_engine}
+                >
+                  {#each PDF_ENGINES as engine}
+                    <option value={engine}>{engine} — {$t(`admin.aiPdfEngine_${engine.replace('-', '_')}`)}</option>
+                  {/each}
+                </select>
+                <p class="ix-hint">{$t('admin.aiPdfEngineHint')}</p>
+              </div>
               <div>
                 <Button onclick={saveAiSettings} loading={aiSaving} disabled={aiSaving}>
                   {$t('admin.saveSettings')}
@@ -1253,6 +1269,11 @@
   .ix-loading { font-size: 14px; color: var(--ix-text-muted); }
   .ix-note    { font-size: 12px; color: var(--ix-text-muted); margin-top: 12px; }
   .ix-hint    { font-size: 12px; color: var(--ix-text-muted); margin: 0 0 12px; line-height: 1.4; }
+
+  /* Select rendered inline in a settings form, matched to <Input>'s field */
+  .setting-field { display: flex; flex-direction: column; gap: 5px; }
+  .setting-field .ix-label { font-size: 13px; font-weight: 500; color: var(--ix-text-secondary); line-height: 1; }
+  .setting-field .ix-hint { margin: 0; }
 
   /* ── Platform LLM key ─────────────────────────────────────────────────── */
   .key-row { border: 1px solid var(--border); border-radius: var(--radius-btn, 10px); padding: 12px 14px; margin-bottom: 10px; }
