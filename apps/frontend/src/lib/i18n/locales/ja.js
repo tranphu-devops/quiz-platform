@@ -68,6 +68,7 @@ export const ja = {
     collapse: '折りたたむ',
     expandAria: 'サイドバーを開く',
     collapseAria: 'サイドバーを閉じる',
+    credits: 'クレジット',
     logout: 'ログアウト',
   },
   imageUpload: {
