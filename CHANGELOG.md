@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased] — 2026-07-28
+
+### Added
+- **README song ngữ**: `README.md` viết lại hoàn toàn bằng tiếng Anh (context cập nhật đầy đủ: notification-service, referral, Teacher API, Admin System Overview...), thêm `README.vi.md` và `README.ja.md` là bản dịch, link chéo qua lại giữa 3 file. Các bản dịch chỉ cập nhật khi có yêu cầu, không tự động đồng bộ mỗi lần đổi README.md.
+- **Landing page: 3 tính năng mới lên trang chủ** — giới thiệu bạn bè nhận credit (referral), thông báo đa kênh (Email/Pushover/Telegram), và Teacher API — đủ cả 3 ngôn ngữ. Bỏ badge "Mới" khỏi các tính năng đã ra mắt trước đó (bình luận/thích/báo lỗi, khám phá đề theo tag, ghi chú nháp, tạo đề bằng AI).
+
+### Changed
+- **`cleanup-images.yml` khớp lại matrix service với `build-push.yml`**: thêm `interaction-service`, `generator-service`, `notification-service`, `grader-service` — trước đây job dọn image GHCR hàng tuần bỏ sót 4 service này, image cũ tích luỹ không giới hạn.
+
 ## [Unreleased] — 2026-07-26
 
 ### Added
