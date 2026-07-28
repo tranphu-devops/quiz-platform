@@ -7,6 +7,15 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] — 2026-07-28
 
 ### Added
+- **README song ngữ**: `README.md` viết lại hoàn toàn bằng tiếng Anh (context cập nhật đầy đủ: notification-service, referral, Teacher API, Admin System Overview...), thêm `README.vi.md` và `README.ja.md` là bản dịch, link chéo qua lại giữa 3 file. Các bản dịch chỉ cập nhật khi có yêu cầu, không tự động đồng bộ mỗi lần đổi README.md.
+- **Landing page: 3 tính năng mới lên trang chủ** — giới thiệu bạn bè nhận credit (referral), thông báo đa kênh (Email/Pushover/Telegram), và Teacher API — đủ cả 3 ngôn ngữ. Bỏ badge "Mới" khỏi các tính năng đã ra mắt trước đó (bình luận/thích/báo lỗi, khám phá đề theo tag, ghi chú nháp, tạo đề bằng AI).
+
+### Changed
+- **`cleanup-images.yml` khớp lại matrix service với `build-push.yml`**: thêm `interaction-service`, `generator-service`, `notification-service`, `grader-service` — trước đây job dọn image GHCR hàng tuần bỏ sót 4 service này, image cũ tích luỹ không giới hạn.
+
+## [Unreleased] — 2026-07-26
+
+### Added
 - **Đăng nhập bằng link gửi qua email (magic link)**, thêm bên cạnh nút "Đăng nhập với Google" hiện có trên `/login`: nhập email, nhận link đăng nhập, link hết hạn sau 10 phút. Không cần đặt/nhớ mật khẩu — hệ thống không lưu password cho người dùng cuối. Nếu người dùng dùng cùng một email đã đăng ký qua Google, magic link đăng nhập vào đúng tài khoản cũ (không tạo tài khoản trùng).
 - **Admin đổi được email cho một tài khoản** (`/admin/users/[id]/edit`) — dùng khi người dùng mất quyền truy cập cả email lẫn tài khoản Google đã đăng ký, không còn cách nào tự đăng nhập lại. Email mới có hiệu lực đăng nhập (qua magic link) ngay lập tức.
 - **`scripts/mint-test-jwt.js`** (dev-only): tạo nhanh một JWT/session hợp lệ cho một tài khoản đã seed sẵn, dùng để test API hoặc test giao diện (dán vào console trình duyệt) mà không cần đăng nhập thật qua Google/email.
