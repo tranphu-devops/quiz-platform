@@ -59,6 +59,12 @@ Schema is managed by **ordered, idempotent migration files** in `infra/postgres/
 node scripts/generate-badges.js   # outputs to apps/frontend/static/badges/ + src/lib/badge-presets.json
 ```
 
+### Mint a dev-only test JWT/session
+```bash
+node --env-file=.env scripts/mint-test-jwt.js [--email hs.minh@quiz.test]
+```
+Requires the local stack running (`docker compose up`). Signs a JWT with the local `JWT_SECRET` for a seeded user (see `infra/postgres/seed.sql`), bypassing GoTrue/login entirely — for testing the API (bearer token) or the frontend UI (paste the printed `localStorage.setItem('quiz_session', ...)` snippet into the browser console, then reload). Dev/local only — never run against a production `JWT_SECRET`/database.
+
 ### Production deploy (Ubuntu server, run as root)
 ```bash
 sudo bash deploy.sh           # fresh install: clone, configure, build, start
@@ -153,7 +159,7 @@ Internal service-to-service calls use Docker network hostnames directly (e.g., `
 > **Note:** `apps/auth-service/` is a legacy prototype (email/password auth before GoTrue was adopted). It is **not** wired into `docker-compose.yml` or Nginx and should be ignored.
 
 ### Auth flow — GoTrue + local JWT verification
-**GoTrue** (`supabase/gotrue:v2.151.0`) handles signup, login, Google OAuth, and JWT issuance.
+**GoTrue** (`supabase/gotrue:v2.151.0`) handles signup, login, Google OAuth, and JWT issuance. **No passwords are stored/used for end users** — the two login methods are Google OAuth and passwordless email magic link (`signInWithOtp`, `apps/frontend/src/routes/login/+page.svelte`), both provisioning the same `auth.users`/`profiles` rows keyed by email/`sub`. GoTrue's SMTP relays through Resend (`docker-compose.yml`, reusing `RESEND_API_KEY`), with `GOTRUE_MAILER_OTP_EXP: 600` (magic links expire in 10 min). If a user loses access to both their email and Google account, recovery is manual: an admin changes their email via `PATCH /admin/users/:id/email` (`/admin/users/:id/edit` in the frontend) — there is no self-service password reset.
 
 JWT claims:
 - `sub` → `req.user.id` (user UUID)

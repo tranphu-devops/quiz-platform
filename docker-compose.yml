@@ -40,7 +40,13 @@ services:
       GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: ${SITE_URL:-http://localhost}/auth/callback
       API_EXTERNAL_URL: ${SITE_URL:-http://localhost}
       GOTRUE_MAILER_AUTOCONFIRM: "true"
-      GOTRUE_SMTP_HOST: ""
+      GOTRUE_SMTP_HOST: "smtp.resend.com"
+      GOTRUE_SMTP_PORT: 587
+      GOTRUE_SMTP_USER: "resend"
+      GOTRUE_SMTP_PASS: ${RESEND_API_KEY:-}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${NOTIFICATION_EMAIL_FROM:-noreply@novaquiz.net}
+      GOTRUE_SMTP_SENDER_NAME: "NovaQuiz"
+      GOTRUE_MAILER_OTP_EXP: 600
     depends_on:
       postgres:
         condition: service_healthy

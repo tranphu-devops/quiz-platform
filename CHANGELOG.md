@@ -4,9 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [Unreleased] — 2026-07-26
+## [Unreleased] — 2026-07-28
 
 ### Added
+- **Đăng nhập bằng link gửi qua email (magic link)**, thêm bên cạnh nút "Đăng nhập với Google" hiện có trên `/login`: nhập email, nhận link đăng nhập, link hết hạn sau 10 phút. Không cần đặt/nhớ mật khẩu — hệ thống không lưu password cho người dùng cuối. Nếu người dùng dùng cùng một email đã đăng ký qua Google, magic link đăng nhập vào đúng tài khoản cũ (không tạo tài khoản trùng).
+- **Admin đổi được email cho một tài khoản** (`/admin/users/[id]/edit`) — dùng khi người dùng mất quyền truy cập cả email lẫn tài khoản Google đã đăng ký, không còn cách nào tự đăng nhập lại. Email mới có hiệu lực đăng nhập (qua magic link) ngay lập tức.
+- **`scripts/mint-test-jwt.js`** (dev-only): tạo nhanh một JWT/session hợp lệ cho một tài khoản đã seed sẵn, dùng để test API hoặc test giao diện (dán vào console trình duyệt) mà không cần đăng nhập thật qua Google/email.
 - **Landing page đa ngôn ngữ đầy đủ trên cả 3 trang** (`/`, `/brand`, `/contact`) với 3 thứ tiếng: English, Tiếng Việt, 日本語. Trước đây trang Thương hiệu và Liên hệ mới thêm chỉ có tiếng Việt.
 - **Hệ thống giới thiệu (referral) cộng credit**: mỗi người dùng có mã và link giới thiệu riêng (hiện ở card "Giới thiệu bạn bè" trên `/profile`, kèm số người đã giới thiệu). Khi có người mới đăng ký qua link: người mới được cộng thẳng một khoản credit thưởng vào tài khoản ngay khi tạo tài khoản, còn người giới thiệu tích luỹ credit và phải bấm **Nhận (claim)** mới cộng vào số dư — số credit thưởng cho người giới thiệu tính theo mức admin đang đặt tại thời điểm claim. Người giới thiệu cũng nhận được thông báo (Pushover/Email/Telegram, nếu đã bật) khi có người đăng ký qua link. Admin cấu hình 2 mức thưởng (thưởng người giới thiệu / thưởng người đăng ký mới) ở tab **Credits** trong `/admin`. Chống lạm dụng: mỗi người chỉ được ghi nhận giới thiệu một lần và không tự giới thiệu chính mình.
 

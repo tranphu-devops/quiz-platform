@@ -478,6 +478,39 @@ export default async function userRoutes(fastify) {
     return { success: true }
   })
 
+  // ── PATCH /admin/users/:id/email — recovery path when a user loses access
+  // to the email/Google account they signed up with; admin vouches for the
+  // new address (email_confirmed_at set immediately) so magic-link login
+  // works on it right away, no self-service confirm flow. ─────────────────
+  fastify.patch('/admin/users/:id/email', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
+    if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+    const { id } = req.params
+    const { email } = req.body ?? {}
+    if (!email || !isValidEmail(email)) {
+      return reply.status(400).send({ error: 'Email không hợp lệ', statusCode: 400 })
+    }
+
+    const normalizedEmail = email.toLowerCase().trim()
+    const { rows: existing } = await pool.query(
+      'SELECT id FROM auth.users WHERE email = $1 AND id <> $2',
+      [normalizedEmail, id]
+    )
+    if (existing.length > 0) return reply.status(409).send({ error: 'Email đã được sử dụng', statusCode: 409 })
+
+    try {
+      const { rowCount } = await pool.query(
+        `UPDATE auth.users SET email = $1, email_confirmed_at = NOW(), updated_at = NOW() WHERE id = $2`,
+        [normalizedEmail, id]
+      )
+      if (rowCount === 0) return reply.status(404).send({ error: 'Không tìm thấy người dùng', statusCode: 404 })
+      invalidate(`public:profile:${id}`)
+      return { success: true, email: normalizedEmail }
+    } catch (err) {
+      fastify.log.error(err)
+      return reply.status(500).send({ error: 'Lỗi cập nhật email', statusCode: 500 })
+    }
+  })
+
   // ── GET /admin/users/:id — full profile for edit form ────────────────────
   fastify.get('/admin/users/:id', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
