@@ -135,6 +135,12 @@ export const userApi = {
       headers: authHeaders(),
       body: JSON.stringify({ credits })
     }),
+  adminUpdateEmail: (id, email) =>
+    apiFetch(`${USER_URL}/admin/users/${id}/email`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: JSON.stringify({ email })
+    }),
   upgradeToTeacher: () =>
     apiFetch(`${USER_URL}/upgrade-to-teacher`, {
       method: 'POST',

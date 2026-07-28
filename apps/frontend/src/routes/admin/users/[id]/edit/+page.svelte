@@ -18,6 +18,7 @@
   let success     = $state(false)
   let error       = $state('')
   let targetEmail = $state('')
+  let originalEmail = $state('')
 
   // Profile fields (mirror /profile)
   let full_name     = $state('')
@@ -52,6 +53,7 @@
       }
       const p = await res.json()
       targetEmail   = p.email ?? ''
+      originalEmail = p.email ?? ''
       full_name     = p.full_name ?? ''
       avatar_url    = p.avatar_url ?? ''
       role          = p.role ?? 'student'
@@ -77,7 +79,19 @@
   async function save() {
     error = ''; success = false; saving = true
     try {
-      // 1. Update profile fields
+      // 1. Update email (only if changed — avoids a needless self-conflict 409)
+      const trimmedEmail = targetEmail.trim()
+      if (trimmedEmail && trimmedEmail !== originalEmail) {
+        const emailRes = await userApi.adminUpdateEmail(userId, trimmedEmail)
+        if (!emailRes.ok) {
+          const d = await emailRes.json()
+          error = d.error ?? $t('adminUserEdit.emailUpdateError')
+          return
+        }
+        originalEmail = trimmedEmail
+      }
+
+      // 2. Update profile fields
       const profileRes = await userApi.updateProfile(userId, {
         full_name, avatar_url, bio,
         birth_year: birth_year ? parseInt(birth_year, 10) : null,
@@ -91,7 +105,7 @@
         return
       }
 
-      // 2. Update role
+      // 3. Update role
       const roleRes = await userApi.adminUpdateRole(userId, role)
       if (!roleRes.ok) {
         const d = await roleRes.json()
@@ -99,7 +113,7 @@
         return
       }
 
-      // 3. Update credits
+      // 4. Update credits
       const creditsVal = parseInt(String(credits), 10)
       if (!isNaN(creditsVal) && creditsVal >= 0) {
         const credRes = await userApi.adminUpdateCredits(userId, creditsVal)
@@ -158,8 +172,9 @@
           </div>
 
           <div class="field-group">
-            <label for="email-ro">Email <span class="readonly-tag">{$t('adminUserEdit.readonlyTag')}</span></label>
-            <Input id="email-ro" value={targetEmail} disabled />
+            <label for="email">Email <span class="field-warn-tag">{$t('adminUserEdit.emailChangeWarning')}</span></label>
+            <Input id="email" type="email" bind:value={targetEmail} />
+            <p class="field-hint">{$t('adminUserEdit.emailChangeHint')}</p>
           </div>
         </Card>
 
@@ -329,11 +344,11 @@
     gap: 0.4rem;
   }
 
-  .readonly-tag {
+  .field-warn-tag {
     font-size: 0.72rem;
     font-weight: 500;
-    background: var(--primary-light);
-    color: var(--primary);
+    background: rgba(217,119,6,0.1);
+    color: #b45309;
     padding: 0.1rem 0.4rem;
     border-radius: 4px;
     opacity: 1;
