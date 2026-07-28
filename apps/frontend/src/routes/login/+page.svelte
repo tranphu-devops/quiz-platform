@@ -6,6 +6,12 @@
   import { onMount } from 'svelte'
   import { t } from '$lib/i18n'
 
+  let email = $state('')
+  let sending = $state(false)
+  let sent = $state(false)
+  let magicError = $state('')
+  let cooldown = $state(0)
+
   onMount(() => {
     if ($user) goto('/dashboard')
   })
@@ -16,6 +22,46 @@
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth-callback` }
     })
+  }
+
+  function startCooldown() {
+    cooldown = 60
+    const iv = setInterval(() => {
+      cooldown -= 1
+      if (cooldown <= 0) clearInterval(iv)
+    }, 1000)
+  }
+
+  async function sendMagicLink() {
+    if (!browser || sending || cooldown > 0) return
+    const trimmed = email.trim()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      magicError = $t('login.invalidEmail')
+      return
+    }
+
+    sending = true
+    magicError = ''
+    const { error } = await auth.signInWithOtp({
+      email: trimmed,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` }
+    })
+    sending = false
+
+    if (error) {
+      magicError = error.status === 429
+        ? $t('login.magicLinkRateLimited')
+        : (error.message || $t('login.magicLinkGenericError'))
+      return
+    }
+
+    sent = true
+    startCooldown()
+  }
+
+  function resend() {
+    sent = false
+    sendMagicLink()
   }
 </script>
 
@@ -114,6 +160,45 @@
     font-size: 0.78rem; color: var(--muted); line-height: 1.5;
   }
 
+  .magic-form {
+    display: flex; flex-direction: column; gap: 0.6rem; margin-top: 1.25rem;
+  }
+  .magic-input {
+    width: 100%; padding: 0.75rem 1rem;
+    border: 1.5px solid var(--border); border-radius: var(--radius-btn);
+    background: var(--surface); color: var(--text); font-size: 0.92rem;
+    box-sizing: border-box;
+  }
+  .magic-input:focus {
+    outline: none; border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+  }
+  .btn-magic {
+    width: 100%; padding: 0.85rem 1.25rem;
+    border: none; border-radius: var(--radius-btn);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: #fff; cursor: pointer; font-size: 0.92rem; font-weight: 600;
+    transition: opacity 0.2s;
+  }
+  .btn-magic:disabled { opacity: 0.6; cursor: not-allowed; }
+  .magic-error {
+    font-size: 0.8rem; color: #dc2626;
+  }
+  .magic-sent {
+    text-align: center; padding: 0.5rem 0;
+  }
+  .magic-sent p {
+    font-size: 0.85rem; color: var(--text); line-height: 1.5; margin: 0 0 0.4rem;
+  }
+  .magic-sent .headline {
+    font-weight: 700; margin-bottom: 0.3rem;
+  }
+  .btn-resend {
+    background: none; border: none; color: var(--primary); cursor: pointer;
+    font-size: 0.82rem; font-weight: 600; padding: 0;
+  }
+  .btn-resend:disabled { color: var(--muted); cursor: not-allowed; }
+
   /* Mobile */
   @media (max-width: 768px) {
     .login-wrap { grid-template-columns: 1fr; }
@@ -155,6 +240,35 @@
         </svg>
         {$t('login.continueWithGoogle')}
       </button>
+
+      <div class="divider">{$t('login.orDivider')}</div>
+
+      {#if sent}
+        <div class="magic-sent">
+          <p class="headline">{$t('login.magicLinkSent')}</p>
+          <p>{$t('login.magicLinkSentDetail', { email })}</p>
+          <button class="btn-resend" onclick={resend} disabled={cooldown > 0}>
+            {cooldown > 0 ? $t('login.resendCooldown', { seconds: cooldown }) : $t('login.resend')}
+          </button>
+        </div>
+      {:else}
+        <form class="magic-form" onsubmit={(e) => { e.preventDefault(); sendMagicLink() }}>
+          <input
+            type="email"
+            class="magic-input"
+            placeholder={$t('login.emailPlaceholder')}
+            bind:value={email}
+            autocomplete="email"
+          />
+          <button class="btn-magic" type="submit" disabled={sending || cooldown > 0}>
+            {sending ? $t('login.sendingMagicLink') : $t('login.sendMagicLink')}
+          </button>
+          {#if magicError}
+            <p class="magic-error">{magicError}</p>
+          {/if}
+        </form>
+      {/if}
+
       <p class="card-note">{@html $t('login.termsNote')}</p>
     </div>
   </div>
