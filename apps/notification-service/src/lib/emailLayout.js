@@ -1,9 +1,14 @@
 // Branded HTML email shell shared by every notification email (and the
 // contact form). Deliberately old-school: nested tables, inline styles,
-// no external CSS/webfonts/images. Gmail strips <style> blocks in some
-// views and Outlook ignores flexbox/border-radius, so anything that must
-// survive is expressed as a table cell with inline attributes; anything
-// cosmetic (radius, letter-spacing) degrades gracefully.
+// no external CSS/webfonts. Gmail strips <style> blocks in some views and
+// Outlook ignores flexbox/border-radius, so anything that must survive is
+// expressed as a table cell with inline attributes; anything cosmetic
+// (radius, letter-spacing) degrades gracefully.
+//
+// The one remote asset is the header logo (BRAND.logoUrl). Most clients
+// block images until the reader allows them, so it is treated as purely
+// decorative — alt="" and the brand name next to it is real text, so a
+// blocked image costs nothing but the tile.
 //
 // Light-mode only, with explicit colours on every element — clients that
 // auto-invert dark mode do so on their own, and half-declared themes look
@@ -45,10 +50,24 @@ export function renderEmailHtml({
         <!-- header -->
         <tr>
           <td style="background-color:${BRAND.primary};background-image:linear-gradient(135deg,${BRAND.primary},${BRAND.accent});border-radius:16px 16px 0 0;padding:26px 32px;">
-            <a href="${siteUrl('/')}" style="text-decoration:none;color:#ffffff;">
-              <span style="display:inline-block;font-size:21px;font-weight:700;letter-spacing:-0.3px;color:#ffffff;">${escapeHtml(BRAND.name)}</span>
-            </a>
-            <div style="margin-top:4px;font-size:12px;color:#e5dcff;letter-spacing:0.2px;">${escapeHtml(BRAND.tagline)}</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <!-- The icon is itself purple, so it needs the white tile to
+                     stay visible on the purple header. bgcolor duplicates the
+                     inline background-color for Outlook. -->
+                <td width="48" align="center" valign="middle" bgcolor="#ffffff" style="width:48px;background-color:#ffffff;border-radius:12px;padding:6px;">
+                  <a href="${siteUrl('/')}" style="text-decoration:none;">
+                    <img src="${BRAND.logoUrl}" width="36" height="36" alt="" style="display:block;width:36px;height:36px;border:0;outline:none;text-decoration:none;" />
+                  </a>
+                </td>
+                <td valign="middle" style="padding-left:14px;">
+                  <a href="${siteUrl('/')}" style="text-decoration:none;color:#ffffff;">
+                    <span style="display:inline-block;font-size:21px;font-weight:700;letter-spacing:-0.3px;color:#ffffff;">${escapeHtml(BRAND.name)}</span>
+                  </a>
+                  <div style="margin-top:4px;font-size:12px;color:#e5dcff;letter-spacing:0.2px;">${escapeHtml(BRAND.tagline)}</div>
+                </td>
+              </tr>
+            </table>
           </td>
         </tr>
 
