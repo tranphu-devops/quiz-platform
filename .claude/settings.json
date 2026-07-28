@@ -8,6 +8,11 @@
             "type": "command",
             "command": "f=$(jq -r '.tool_input.file_path'); case \"$f\" in */CLAUDE.md|*/CHANGELOG.md|*/.claude/*|*/DESIGN.md|*/README.md|*/MEMORY.md) exit 0 ;; esac; d=$(dirname \"$f\"); top=$(git -C \"$d\" rev-parse --show-toplevel 2>/dev/null); if [ -n \"$top\" ] && [ -d \"$top/.git\" ]; then jq -n '{hookSpecificOutput:{hookEventName:\"PreToolUse\",permissionDecision:\"deny\",permissionDecisionReason:\"CLAUDE.md: phải làm việc trong git worktree riêng (branch mới từ main) trước khi sửa source code — không sửa trực tiếp trên main worktree. Tạo worktree/branch mới rồi thử lại.\"}}'; fi",
             "statusMessage": "Checking git worktree policy..."
+          },
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path'); case \"$f\" in */CHANGELOG.md|CHANGELOG.md) d=$(dirname \"$f\"); top=$(git -C \"$d\" rev-parse --show-toplevel 2>/dev/null); if [ -n \"$top\" ] && git -C \"$top\" diff --quiet -- CHANGELOG.md 2>/dev/null && git -C \"$top\" diff --cached --quiet -- CHANGELOG.md 2>/dev/null; then if git -C \"$top\" fetch origin main --quiet 2>/dev/null && git -C \"$top\" checkout origin/main -- CHANGELOG.md 2>/dev/null; then jq -n '{systemMessage:\"CHANGELOG.md đã được đồng bộ với origin/main trước khi sửa (giảm conflict giữa các worktree).\"}'; fi; fi ;; esac",
+            "statusMessage": "Syncing CHANGELOG.md with origin/main..."
           }
         ]
       },

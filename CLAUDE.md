@@ -8,6 +8,8 @@ Trước khi commit/push, cập nhật `CHANGELOG.md` (mục `## [Unreleased] �
 
 > Enforced tự động bởi hook `PreToolUse`/`Bash` — chặn `git commit` nếu `CHANGELOG.md` chưa được stage (`.claude/settings.json`).
 
+> Trước khi Claude sửa `CHANGELOG.md` lần đầu trong session (file đang sạch, chưa có edit dở), hook `PreToolUse`/`Edit|Write` tự `git fetch origin main` + `git checkout origin/main -- CHANGELOG.md` để lấy bản mới nhất trước khi ghi đè — mục Unreleased mỗi worktree đều append nên hay conflict khi mở PR, hook này giảm bớt. Nếu file đã có thay đổi chưa commit trong session thì bỏ qua bước sync (`.claude/settings.json`).
+
 ## Git workflow (bắt buộc)
 
 Mỗi task = một **git worktree riêng** + một branch mới từ `main` (`origin/main` mới nhất) — không sửa source code trực tiếp trên main worktree, không commit thẳng lên `main`. Xong việc: push branch + mở PR vào `main` (không merge thẳng).
@@ -25,8 +27,7 @@ docker compose up --build
 ```
 Access at http://localhost (via Nginx on port 80).
 
-`docker-compose.override.yml` is applied automatically in dev — it volume-mounts each service's `src/` for hot reload (`node --watch`) and exposes ports directly:
-- nginx: 80, frontend: 4000, gotrue: 9999, user: 4002, exam: 4003, submission: 4004, interaction: 4005, generator: 4006, postgres: 5432, redis: 6379
+`docker-compose.override.yml` applies automatically in dev — volume-mounts each service's `src/` for hot reload (`node --watch`) and exposes ports directly: nginx 80, frontend 4000, gotrue 9999, user 4002, exam 4003, submission 4004, interaction 4005, generator 4006, postgres 5432, redis 6379.
 
 ### Individual service dev (outside Docker)
 ```bash
@@ -44,33 +45,27 @@ npm start        # node build (production)
 ```
 
 ### Database migrations (automatic)
-Schema is managed by **ordered, idempotent migration files** in `infra/postgres/migrations/` (`NNNN_name.sql`). They are applied automatically by the one-shot **`migrate`** service in `docker-compose.yml` on every `docker compose up` — every app service `depends_on` it with `condition: service_completed_successfully`, so the schema is always current before services start. No manual `psql` step is needed (locally or on deploy).
+Schema managed by **ordered, idempotent migration files** in `infra/postgres/migrations/` (`NNNN_name.sql`), applied automatically by the one-shot **`migrate`** service in `docker-compose.yml` — every app service `depends_on` it with `condition: service_completed_successfully`. No manual `psql` step needed.
 
-- Runner: `infra/postgres/run-migrations.sh` (POSIX sh + psql). Tracks applied files in `public.schema_migrations`; each file runs in a single transaction; already-applied files are skipped.
-- **To add a schema change:** drop a new `infra/postgres/migrations/NNNN_name.sql` file (next number). Write it idempotently (`CREATE … IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `INSERT … ON CONFLICT DO NOTHING`) so re-runs on partially-migrated DBs are safe. Then `docker compose up -d` (dev) or `deploy.sh --update` (prod) applies it.
-- Force a run / inspect state against a running DB:
+- Runner: `infra/postgres/run-migrations.sh` (POSIX sh + psql). Tracks applied files in `public.schema_migrations`; each file runs in a transaction; already-applied files skipped.
+- **To add a schema change:** new `infra/postgres/migrations/NNNN_name.sql` (next number), written idempotently (`CREATE … IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `INSERT … ON CONFLICT DO NOTHING`). Then `docker compose up -d` (dev) or `deploy.sh --update` (prod).
+- Force a run / inspect state:
   ```bash
   docker compose run --rm migrate
   docker compose exec postgres psql -U postgres -d quizdb -c "SELECT * FROM public.schema_migrations;"
   ```
 
-### Regenerate badge SVGs
+### Other commands
 ```bash
-node scripts/generate-badges.js   # outputs to apps/frontend/static/badges/ + src/lib/badge-presets.json
+node scripts/generate-badges.js   # regen badge SVGs → apps/frontend/static/badges/ + src/lib/badge-presets.json
+sudo bash deploy.sh                  # prod: fresh install (Ubuntu server, run as root)
+sudo bash deploy.sh --update         # prod: pull latest, rebuild, rolling restart
+sudo bash deploy.sh --set-admin      # prod: promote ADMIN_EMAIL to admin role without full redeploy
 ```
 
-### Production deploy (Ubuntu server, run as root)
-```bash
-sudo bash deploy.sh           # fresh install: clone, configure, build, start
-sudo bash deploy.sh --update  # pull latest, rebuild, rolling restart
-sudo bash deploy.sh --set-admin  # promote ADMIN_EMAIL to admin role without full redeploy
-```
+**Tests:** none in this repo — verify by running the app and exercising the feature manually.
 
-### Tests
-There is no test suite in this repo. Verification is done by running the app and exercising the feature manually.
-
-### Workspace (pnpm)
-The repo uses a pnpm workspace (`pnpm-workspace.yaml`). Top-level `package.json` declares `"workspaces": ["apps/*"]`. Use npm inside each service for Dockerfiles.
+**Workspace:** pnpm workspace (`pnpm-workspace.yaml`); top-level `package.json` declares `"workspaces": ["apps/*"]`. Use npm inside each service for Dockerfiles.
 
 ## Environment Variables
 
@@ -78,8 +73,8 @@ Required in `.env` (see `.env.example`):
 ```
 POSTGRES_PASSWORD=
 JWT_SECRET=                   # min 32 chars; shared by GoTrue and all backend services
-INTERNAL_API_KEY=             # min 32 chars; submission-service → exam-service, and grader-service → exam-service (via EXAM_SERVICE_URL)
-SITE_URL=http://localhost      # public URL of the app; used by GoTrue for OAuth redirects
+INTERNAL_API_KEY=             # min 32 chars; submission-service/grader-service → exam-service
+SITE_URL=http://localhost      # public URL; used by GoTrue for OAuth redirects
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_OAUTH_ENABLED=true
@@ -93,34 +88,31 @@ INTERACTION_DATABASE_URL=postgres://postgres:<pw>@postgres:5432/quizdb?search_pa
 GENERATOR_DATABASE_URL=postgres://postgres:<pw>@postgres:5432/quizdb?search_path=quiz_generator
 NOTIFICATION_DATABASE_URL=postgres://postgres:<pw>@postgres:5432/quizdb?search_path=quiz_notifications
 
-# AWS / Lightsail Object Storage (for image uploads)
+# AWS / Lightsail Object Storage (image uploads)
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
 AWS_BUCKET=
 AWS_REGION=ap-southeast-1
-AWS_ENDPOINT=                 # optional; set for non-standard S3-compatible endpoints
-AWS_PUBLIC_URL=               # public base URL of the bucket, e.g. https://bucket.s3.region.amazonaws.com
+AWS_ENDPOINT=                 # optional; non-standard S3-compatible endpoints
+AWS_PUBLIC_URL=               # public base URL of the bucket
 
 # Optional
-API_ENCRYPTION_KEY=          # EC private key for response encryption (production only); generate with scripts/generate-api-key.js
+API_ENCRYPTION_KEY=          # EC private key for response encryption (prod only); scripts/generate-api-key.js
 GHCR_ORG=tranphu-devops      # GHCR org prefix for docker-compose image names
-SENTRY_AUTH_TOKEN=           # Build-time secret for Sentry source map upload; passed via BuildKit secret, never in image
-GENERATOR_KEY_ENCRYPTION_KEY= # 32 bytes hex; encrypts teacher-supplied ("bring your own") LLM API keys at rest (AES-256-GCM). Generate: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-OPENROUTER_API_KEY=           # Optional platform-wide OpenRouter API key, used only when a teacher opts into the platform key (deducts credits)
-# Notification service (notification-service) — platform-level channel credentials only;
-# each recipient's own Pushover user-key / Telegram chat-id is entered via /profile or /admin, never here.
+SENTRY_AUTH_TOKEN=           # build-time secret for source map upload, via BuildKit secret only
+GENERATOR_KEY_ENCRYPTION_KEY= # 32B hex; encrypts teacher "bring your own" LLM API keys at rest (AES-256-GCM)
+OPENROUTER_API_KEY=           # platform-wide fallback OpenRouter key
 RESEND_API_KEY=
 NOTIFICATION_EMAIL_FROM=
 PUSHOVER_APP_TOKEN=
 TELEGRAM_BOT_TOKEN=
-CONTACT_EMAIL_TO=             # inbox for the public "Contact us" form (landing/contact.html); falls back to NOTIFICATION_EMAIL_FROM if unset
-BRAND_SITE_URL=               # public marketing site used in email footers/logo links (default https://novaquiz.net); SITE_URL is the app host used for in-email buttons
-NOTIFICATION_TIMEZONE=        # timezone for timestamps in notification emails (default Asia/Ho_Chi_Minh)
-# Admin System Overview screen (user-service -> docker-socket-proxy sidecar). Safe defaults set in docker-compose.yml.
-DOCKER_PROXY_HOST=docker-socket-proxy
+CONTACT_EMAIL_TO=             # inbox for public "Contact us" form; falls back to NOTIFICATION_EMAIL_FROM
+BRAND_SITE_URL=               # marketing site for email footers (default https://novaquiz.net)
+NOTIFICATION_TIMEZONE=        # timestamps in notification emails (default Asia/Ho_Chi_Minh)
+DOCKER_PROXY_HOST=docker-socket-proxy   # Admin System Overview; safe defaults in docker-compose.yml
 DOCKER_PROXY_PORT=2375
 COMPOSE_PROJECT_NAME=quiz-platform
-# Frontend Vite overrides (defaults point to /api/* via Nginx; override for direct service access)
+# Frontend Vite overrides (default: /api/* via Nginx)
 PUBLIC_EXAM_URL=
 PUBLIC_SUBMISSION_URL=
 PUBLIC_USER_URL=
@@ -132,58 +124,44 @@ PUBLIC_NOTIFICATION_URL=
 ## Architecture
 
 ### Overview
-Microservices monorepo. All services share a single PostgreSQL 16 instance with **separate schemas per service**. Nginx is the single ingress.
+Microservices monorepo. Single PostgreSQL 16 instance, **separate schema per service**. Nginx is the single ingress.
 
 ```
 Browser → Nginx :80
-  /auth/            → gotrue:9999           (GoTrue SSO engine)
-  /api/users/       → user-service:3002
-  /api/exams/       → exam-service:3003     (Nginx blocks /api/exams/exams/internal/ and /api/exams/collections/internal/ — these map to the exam-service's /exams/internal/ and /collections/internal/ paths after proxy stripping)
-  /api/submissions/ → submission-service:3004
-  /api/interactions/ → interaction-service:3005  (comments / likes / reports)
-  /api/generator/   → generator-service:3006  (AI exam generation from an uploaded document)
-  /api/notifications/ → notification-service:3007  (admin event alerts + per-user activity notifications via Pushover/Email/Telegram; Nginx blocks /api/notifications/internal/)
-  /                 → frontend:3000
+  /auth/               → gotrue:9999            (GoTrue SSO)
+  /api/users/          → user-service:3002
+  /api/exams/          → exam-service:3003       (Nginx blocks /api/exams/{exams,collections}/internal/)
+  /api/submissions/    → submission-service:3004
+  /api/interactions/   → interaction-service:3005 (comments/likes/reports)
+  /api/generator/      → generator-service:3006  (AI exam generation)
+  /api/notifications/  → notification-service:3007 (Nginx blocks /api/notifications/internal/)
+  /                    → frontend:3000
 ```
 
-Nginx has two `server` blocks: one for `novaquiz.net` / `www.novaquiz.net` (production landing domain, serves a landing page at `/`) and one `default_server` for all other hosts — used locally, and in production for the app domain `app.novaquiz.net` (no explicit `server_name`, matched by the fallback block). The routing above applies to both.
+Nginx has two `server` blocks: `novaquiz.net`/`www.novaquiz.net` (landing page at `/`) and a `default_server` for everything else (local dev, and prod `app.novaquiz.net`). Internal service-to-service calls use Docker network hostnames directly, never through Nginx.
 
-Internal service-to-service calls use Docker network hostnames directly (e.g., `http://exam-service:3003`), never going through Nginx.
-
-> **Note:** `apps/auth-service/` is a legacy prototype (email/password auth before GoTrue was adopted). It is **not** wired into `docker-compose.yml` or Nginx and should be ignored.
+> `apps/auth-service/` is a legacy prototype, not wired into compose/Nginx — ignore it.
 
 ### Auth flow — GoTrue + local JWT verification
-**GoTrue** (`supabase/gotrue:v2.151.0`) handles signup, login, Google OAuth, and JWT issuance.
+**GoTrue** (`supabase/gotrue:v2.151.0`) handles signup, login, Google OAuth, JWT issuance. Claims: `sub`→`req.user.id`, `email`→`req.user.email`, `user_metadata.role`→`req.user.role` (`student|teacher|admin`), `role` is always `"authenticated"` (GoTrue-internal, **not** our app role).
 
-JWT claims:
-- `sub` → `req.user.id` (user UUID)
-- `email` → `req.user.email`
-- `user_metadata.role` → `req.user.role` (`student` | `teacher` | `admin`)
-- `role` → always `"authenticated"` — **this is GoTrue-internal, NOT our app role**
-
-Each backend verifies JWT locally via `JWT_SECRET` in `src/middleware/auth.js`, which sets `req.user` and `req.ability`. After JWT verification, the middleware does a **live DB query** to check if the user's role is `banned` — this ensures bans take effect immediately without waiting for token expiry.
+Each backend verifies JWT locally via `JWT_SECRET` in `src/middleware/auth.js`, setting `req.user`/`req.ability`, then does a **live DB query** to check `banned` role — bans take effect immediately, no waiting for token expiry.
 
 ### Teacher API — API key auth (exam-service only)
-Long-lived credentials for programmatic exam management, so teachers can automate the exam lifecycle without a browser session (JWT expires after 1h; Google-OAuth teachers have no password for a machine grant). Keys work regardless of signup method.
+Long-lived credentials so teachers can automate exam management without a browser session.
 
-- **Storage:** `quiz_users.api_keys` (`id, user_id, name, key_prefix, key_hash, last_used_at, created_at, revoked_at`). Only the **SHA-256 hash** is stored; plaintext (`qz_live_<48 hex>`) is returned **once** at creation. `key_prefix` = first 14 chars, shown in listings for identification.
-- **Key management (user-service, JWT-protected, teacher/admin only):** `apps/user-service/src/routes/api-keys.js` — `POST /api-keys` (create, returns plaintext once), `GET /api-keys` (list metadata), `DELETE /api-keys/:id` (soft-revoke via `revoked_at`). Via Nginx: `/api/users/api-keys`.
-- **Consuming the key (exam-service):** `apps/exam-service/src/middleware/auth.js` `verifyAuth` accepts header `X-API-Key` when there's no `Authorization: Bearer`. It resolves the key cross-schema (join `quiz_users.api_keys` → `profiles` → `auth.users`), rejects missing/revoked (`401`) and `banned` (`403`), sets `req.user`/`req.ability` from the **profile role** (source of truth, same as ban-check), and stamps `last_used_at` fire-and-forget. Authorization then flows through the existing CASL rules (teacher CRUD own `Exam`). **Only exam-service** accepts API keys; other services stay JWT-only.
-- **Frontend:** `apiKeyApi` in `api.js`; "API Access" card on `/profile` (teacher/admin); static docs at `/api-docs` (linked from the sidebar for teacher/admin). Question images are passed as `image_url` (no file upload over the API in v1).
+- Storage: `quiz_users.api_keys` (`id, user_id, name, key_prefix, key_hash, last_used_at, created_at, revoked_at`) — only SHA-256 hash stored; plaintext (`qz_live_<48 hex>`) returned once at creation.
+- Management (user-service, JWT, teacher/admin): `POST/GET/DELETE /api-keys` (`apps/user-service/src/routes/api-keys.js`). Via Nginx: `/api/users/api-keys`.
+- Consumption (exam-service `middleware/auth.js`): `X-API-Key` header accepted when no `Authorization: Bearer`; resolves key cross-schema, rejects missing/revoked (401) and banned (403), sets `req.user`/`req.ability` from profile role. **Only exam-service** accepts API keys.
+- Frontend: `apiKeyApi`; "API Access" card on `/profile`; docs at `/api-docs`. Question images passed as `image_url` (no file upload over API in v1).
 
 ### Authorization — CASL
-Each service has `src/lib/ability.js` with `defineAbilityFor(user)` using `@casl/ability` / `createMongoAbility`.
-
-Role rules:
-- `admin` — full access
-- `teacher` — CRUD own exams (`created_by === user.id`), read all submissions
-- `student` — read published exams, create/read own submissions
-- `banned` — blocked at auth middleware (live DB check); CASL grants no permissions
-
-In routes: `req.ability.cannot('action', subject('Type', plainObject))`. Always import `subject` from `@casl/ability` for condition-based checks.
+Each service: `src/lib/ability.js`, `defineAbilityFor(user)` via `@casl/ability`/`createMongoAbility`.
+- `admin` — full access · `teacher` — CRUD own exams (`created_by === user.id`), read all submissions · `student` — read published exams, own submissions · `banned` — blocked at auth middleware, no CASL permissions.
+- In routes: `req.ability.cannot('action', subject('Type', obj))` — always import `subject` from `@casl/ability`.
 
 ### Backend services (Fastify + Node.js 24)
-There are six HTTP backends (user, exam, submission, interaction, generator, notification) — plus `grader-service` (a non-HTTP cron worker, see below). All six HTTP services share the same layout:
+Six HTTP backends (user, exam, submission, interaction, generator, notification) + `grader-service` (non-HTTP cron worker). Shared layout:
 ```
 src/
   index.js           # Fastify setup, /health, plugin registration
@@ -192,264 +170,215 @@ src/
   middleware/auth.js # verifyAuth() hook
   routes/*.js        # Fastify plugins
 ```
-
 - Error format: `{ error: string, statusCode: number }`
-- Health: `GET /health` → `{ status: "ok", service: "...", timestamp: "...", db: { ok }, pool: { totalCount, idleCount, waitingCount } }` (`db`/`pool` consumed by the admin System Overview screen, see below)
+- Health: `GET /health` → `{ status: "ok", service, timestamp, db: { ok }, pool: { totalCount, idleCount, waitingCount } }` (consumed by admin System Overview)
 - `db.js` applies `search_path` via `pool.on('connect')`, read from `?search_path=` in `DATABASE_URL`
 
-### Redis cache (exam-service, user-service, interaction-service)
-A shared `redis` service (docker-compose, `redis://redis:6379`, no persistence — `save ""` + `appendonly no`, pure cache) sits in front of the three read-heaviest services to speed up page loads. `src/lib/cache.js` (identical in each of the three services) exports `getOrSet(key, ttlSeconds, fetchFn)` and `invalidate(...keys)`, backed by `ioredis`. It is **best-effort**: any Redis error/timeout falls back to calling `fetchFn` directly (or is a no-op for `invalidate`), so a down/misconfigured cache never breaks a request — `submission-service` and `grader-service` intentionally have no cache (submission state changes too fast to benefit, and correctness there is critical).
+### Redis cache (exam, user, interaction services)
+Shared `redis` (docker-compose, no persistence, pure cache) in front of the three read-heaviest services. `src/lib/cache.js` (duplicated per service) exports `getOrSet(key, ttlSeconds, fetchFn)` / `invalidate(...keys)` via `ioredis`, **best-effort** (any Redis error falls back to `fetchFn` directly). `submission-service`/`grader-service` intentionally have no cache.
 
-Strategy: active invalidation on every write that affects a cached key, plus a 60s TTL as a backstop for any invalidation path that was missed. Only **safe-to-share** data is cached — anything that varies per caller (a user's own "liked" state, ability-gated draft content) is always computed fresh:
-- **exam-service**: `GET /exams` (keyed by role/creator_id — student/public list, per-creator list, per-teacher own list, admin list) and `GET /collections` (same role-keyed split). `GET /exams/:id` and `GET /collections/:id` always run the CASL ability check fresh on every request (never skip it for a cache hit) and only cache the response body when the exam/collection is **published** — the row is then identical for every authorized viewer, so there's no risk of leaking a draft or another owner's content through the cache. Writes call `invalidate()` with the exact set of list/detail keys the change could affect.
-- **user-service**: `GET /public/profile/:userId`, `GET /public/settings` (both invalidated on the corresponding profile/admin-settings write) and `GET /badges/:userId` (TTL-only — badges are awarded by submission-service, which has no invalidation hook into this cache).
-- **interaction-service**: `GET /exams/:examId/summary` caches only `like_count`/`comment_count` (global, invalidated on like-toggle/comment create-delete); the caller-specific `liked` flag is always queried fresh and merged in after the cache read, so it's never shared across users.
+Active invalidation on every affecting write + 60s TTL backstop. Only safe-to-share data cached (never per-caller state):
+- **exam-service**: `GET /exams`/`GET /collections` (role/creator-keyed); `GET /exams/:id`/`GET /collections/:id` always run CASL fresh, cache body only when **published**.
+- **user-service**: `GET /public/profile/:userId`, `GET /public/settings` (invalidated on write); `GET /badges/:userId` (TTL-only, no invalidation hook).
+- **interaction-service**: `GET /exams/:examId/summary` caches only `like_count`/`comment_count`; per-caller `liked` flag always queried fresh.
 
 ### Image upload — user-service only
-All image uploads (avatar, exam cover, question image) go through a **single endpoint in user-service**:
-
+Single endpoint for all uploads (avatar, exam cover, question image):
 ```
 POST /api/users/upload   (multipart/form-data)
   fields: file, type (avatar|exam-cover|question), old_url (optional)
 ```
-
-- `src/lib/s3.js` — `uploadToS3()` and `deleteFromS3()`. Lightsail Object Storage is S3-compatible; set `AWS_ENDPOINT` + `forcePathStyle: true` for non-standard endpoints.
-- When `old_url` is provided, the old S3 object is deleted before uploading the new one. The S3 key is extracted by finding `uploads/` in the URL.
-- Validation settings (max size MB, allowed MIME types) are stored in `quiz_users.admin_settings` and read at upload time — not hardcoded.
-- Nginx `client_max_body_size` is set to `10m`.
+- `src/lib/s3.js` — `uploadToS3()`/`deleteFromS3()`. Lightsail Object Storage is S3-compatible (`AWS_ENDPOINT` + `forcePathStyle: true` for non-standard endpoints).
+- `old_url` provided → old S3 object deleted first; key extracted by finding `uploads/` in the URL.
+- Validation (max size, MIME types) read from `quiz_users.admin_settings` at upload time, not hardcoded. Nginx `client_max_body_size: 10m`.
 
 ### Frontend (SvelteKit 5 + Node adapter, SSR disabled)
-Fully client-rendered SPA (`export const ssr = false` in `+layout.js`). Auth persists in localStorage via GoTrueClient.
+Fully client-rendered SPA (`export const ssr = false`). Auth persists in localStorage via GoTrueClient.
 
 Key files:
 - `src/lib/auth.js` — GoTrueClient, URL = `window.location.origin + '/auth'`
 - `src/lib/stores/auth.js` — `session`, `user`, `token` Svelte stores via `onAuthStateChange`
 - `src/lib/api.js` — `examApi`, `submissionApi`, `userApi`, `collectionApi`, `badgeApi`, `uploadApi`, `commentApi`, `likeApi`, `reportApi`, `generatorApi`; all read `token` store for Bearer header
 
-`uploadApi.upload(file, type, oldUrl?)` sends `multipart/form-data` with no `Content-Type` header (let browser set the boundary).
+`uploadApi.upload(file, type, oldUrl?)` sends `multipart/form-data` with no `Content-Type` header (browser sets boundary).
 
-Components in `src/lib/components/`:
-- `ImageUpload.svelte` — drag-and-drop upload with preview; `bind:value` for the URL; accepts `type` prop (`avatar|exam-cover|question`); automatically passes the current URL as `old_url` to delete the old file on replace.
-- `DocumentUpload.svelte` — drag-and-drop picker for the AI exam generator (`/exams/generate`); `bind:file` holds the raw `File` (no auto-upload, no image preview — the parent page sends it together with generation params).
-- `MarkdownEditor.svelte` — markdown editor for question explanations
-- `RichTextEditor.svelte` — WYSIWYG editor (bold/italic/underline/lists/links toolbar) for exam `description`; `bind:value` for the HTML string. Pair with `sanitizeHtml.js` before storing.
-- `BadgePicker.svelte` — grid of 50 preset badge SVGs + custom upload tab; `bind:value` for badge URL. Preset metadata from `src/lib/badge-presets.json`.
+Components (`src/lib/components/`):
+- `ImageUpload.svelte` — drag-drop upload+preview; `bind:value`; `type` prop (`avatar|exam-cover|question`); auto-passes current URL as `old_url` on replace.
+- `DocumentUpload.svelte` — picker for AI generator; `bind:file` holds raw `File`, no auto-upload/preview.
+- `MarkdownEditor.svelte` — question explanations.
+- `RichTextEditor.svelte` — WYSIWYG (bold/italic/underline/lists/links) for exam `description`; pair with `sanitizeHtml.js`.
+- `BadgePicker.svelte` — 50 preset badge SVGs + custom upload; metadata from `src/lib/badge-presets.json`.
+- `src/lib/components/ui/` — design-system primitives: `Button`, `Card`, `Input`, `PageHeader`, `Sidebar` (collapsible, collapse state in localStorage).
 
-`src/lib/components/ui/` — shared design-system primitives used across all pages: `Button.svelte`, `Card.svelte`, `Input.svelte`, `PageHeader.svelte` (unifies page title/breadcrumb/actions header), `Sidebar.svelte` (permanent left nav, collapsible, replaces the old top navbar — collapse state persisted to localStorage).
-
-Preset badges: 50 SVG files in `apps/frontend/static/badges/badge-01.svg…badge-50.svg`. Regenerate with `node scripts/generate-badges.js`.
+Preset badges: `apps/frontend/static/badges/badge-01..50.svg`, regenerate via `node scripts/generate-badges.js`.
 
 Routes:
 ```
 /                        → redirect to /dashboard or /login
-/login                   → Google OAuth + email/password
-/register                → signup with role in user_metadata
-/auth/callback           → PKCE OAuth handler (GoTrue redirects here after Google login)
-/auth-callback           → implicit-flow fallback handler
+/login /register         → Google OAuth + email/password; register sets role in user_metadata
+/auth/callback           → PKCE OAuth handler; /auth-callback → implicit-flow fallback
 /dashboard               → role-based home
-/profile                 → edit own profile: avatar + full_name + extended personal fields (bio, birth_year, gender, interests, social links); student shows earned badges
-/users/[id]              → public profile page (read-only) for any user — shows bio/social links + exams they've created (published only, unless viewer is the creator/admin)
-/exams                   → Udemy-style grid; cover image or gradient placeholder
-/exams/create            → create exam with cover image + per-question images
-/exams/generate          → AI exam generator: upload a document (PDF/DOCX/text), draft exam auto-created
-/exams/[id]              → exam detail / start
-/exams/[id]/take         → take exam; shows question image if present
-/exams/[id]/edit         → edit exam
-/exams/[id]/result       → submission results
-/collections             → teacher: list own collections; admin: all
-/collections/create      → create collection (teacher)
-/collections/[id]/edit   → edit collection (teacher)
-/admin                   → tabs: Users (role management) · Upload settings (max size, MIME types) · Credits · AI Generation (platform key, cost, limits)
+/profile                 → own profile edit + notification preferences; student shows earned badges
+/users/[id]              → public profile (read-only) — bio/social + published exams
+/exams                   → Udemy-style grid
+/exams/create            → create exam (cover + per-question images)
+/exams/generate          → AI exam generator (upload doc → draft exam)
+/exams/generate/jobs     → past generation attempts + error detail
+/exams/generate/keys     → own/platform LLM key management
+/exams/[id]              → exam detail/start · /take → take exam · /edit → edit · /result → results
+/collections, /collections/create, /collections/[id]/edit
+/admin                   → tabs: Users · Upload settings · Credits · AI Generation · Notifications · System
 ```
 
 ### Public user profile
-- `GET /api/users/public/profile/:userId` — unauthenticated; returns public profile fields (`full_name, avatar_url, role, bio, birth_year, gender, interests` + social URLs) for any user, used by `/users/[id]`.
-- `GET /api/exams/exams?creator_id=<id>` — lists exams by a given creator; anonymous/other-role viewers get published exams only, the creator (or admin) also sees their own drafts.
-- Extended personal fields live on `quiz_users.profiles`: `bio, birth_year, gender, interests, facebook_url, zalo, tiktok_url, youtube_url, instagram_url, linkedin_url, website_url` (see `infra/postgres/migrations/0009_user_profile.sql`).
+- `GET /api/users/public/profile/:userId` — unauthenticated; public fields for `/users/[id]`.
+- `GET /api/exams/exams?creator_id=<id>` — exams by creator; anon/other-role gets published only, creator/admin also sees drafts.
+- Extended fields on `quiz_users.profiles`: `bio, birth_year, gender, interests, facebook_url, zalo, tiktok_url, youtube_url, instagram_url, linkedin_url, website_url`.
 
 ### Collections & Badges
+**Collections** group exams under a shared goal; passing **all** exams in a published collection earns a badge (`quiz_submissions.student_badges`, awarded automatically, **fire-and-forget** at submission time — non-blocking).
+- `GET/POST /api/exams/collections`, `PUT /api/exams/collections/:id` (incl. `exam_ids` array, atomic replace)
+- `GET /api/exams/collections/internal/check-badge?exam_id=` — internal, used by submission-service, Nginx-blocked externally
+- `GET /api/users/badges/:userId` — student's earned badges
 
-**Collections** group multiple exams under a shared goal. When a student passes **all** exams in a published collection, they earn a badge (stored in `quiz_submissions.student_badges`, awarded automatically at submission time).
+### Interactions — comment/like/report (`interaction-service`, port 3005)
+Schema `quiz_interactions`. Reads cross-schema (join `quiz_users.profiles`, `quiz_submissions.submissions`, `quiz_exams.exams`) rather than internal HTTP, same precedent as auth ban-check. `auth.js` exports `verifyAuth` (strict) and `optionalAuth` (lenient, public reads report caller's like state).
+- **Comments** — any authenticated user creates; author+admin edit/delete (teachers don't moderate own-exam comments); paginated 10/page. `GET/POST /exams/:examId/comments`, `PATCH|DELETE /comments/:id`.
+- **Likes** — students only; `POST /exams/:examId/like` toggles.
+- **Summary** — `GET /exams/:examId/summary` → `{ like_count, comment_count, liked }`.
+- **Reports** — only after a completed submission; `category` ∈ `question_wrong|answer_wrong|image_issue|other`; `exam_owner_id` denormalized for inbox filtering. `POST /exams/:examId/reports`, `GET /reports/mine`, `GET /reports/inbox` (teacher: own / admin: all), `GET /reports/inbox/count`, `PATCH /reports/:id` (owner/admin → `resolved`).
+- Frontend: `commentApi`/`likeApi`/`reportApi`; like+comments on `/exams/[id]`; report modal on `/exams/[id]/result`; history/inbox on `/profile`.
 
-- `GET /api/exams/collections` — list (role-filtered); teacher sees own, student sees published
-- `POST /api/exams/collections` — create (teacher/admin)
-- `PUT /api/exams/collections/:id` — update incl. `exam_ids` array (replaces membership atomically)
-- `GET /api/exams/collections/internal/check-badge?exam_id=` — internal; used by submission-service. Nginx blocks from external.
-- `GET /api/users/badges/:userId` — list student's earned badges (with collection title + badge_image_url)
+### AI exam generator (`generator-service`, port 3006)
+Teacher/admin uploads a document on `/exams/generate`; service calls an LLM **via OpenRouter** to draft a full MC exam, then imports as a **draft** exam via exam-service's own Teacher API (`POST /exams`, `POST /exams/:id/questions`), forwarding the caller's own JWT so `created_by`/CASL behave as if the teacher called it directly. JWT-only (no `X-API-Key` path — UI-driven, not part of Teacher API surface).
 
-Badge check is **fire-and-forget** (non-blocking): submission returns immediately, badge award happens async in the background.
+- **Why OpenRouter, not Anthropic directly**: direct `api.anthropic.com` calls from AWS Lightsail were blocked by Cloudflare (`403 forbidden`, reproduced via bare curl, survived an IP rotation) — an IP/ASN-reputation block outside our control. OpenRouter (OpenAI-compatible) sidesteps it since only OpenRouter's infra talks to Anthropic.
+- **Model availability > price**: prod host is in **Hong Kong**, where `google/*` and `openai/*` 403 with region restrictions (OpenRouter does not launder this — separate from the Cloudflare block above). Verified working: `deepseek/*`, `mistralai/*`, `moonshotai/*`. Verified broken: `qwen/qwen3.5-flash-02-23` (400s on strict `json_schema`), `z-ai/glm-4.7-flash` (200 with schema-violating JSON). Re-run `scripts/test-openrouter-models.sh` **from the production server** before changing the default — region-dependent.
+- **Document handling**: PDF/text sent as OpenAI-compatible `file`/`text` blocks. DOCX has no native file type — `lib/docParse.js` extracts text via `mammoth`; <30 chars fails up front (`reason: 'empty_document'`).
+- **PDF engine** (`admin_settings.ai_generation_pdf_engine`, default `cloudflare-ai`, allowlist `PDF_ENGINES` in `lib/llm.js`): `native` needs a model with `file` input_modality or the model silently answers "empty document" inside valid JSON; `cloudflare-ai` (free, parses to text, loses layout) works with any model; `mistral-ocr` (paid/page) is the only one reading scanned PDFs. Because failure arrives as a *successful* LLM response, `generateExam()` treats "zero questions" and "all-questions-no-options" as the same `reason: 'empty_exam'`, storing the model's own `title`/`description` plus `pdf_engine`/`file_type`/`file_size_bytes` in `generation_jobs.error_detail`. Max upload `admin_settings.ai_generation_max_file_size_mb` (default 20MB); Nginx `/api/generator/` raises `client_max_body_size` to `20m`, timeouts to `180s`.
+- **LLM call** (`lib/llm.js`) — plain `fetch`, `response_format: json_schema strict:true` forces `{ title, description, tags, questions[] }` (mirrors Teacher API question shape). Default model `deepseek/deepseek-v4-flash` (`DEFAULT_MODEL`, overridden by `admin_settings.ai_generation_default_model`). Re-validated locally (unique option keys, `correct_answer ⊆` options, `multiple` needs ≥2 correct, `order_index` sequential 0..n-1 — exam-service defaults `order_index` to `0` if omitted, so always send explicitly).
+- **`credit_cost` gotcha**: `importExam()` always resolves a concrete value from `admin_settings.default_exam_cost` itself (see Conventions).
+- **Model choice by key source**: `platform`-key generations always use the admin default (ignore client `model`); `own`-key generations accept any OpenRouter slug (loosely validated: non-empty, contains `/`, <100 chars).
+- **LLM key sourcing** — `quiz_generator.llm_keys`, distinguished by `scope` (`'user'`|`'platform'`): `own` = teacher's key (`POST /generate/keys`), AES-256-GCM reversible encryption (`lib/keyCrypto.js`, key = `GENERATOR_KEY_ENCRYPTION_KEY`), plaintext shown once, generation uses most-recently-created key. `platform` = admin-managed (`POST/GET/DELETE /generate/platform-key`, manual `role !== 'admin'` check), new key revokes previous; falls back to `OPENROUTER_API_KEY` env if no DB row. Gated by `admin_settings.ai_generation_enabled`; **deducts credits before calling the LLM** (402 short-circuits before spend); failure after deduction does not refund (accepted v1 tradeoff).
+- **Job history** — `quiz_generator.generation_jobs` (status/key_source/model/credits_charged/exam_id/error_message/error_detail). `error_detail` (JSONB) carries `source` (`openrouter|exam-service|validation|generator-service`) + source-specific fields, attached via `.detail` on thrown Errors. Frontend `/exams/generate/jobs` shows a raw `<pre>` dump per failed job (shapes vary too much for bespoke UI).
+- **Admin settings**: `ai_generation_enabled/credit_cost/max_file_size_mb/max_questions/default_model/pdf_engine` on the "Tạo đề bằng AI" `/admin` tab. `GET /api/users/public/settings` exposes enabled/credit_cost/default_model unauthenticated.
+- Frontend: `generatorApi`; page redirects to `/exams/[id]/edit` on success for review/publish.
 
-### Interactions — comment / like / report (`apps/interaction-service`, port 3005)
-A separate microservice (schema `quiz_interactions`) for social/feedback features. Same Fastify layout as the other backends. Reads **cross-schema** in the shared DB for simple checks (join author name from `quiz_users.profiles`, verify a completed submission in `quiz_submissions.submissions`, look up `quiz_exams.exams.created_by`) rather than internal HTTP calls — following the same precedent as the auth middleware's ban check.
+### Notification service (`notification-service`, port 3007)
+Admin alerts + per-user activity notifications via Pushover/Email(Resend)/Telegram. Hybrid: Fastify HTTP API + `node-cron` queue worker, same process.
 
-- `auth.js` exports both `verifyAuth` (strict) and `optionalAuth` (lenient — sets `req.user` if a valid token is present, else continues anonymously). Public reads use `optionalAuth` so they can report the caller's like state.
-- **Comments** — any authenticated user may create; author + admin may edit/delete (teacher does **not** moderate comments on their own exams). Listing is **paginated 10/page**.
-  - `GET /exams/:examId/comments?page=` (public) · `POST /exams/:examId/comments` · `PATCH|DELETE /comments/:id`
-- **Likes** — **students only** may like; count is public. `POST /exams/:examId/like` toggles.
-- **Summary** — `GET /exams/:examId/summary` → `{ like_count, comment_count, liked }` for the exam detail hero.
-- **Reports** — only a user with a **completed** submission (`status IN ('completed','timed_out')`) for the exam may file one; `category` ∈ `question_wrong|answer_wrong|image_issue|other` + `description`. `exam_owner_id` is denormalized from `exams.created_by` at creation for fast inbox filtering.
-  - `POST /exams/:examId/reports` · `GET /reports/mine` (reporter's own history) · `GET /reports/inbox` (teacher: own exams / admin: all) · `GET /reports/inbox/count` (open-count badge) · `PATCH /reports/:id` (owner/admin responds → `status='resolved'`)
-- Frontend: `commentApi`, `likeApi`, `reportApi` in `api.js`. Like heart + comments live on `/exams/[id]`; the report modal on `/exams/[id]/result`; report history ("my reports") and the teacher/admin inbox+response live on `/profile`.
-
-### AI exam generator (`apps/generator-service`, port 3006)
-Teacher/admin uploads a document (PDF, DOCX, or plain text) on `/exams/generate`; the service calls an LLM **via OpenRouter** (not the Anthropic API directly — see below) to draft a full multiple-choice exam, then imports it into exam-service as a **draft** (unpublished) exam via exam-service's own Teacher API routes (`POST /exams`, `POST /exams/:id/questions`) — **not** an internal/privileged path. exam-service itself is unmodified: `generateRoutes` forwards the caller's own `Authorization: Bearer <JWT>` header on those requests, so `created_by`/CASL behave exactly as if the teacher had called the Teacher API directly. JWT-only auth (`middleware/auth.js` has no `X-API-Key` path, unlike exam-service/user-service — this feature is UI-driven, not part of the Teacher API surface).
-
-- **Why OpenRouter instead of calling Anthropic directly** — the generator-service used to call `api.anthropic.com` directly via `@anthropic-ai/sdk`. On at least one deployment (AWS Lightsail), outbound requests to `api.anthropic.com` were rejected with a `403 {"type":"forbidden","message":"Request not allowed"}` from Cloudflare's edge in front of that API — reproduced even with a bare `curl` from the host (no app code involved), and after rotating the Lightsail static IP, so it's an IP/ASN-reputation block outside our control, not something fixable in this repo. Routing through OpenRouter (`https://openrouter.ai/api/v1/chat/completions`, OpenAI-compatible) sidesteps it entirely since our server only talks to OpenRouter's API — OpenRouter's own infrastructure makes the upstream call to Anthropic.
-- **Choosing a model — availability comes before price.** The production Lightsail host is in **Hong Kong**, where both `google/*` and `openai/*` return `403 "This model is not available in your region"`. Going through OpenRouter does **not** launder a provider's geo-restriction (a separate issue from the Cloudflare/Anthropic block above, which OpenRouter *does* solve), so every OpenAI and Google slug is unusable in production regardless of how cheap it looks — including `gemini-2.5-flash-lite` and `gpt-5-nano`, the two best price/performance picks on paper. Verified working from that host: `deepseek/*`, `mistralai/*`, `moonshotai/*`. Also verified *not* usable: `qwen/qwen3.5-flash-02-23` (provider 400s on our strict `json_schema`) and `z-ai/glm-4.7-flash` (returns 200 with JSON that violates the schema — the `strict` flag is honored inconsistently across providers, see the `normalizeExam()` note below). Re-run `scripts/test-openrouter-models.sh` **from the production server** before switching the default; results from a laptop are meaningless since the restriction keys off the caller's region.
-- **Document handling** — PDF and plain text are sent as OpenAI-compatible `file`/`text` content blocks (base64 data URL for PDF, via OpenRouter's `file-parser` plugin). **DOCX has no native file content type** — `lib/docParse.js` extracts its text with `mammoth` first and sends that as a `text` block; an extraction that yields <30 chars fails the job up front (`reason: 'empty_document'`) instead of asking the model to invent an exam from nothing.
-- **PDF engine is admin-configurable** (`admin_settings.ai_generation_pdf_engine`, default `cloudflare-ai`; `PDF_ENGINES` in `lib/llm.js` is the allowlist, anything else falls back to the default). The three OpenRouter engines are not interchangeable and picking the wrong one **fails silently**: `native` forwards the raw PDF to the provider and only works on models whose `input_modalities` include `file` — on any other model the model receives the *filename with no content* and answers, inside the JSON schema, that the document is empty; `cloudflare-ai` (free; the old `pdf-text` id is deprecated and redirects here) has OpenRouter parse the PDF to text itself, so it works with every model but loses layout/images; `mistral-ocr` (paid, per-page) is the only one that reads scanned/image-only PDFs. Because that failure mode arrives as a *successful* LLM response, `generateExam()` treats "zero questions" **and** "every question has no options" as the same `reason: 'empty_exam'` failure and stores the model's own `title`/`description` in `generation_jobs.error_detail` (`llm_title`/`llm_description`, plus `pdf_engine`, `file_type`, `file_size_bytes`) — without those the job history said only "LLM không sinh được câu hỏi nào" and the real reason was visible only in OpenRouter's dashboard. Max upload size is `admin_settings.ai_generation_max_file_size_mb` (default 20MB); Nginx's `/api/generator/` location raises `client_max_body_size` to `20m` and `proxy_read_timeout`/`proxy_send_timeout` to `180s` (generation + sequential question import is slower than a typical API call).
-- **LLM call** (`lib/llm.js`) — plain `fetch` to OpenRouter's chat completions endpoint (no SDK dependency), `response_format: { type: 'json_schema', json_schema: { strict: true, schema } }` forces a structured `{ title, description, tags, questions[] }` result (schema mirrors the Teacher API's question shape: `content, options[{key,text}], correct_answer[] , question_type, explanation, points`). Model ids are OpenRouter slugs; the default is `deepseek/deepseek-v4-flash` (`DEFAULT_MODEL` in `lib/llm.js`, overridden by `admin_settings.ai_generation_default_model` when set). The result is re-validated locally (unique option keys, `correct_answer` ⊆ option keys, `multiple` needs ≥2 correct, `order_index` assigned sequentially 0..n-1) before import — exam-service defaults `order_index` to `0` for every question if the caller omits it, so this must always be sent explicitly.
-- **`credit_cost` gotcha on import** — see Conventions below; `importExam()` always resolves a concrete `credit_cost` from `admin_settings.default_exam_cost` itself, never relies on exam-service's own fallback.
-- **Model choice differs by key source** — `platform`-key generations always use the admin-configured default (`admin_settings.ai_generation_default_model`, settable on the "Tạo đề bằng AI" tab in `/admin`; falls back to `DEFAULT_MODEL` in `lib/llm.js` if unset) and ignore any `model` sent by the client — admin controls platform spend, no per-request choice. `own`-key generations accept **any** OpenRouter model slug the teacher types (loosely validated — non-empty, contains `/`, <100 chars — falling back to the same default on a bad value); there's no allowlist since it's the teacher's own key/cost.
-- **LLM key sourcing** — two modes, chosen per-request (`params.key_source`), both stored in `quiz_generator.llm_keys` (same encrypted-at-rest shape) distinguished by a `scope` column (`'user'` | `'platform'`):
-  - `own` — teacher's own OpenRouter API key (`sk-or-v1-...`, from openrouter.ai/keys), saved via `POST /generate/keys` (`scope='user'`, selected by `user_id`) and encrypted at rest with **AES-256-GCM** (`lib/keyCrypto.js`, key from `GENERATOR_KEY_ENCRYPTION_KEY` — 32 bytes hex). This is a **reversible** encryption, unlike `quiz_users.api_keys`' one-way SHA-256 hash and unlike the ECDH *response* encryption below — the plaintext must be recoverable to actually call the provider. Plaintext is returned once at save time only; `GET /generate/keys` returns metadata + `key_prefix` only. A user can hold several non-revoked keys (listed by `GET /generate/keys`), but generation always uses the most recently created one.
-  - `platform` — admin-managed, `scope='platform'` (selected by scope, not `user_id`; `user_id` on that row is just the admin who set it, kept for audit). Admin-only routes `POST/GET/DELETE /generate/platform-key` (role check is a manual `req.user.role !== 'admin'`, matching the same pattern `user-service`'s `/admin/settings` uses — generator-service's CASL has no admin/teacher distinction) manage it from the "AI Generation" tab in `/admin` or `/exams/generate/keys`; saving a new key revokes the previous one first (singleton-with-history, same idea as `quiz_users.api_keys`'s soft-revoke). If no DB row is active, falls back to the `OPENROUTER_API_KEY` env var — keeps a pre-existing deployment working with zero required action. Gated by `admin_settings.ai_generation_enabled`, and **deducts credits before calling the LLM** (`POST {USER_SERVICE_URL}/internal/credits/deduct`, same internal endpoint submission-service uses) — insufficient credit (402) short-circuits before any LLM spend. A failure *after* the deduction (LLM error, import error) does not refund the credit — an accepted v1 tradeoff.
-- **Job history** — every attempt (success or failure) is recorded in `quiz_generator.generation_jobs` (`status`, `key_source`, `model`, `credits_charged`, `exam_id`, `error_message`, `error_detail`). `GET /generate/jobs` / `GET /generate/jobs/:id`. `error_detail` (JSONB) carries structured failure context beyond the flattened `error_message` string — `source` (`openrouter`|`exam-service`|`validation`|`generator-service`), plus whatever fields that source provides (OpenRouter: `http_status`, `code`, `metadata`, `reason` — `refusal`|`length`|`parse_error`|etc; exam-service: `step`, `http_status`). Every throw site in `lib/llm.js`/`routes/generate.js` attaches its own `.detail` object to the Error (via the local `llmError()` helper in `lib/llm.js`, or `Object.assign(new Error(...), { detail })` in `routes/generate.js`); the `POST /generate` catch block persists `err.detail` verbatim, falling back to a generic `{ source: 'generator-service', message }` if a throw site didn't set one. Frontend: `/exams/generate/jobs` (linked from `/exams/generate`, not in the sidebar) lists past attempts with an expandable raw JSON dump of `error_detail` per failed job — deliberately a generic `<pre>` dump rather than bespoke per-shape UI, since the possible error shapes vary by provider/failure source.
-- **Admin settings** (`quiz_users.admin_settings`, same table/pattern as upload/credit config): `ai_generation_enabled`, `ai_generation_credit_cost`, `ai_generation_max_file_size_mb`, `ai_generation_max_questions`, `ai_generation_default_model`, `ai_generation_pdf_engine`. Configured on the "Tạo đề bằng AI" tab in `/admin`. `GET /api/users/public/settings` also exposes `ai_generation_enabled`/`ai_generation_credit_cost`/`ai_generation_default_model` (no auth) so the generate page can decide whether to offer the platform-key option and prefill the model field without an admin call.
-- Frontend: `generatorApi` in `api.js`; `DocumentUpload.svelte` (plain file-picker/drag-drop, distinct from `ImageUpload.svelte` — no auto-upload-on-select, no image preview); page at `/exams/generate` (sidebar entry "Tạo đề thi bằng AI", teacher/admin only). On success the page redirects to `/exams/[id]/edit` so the teacher reviews/edits the generated questions and sets passing score, time limit, publish, etc. through the existing edit flow. Key management lives at `/exams/generate/keys` (sidebar entry "Quản lý AI Key", teacher/admin only) — own-key list/create/revoke for all staff, plus an admin-only platform-key card (same platform-key card is also duplicated on the `/admin` AI Generation tab for one-stop access there).
-
-### Notification service (`apps/notification-service`, port 3007)
-Admin event alerts + per-user "my activity" notifications, delivered via Pushover / Email (Resend) / Telegram. A **hybrid** of the two existing service templates — a Fastify HTTP API (like `interaction-service`) plus a `node-cron` queue-worker loop (like `grader-service`), both running in the **same process/container** (one deploy unit, no separate queue service).
-
-- **Queue = Postgres, not BullMQ/Redis** — the shared `redis` compose service is a volatile `allkeys-lru` cache with no persistence (see Redis cache section above), unsuitable for durable job storage. Instead, `quiz_notifications.notification_queue` is the queue itself: producer services enqueue via `POST /internal/notify`, and a `node-cron` tick (`lib/worker.js`, every 10s, also runs once at startup) claims due rows with `SELECT ... FOR UPDATE SKIP LOCKED`, dispatches outside the claiming transaction (so a slow Pushover/Resend/Telegram call never holds a DB lock), then marks `sent` or applies exponential backoff (`30s * 2^attempts`, capped at 5 attempts before `status = 'dead'`).
-- **Event taxonomy** — `event_type` keys follow `<domain>.<event>.<audience>`, e.g. `submission.completed.owner` (the student) vs `submission.completed.teacher` (the exam owner) vs `submission.completed.admin` (platform-wide ops visibility) — three independently-toggleable rows for the same business event, since each audience's "do I care" boundary differs. Catalog lives in `quiz_notifications.event_types` (seeded by migration `0016_notifications.sql`), so the frontend never hardcodes event labels.
-- **Fan-out happens at enqueue time, not dispatch time** — `POST /internal/notify` (`lib/queue.js`) receives `{ event, recipients: [{ role, user_id }], payload }` from the calling service, looks up which admins are subscribed to `${event}.admin` plus which channels each named recipient enabled for `${event}.${role}`, and inserts one fully-resolved `notification_queue` row per (recipient, channel). The worker never re-joins subscriptions per tick.
-- **Producer-side hooks** — each producer service (`user-service`, `submission-service`, `grader-service`, `interaction-service`, `generator-service`) has its own copy-pasted `src/lib/notify.js` (same convention as `lib/cache.js` being duplicated across services) exporting a fire-and-forget `notify(event, { recipients, payload })` that no-ops if `NOTIFICATION_SERVICE_URL` is unset and never throws into the caller. Hooked into: submission completed/timed_out (student + exam owner), badge earned, report filed/resolved, AI generation completed/failed, credit deduction failed, teacher upgrade succeeded, referral completed (referrer). Payloads are expected to carry everything the email renders (score + total points + passing score, explicit event timestamp, report description, AI model/source filename, current credit balance, referred-user details) — the producer owns the business data, notification-service only owns delivery.
-- **Channel adapters** (`lib/channels/{pushover,email,telegram}.js`) — plain `fetch` calls, no SDK dependency (same rationale as generator-service calling OpenRouter directly): Pushover's `/1/messages.json`, Resend's `/emails` REST endpoint, Telegram Bot API's `/sendMessage`. Platform-level credentials (`PUSHOVER_APP_TOKEN`, `RESEND_API_KEY`, `NOTIFICATION_EMAIL_FROM`, `TELEGRAM_BOT_TOKEN`) are env vars, not `admin_settings` rows — deploy-time secrets, not runtime-toggleable config (same treatment as `OPENROUTER_API_KEY`). Each **recipient's own** delivery target (Pushover user-key, Telegram chat-id, optional email override) is stored in `quiz_notifications.user_channel_targets`, kept in this service's own schema rather than `quiz_users.profiles` — same boundary as `quiz_generator.llm_keys`.
-- **Message rendering — `lib/events.js` + `lib/emailLayout.js` + `lib/brand.js`** (English only; a recipient's locale isn't stored anywhere, `event_types.label_*` is for the preferences UI which follows the browser language). `events.js` maps each full `event_type` (audience suffix included) to a content object — `{ title, subject?, eyebrow, heading, intro, facts: [[label, value]], quote?, cta?, note? }` — consumed by two renderers: `renderEmail()` → `{ subject, html, text }` (branded shell + plain-text alternative; Resend gets both parts) and `renderMessage()` → `{ title, body, url }` for Pushover/Telegram, which have no HTML body so only the first ~4 facts are appended as plain lines. The `facts` table is where the "full information" of each event lives; empty/`undefined` values are dropped by the renderer, so templates list optional fields unconditionally.
-  - `emailLayout.js` is deliberately old-school email HTML: nested tables, everything inline-styled, **no external images/CSS/webfonts** (so nothing is blocked or stripped), light-mode-only with explicit colours, and every interpolated value HTML-escaped (payloads carry user-authored text — exam titles, report descriptions). CTA `href`s are escaped too, since some are built from payload data. `routes/contact.js` renders through the same shell.
-  - An `event_type` with **no** template still produces a readable branded email via `fallbackContent()` (humanized event name + payload as fact rows) — never a raw JSON dump, which is what the untemplated `referral.completed.owner` used to send. Adding a producer event before its template is therefore safe, but add the template.
-  - Notification emails need links into the app, so notification-service takes `SITE_URL` (app host, used by `appUrl()`) plus optional `BRAND_SITE_URL` (public marketing site — a *different* host in production, used for the footer/logo links, default `https://novaquiz.net`) and `NOTIFICATION_TIMEZONE` (default `Asia/Ho_Chi_Minh`; timestamps render as `26 Jul 2026, 16:05 GMT+7`, never ISO). `formatDateTime()` returns `''` for a missing value rather than defaulting to now — queue rows are retried minutes later, so render time ≠ event time; every producer sends an explicit timestamp in its payload.
-  - Third-party emails shown to a recipient who may not know that address (referrer sees the person who signed up, teacher sees a reporter) are masked with `maskEmail()`; `.admin`-audience templates show them in full, since ops needs to act on them.
-- **Self-service preferences** (`routes/preferences.js`) — `GET/PUT /preferences` lets any authenticated user manage their own `audience = 'user'` subscriptions, filtered to `event_types.applicable_roles` matching their role, plus their own channel targets. Frontend: a "Notification preferences" `<Card>` on `/profile` (independent save state from the rest of the profile form, since it hits a different service/schema).
-- **Admin subscriptions + ops log** (`routes/admin.js`, manual `req.user.role !== 'admin'` check, matching generator-service's platform-key routes) — `GET/PUT /admin/subscriptions` lets each admin manage their own `audience = 'admin'` opt-ins independently (no single "the admin setting" — multiple admins may want different alerts); `GET /admin/queue` is a read-only paginated log viewer (filter by status) and `POST /admin/queue/:id/retry` resurrects a `dead` row. Frontend: a "Notifications" tab on `/admin`.
-- Internal enqueue endpoint is blocked from external access by Nginx (`/api/notifications/internal/ { return 403; }`), same precedent as `/api/exams/exams/internal/`.
+- **Queue = Postgres** (`quiz_notifications.notification_queue`), not BullMQ/Redis (shared `redis` is a volatile no-persistence cache, unsuitable). Producers enqueue via `POST /internal/notify`; a 10s cron tick claims rows with `SELECT ... FOR UPDATE SKIP LOCKED`, dispatches outside the claiming transaction, marks `sent` or backs off (`30s * 2^attempts`, capped at 5 attempts → `status='dead'`).
+- **Event taxonomy**: `event_type` = `<domain>.<event>.<audience>` (e.g. `submission.completed.owner|teacher|admin`) — independently-toggleable per audience. Catalog in `quiz_notifications.event_types` (seeded `0016_notifications.sql`).
+- **Fan-out at enqueue time**: `POST /internal/notify` (`{ event, recipients, payload }`) resolves subscriptions once and inserts one fully-resolved row per (recipient, channel) — worker never re-joins subscriptions.
+- **Producer hooks**: each producer (`user`, `submission`, `grader`, `interaction`, `generator`-service) has its own copy-pasted `src/lib/notify.js`, fire-and-forget `notify(event, {recipients, payload})`, no-op if `NOTIFICATION_SERVICE_URL` unset, never throws into caller. Payloads carry everything the email needs to render (producer owns business data).
+- **Channel adapters** (`lib/channels/{pushover,email,telegram}.js`) — plain `fetch`, no SDK. Platform credentials are env vars (deploy-time secrets). Each recipient's own target (Pushover key/Telegram chat-id/email override) in `quiz_notifications.user_channel_targets`.
+- **Rendering** — `lib/events.js` maps `event_type` → content object, rendered by `renderEmail()` (branded HTML shell, `lib/emailLayout.js` — inline-styled, no external assets, every value HTML-escaped) and `renderMessage()` (plain, first ~4 facts for Pushover/Telegram). Untemplated events still render via `fallbackContent()`, never a raw JSON dump. Needs `SITE_URL` (in-app links), optional `BRAND_SITE_URL` (marketing site), `NOTIFICATION_TIMEZONE`. Third-party emails shown to a recipient are masked via `maskEmail()` except in `.admin` templates.
+- **Self-service preferences** (`routes/preferences.js`): `GET/PUT /preferences` — own `audience='user'` subscriptions + channel targets, on `/profile`.
+- **Admin** (`routes/admin.js`, manual role check): `GET/PUT /admin/subscriptions` (per-admin `audience='admin'` opt-ins), `GET /admin/queue` (log viewer), `POST /admin/queue/:id/retry`. "Notifications" tab on `/admin`.
+- Internal enqueue endpoint Nginx-blocked externally.
 
 ### Exam notes (frontend-only, not persisted)
-On `/exams/[id]/take` there is a **single scratch note for the whole exam session** (one `note` string in per-tab Svelte `$state`), shared across all questions and unchanged when navigating between them. It lives in a floating widget (`.note-widget`) anchored bottom-right, **hidden by default**, toggled by a FAB (the FAB shows a dot when the note is non-empty). The note is **intentionally not sent to any server** — lost on refresh (F5); a helper line states this. There is no notes table or endpoint.
+`/exams/[id]/take` has a **single scratch note for the whole session** (Svelte `$state`, shared across questions), in a hidden-by-default floating widget toggled by a FAB. **Never sent to a server** — lost on refresh; no notes table/endpoint exists or should be added.
 
 ### Database schemas
-Schema is defined by the ordered migration files in `infra/postgres/migrations/` (see **Database migrations** above), all idempotent (`IF NOT EXISTS` + `ALTER TABLE … ADD COLUMN IF NOT EXISTS`) and applied automatically by the `migrate` service. `0001_init.sql` is the base; later files (`0002_image_upload` … `0016_notifications`) add columns/tables incrementally.
+Defined by ordered migrations in `infra/postgres/migrations/` (idempotent, auto-applied by `migrate` service). `0001_init.sql` is base. Never manually create tables in `auth`/`quiz_auth` — GoTrue manages that schema.
 
-Never manually create tables in `auth` / `quiz_auth` — GoTrue manages that schema (the `auth` schema is created by `0001_init.sql` so it exists before GoTrue starts).
-
-Schema summary:
-- `quiz_users.profiles` — `id, full_name, avatar_url, role, credits, updated_at`, plus extended personal fields: `bio, birth_year, gender, interests, facebook_url, zalo, tiktok_url, youtube_url, instagram_url, linkedin_url, website_url`
-- `quiz_users.admin_settings` — `key, value` (upload validation + credit config + AI generation config: `ai_generation_enabled`, `ai_generation_credit_cost`, `ai_generation_max_file_size_mb`, `ai_generation_max_questions`, `ai_generation_pdf_engine`)
-- `quiz_exams.exams` — includes `cover_image_url`, `tags TEXT[]`, `show_explanation`, `allow_retake`, `credit_cost`, `cooldown_minutes` (int, minutes between retakes), `max_attempts` (int nullable, null = unlimited), `scheduled_at` (timestamptz nullable, when null or in the past the exam is open; when in the future the exam is visible but locked), `passing_score` (float nullable, percentage threshold for "pass"; used by badge-award logic), `deleted_at TIMESTAMPTZ` (soft-delete; NULL = active)
-- `quiz_exams.questions` — includes `image_url`, `question_type` (`single`|`multiple`), `correct_answer` (comma-separated keys for multiple), `deleted_at TIMESTAMPTZ` (soft-delete; cascaded from exam delete)
-- `quiz_exams.collections` — `id, title, description, created_by, badge_image_url, is_published`, `deleted_at TIMESTAMPTZ` (soft-delete)
-- `quiz_exams.collection_exams` — `(collection_id, exam_id, position)` many-to-many
-- `quiz_submissions.submissions` — `answers JSONB`, `results_detail JSONB`, `percentage FLOAT`, `status VARCHAR(20)` (`in_progress`|`completed`|`timed_out`, DEFAULT `completed`), `started_at TIMESTAMPTZ`, `expires_at TIMESTAMPTZ`, `exam_session_id UUID` (UUID assigned per active browser tab to enforce single-device rule), `session_last_active TIMESTAMPTZ` (updated on every progress heartbeat; used to detect stale sessions)
-- `quiz_submissions.student_badges` — `(user_id, collection_id)` unique; `earned_at`
+Summary:
+- `quiz_users.profiles` — `id, full_name, avatar_url, role, credits, updated_at` + `bio, birth_year, gender, interests, facebook_url, zalo, tiktok_url, youtube_url, instagram_url, linkedin_url, website_url`
+- `quiz_users.admin_settings` — `key, value` (upload/credit/AI-generation config)
+- `quiz_exams.exams` — `cover_image_url, tags TEXT[], show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts (null=unlimited), scheduled_at, passing_score, deleted_at` (soft-delete)
+- `quiz_exams.questions` — `image_url, question_type (single|multiple), correct_answer (comma-sep keys), deleted_at`
+- `quiz_exams.collections` — `id, title, description, created_by, badge_image_url, is_published, deleted_at`
+- `quiz_exams.collection_exams` — `(collection_id, exam_id, position)`
+- `quiz_submissions.submissions` — `answers JSONB, results_detail JSONB, percentage FLOAT, status (in_progress|completed|timed_out), started_at, expires_at, exam_session_id UUID, session_last_active`
+- `quiz_submissions.student_badges` — `(user_id, collection_id)` unique, `earned_at`
 - `quiz_interactions.comments` — `id, exam_id, user_id, content, created_at, updated_at`
-- `quiz_interactions.likes` — `(exam_id, user_id)` PK; `created_at`
-- `quiz_interactions.reports` — `id, exam_id, exam_owner_id, reporter_id, category, description, status` (`open`|`resolved`), `response, responded_by, responded_at, created_at`
-- `quiz_generator.llm_keys` — teacher-supplied ("bring your own") and admin-managed platform-wide LLM API keys: `id, user_id, provider, encrypted_key` (AES-256-GCM, reversible), `key_prefix, created_at, last_used_at, revoked_at, scope` (`'user'` | `'platform'` — distinguishes a teacher's own key, selected by `user_id`, from the admin-managed platform-wide key, selected by `scope` alone)
-- `quiz_generator.generation_jobs` — one row per AI exam generation attempt: `id, user_id, status` (`processing`|`completed`|`failed`), `key_source` (`own`|`platform`), `model, source_filename, source_file_type, question_count, exam_id, credits_charged, error_message, error_detail` (JSONB, structured failure context), `created_at, completed_at`
-- `quiz_notifications.event_types` — catalog: `key` (PK, `<domain>.<event>.<audience>`), `audience` (`admin`|`user`), `label_vi, label_en, label_ja, description_vi, applicable_roles TEXT[]` (which roles see this row on `/profile`; `NULL` for admin-audience rows)
-- `quiz_notifications.user_channel_targets` — `user_id` (PK), `email_override, pushover_user_key, telegram_chat_id, updated_at`
-- `quiz_notifications.notification_subscriptions` — `(user_id, event_type, channel)` unique; `enabled` — shared shape for both admin-monitoring and user-activity opt-ins
-- `quiz_notifications.notification_queue` — the queue itself: `event_type, channel, recipient_user_id, payload JSONB, status` (`pending`|`processing`|`sent`|`failed`|`dead`), `attempts, max_attempts, last_error, available_at` (backoff gate), `created_at, sent_at`
+- `quiz_interactions.likes` — `(exam_id, user_id)` PK, `created_at`
+- `quiz_interactions.reports` — `id, exam_id, exam_owner_id, reporter_id, category, description, status, response, responded_by, responded_at, created_at`
+- `quiz_generator.llm_keys` — `id, user_id, provider, encrypted_key (AES-256-GCM), key_prefix, created_at, last_used_at, revoked_at, scope (user|platform)`
+- `quiz_generator.generation_jobs` — `id, user_id, status, key_source, model, source_filename, source_file_type, question_count, exam_id, credits_charged, error_message, error_detail, created_at, completed_at`
+- `quiz_notifications.event_types` — `key (PK), audience (admin|user), label_vi/en/ja, description_vi, applicable_roles TEXT[]`
+- `quiz_notifications.user_channel_targets` — `user_id (PK), email_override, pushover_user_key, telegram_chat_id, updated_at`
+- `quiz_notifications.notification_subscriptions` — `(user_id, event_type, channel)` unique, `enabled`
+- `quiz_notifications.notification_queue` — `event_type, channel, recipient_user_id, payload JSONB, status, attempts, max_attempts, last_error, available_at, created_at, sent_at`
 
-Seed files in `infra/postgres/`: `seed.sql` (sample data), `seed_aws_saa.sql` (AWS SAA exam with 45 questions), `seed_exam_01.sql`.
+Seed files in `infra/postgres/`: `seed.sql`, `seed_aws_saa.sql`, `seed_exam_01.sql`.
 
 ### API response encryption
-Active only when `NODE_ENV=production` AND `API_ENCRYPTION_KEY` is set. Transparent in dev.
+Active only when `NODE_ENV=production` AND `API_ENCRYPTION_KEY` set (transparent in dev). Frontend generates ephemeral ECDH P-256 key pair (Web Crypto, non-extractable), sends base64 public key in `X-Client-Pubkey`. Backend derives AES-256 key via `ECDH → HKDF(sha256, info='quiz-api-v1')`, encrypts response as `{ iv, data }` (AES-256-GCM).
 
-**Flow:** Frontend generates an ephemeral ECDH P-256 key pair (Web Crypto API, private key non-extractable) on session init. Sends base64 public key in `X-Client-Pubkey` header with every request. Backend derives the same AES-256 key via `ECDH(backend_private, client_public) → HKDF(sha256, info='quiz-api-v1')`. Encrypts response with AES-256-GCM → `{ iv, data }`. Frontend decrypts transparently in `apiFetch()`.
-
-- `scripts/generate-api-key.js` — generate key pair; only `API_ENCRYPTION_KEY` (private) goes to backend env — no frontend build var needed
-- `GET /api/users/public/crypto-key` — unauthenticated endpoint that serves the derived EC public key at runtime; frontend fetches this once on init (plain fetch, no encryption header → plain response)
-- `src/lib/encryptResponse.js` in each backend service — `onSend` Fastify hook; skips if header absent (health checks, internal calls unaffected)
-- `apps/frontend/src/lib/crypto.js` — fetches public key at runtime, ECDH session init, `decryptIfNeeded()`
-- `apps/frontend/src/lib/api.js` — all calls go through `apiFetch()` which adds the header and auto-decrypts
+- `scripts/generate-api-key.js` generates the pair; only the private key goes to backend env.
+- `GET /api/users/public/crypto-key` — unauthenticated, serves derived public key at runtime.
+- `src/lib/encryptResponse.js` per backend — `onSend` hook, skips if header absent.
+- Frontend: `src/lib/crypto.js` (session init, `decryptIfNeeded()`), `src/lib/api.js`'s `apiFetch()` wraps all calls.
 
 ### Grader service (`apps/grader-service`)
-Standalone Node.js worker — no HTTP server, no Fastify. Runs `node-cron` every 15 minutes.
-
-On each tick it queries `quiz_submissions.submissions WHERE status = 'in_progress' AND expires_at < NOW()`, fetches exam questions via `EXAM_SERVICE_URL/exams/internal/:id` (internal key), grades each submission using the same logic as submission-service, then `UPDATE ... SET status = 'timed_out'` (the `WHERE status = 'in_progress'` acts as an optimistic lock against races with the user submit endpoint). Also runs once at startup to catch submissions that expired while the service was down.
-
-Environment: `DATABASE_URL` (same as `SUBMISSION_DATABASE_URL`), `EXAM_SERVICE_URL`, `INTERNAL_API_KEY`.
+Standalone Node worker, no HTTP server. `node-cron` every 15 min (+ once at startup): queries `quiz_submissions.submissions WHERE status='in_progress' AND expires_at < NOW()`, fetches questions via `EXAM_SERVICE_URL/exams/internal/:id` (internal key), grades, then `UPDATE ... SET status='timed_out'` (the `WHERE status='in_progress'` is an optimistic lock against the user-submit race). Env: `DATABASE_URL` (=`SUBMISSION_DATABASE_URL`), `EXAM_SERVICE_URL`, `INTERNAL_API_KEY`.
 
 ### Admin System Overview (`user-service` `/admin/system/*`, read-only)
+"System" tab on `/admin` — service health/logs/DB stats without SSH, gated by manual `role !== 'admin'` check.
 
-Gives admins live visibility into service health, container logs, and database status without SSH — a "System" tab on `/admin`. Lives entirely in `user-service` (which already owns `/admin/*`), gated by the same manual `req.user.role !== 'admin'` check as the other admin routes.
-
-- **`docker-socket-proxy`** (`docker-compose.yml`, `tecnativa/docker-socket-proxy` image) is the only thing with access to the real `/var/run/docker.sock` (mounted read-only into the proxy container). It's configured `CONTAINERS: 1, LOGS: 1, POST: 0` — only GET on container list/inspect/logs is reachable; exec/restart/create/image/network/volume endpoints are all default-denied. No published port, no nginx route — reachable only from other containers on the Compose network (same trust boundary as `postgres`/`redis`). This is what makes real Docker log history/container state safe to expose to an app service: even a fully compromised `user-service` can only read logs/inspect containers through this path, never control them.
-- `apps/user-service/src/lib/docker.js` — `dockerode` client pointed at the proxy (`DOCKER_PROXY_HOST`/`DOCKER_PROXY_PORT`, default `docker-socket-proxy`/`2375`). Looks up containers by **Compose label** (`com.docker.compose.service=<name>` + `com.docker.compose.project=${COMPOSE_PROJECT_NAME}`) rather than guessing container name strings, which vary by checkout directory (`deploy.sh` always uses the fixed `APP_DIR=/opt/quiz-platform`, so the label value is stable in prod).
-- `apps/user-service/src/lib/systemHealth.js` — calls each of the 6 HTTP services' own `/health` over the Docker network with a short timeout.
-- `apps/user-service/src/routes/admin-system.js`:
-  - `GET /admin/system/services` — combined container state (running/restarting/exited, uptime, restart count) + live `/health` result for each of the 6 HTTP services (user, exam, submission, interaction, generator, notification) plus container-only state for `grader-service` (no HTTP server, so no `/health` call for it).
-  - `GET /admin/system/logs?service=&tail=` — `service` must match one of the 7 known names (400 otherwise, prevents fishing for arbitrary containers on the host); `tail` default 200, max 2000. Docker's multiplexed log stream is demuxed and each line is best-effort JSON-parsed (pino output) with a raw-string fallback.
-  - `GET /admin/system/database` — Postgres-instance-wide stats over the existing `pool` (works cross-schema regardless of `search_path`, since `pg_catalog`/`information_schema` are always searchable): `pg_stat_activity` connection counts by state, `pg_database_size`, per-`quiz_*`-schema sizes, recent `public.schema_migrations` rows, and this pool's own stats.
-- `/health` on all 6 HTTP services (`apps/{exam,generator,interaction,submission,user,notification}-service/src/index.js`) additionally does a `pool.query('SELECT 1')` ping and reports pool stats (`totalCount/idleCount/waitingCount`) — `status` stays `'ok'` even if the DB ping fails, since that's a distinct signal from "process isn't answering HTTP" and the two must not be conflated.
-- Frontend: `systemApi` in `api.js`; `SystemServicesPanel.svelte` (polls ~25s), `SystemDatabasePanel.svelte` and `SystemLogsPanel.svelte` (both manual-refresh only — DB stats don't change fast enough to poll, and logs are the heaviest of the three panels on the proxy/response size) under `src/lib/components/`; wired as the "System" tab on `/admin`.
-- **Read-only by design, enforced at the infra layer, not just the UI**: there is no restart/stop/exec action anywhere in this feature, and the `docker-socket-proxy` config makes that true even for a compromised caller, not just "no button exists."
+- **`docker-socket-proxy`** (`tecnativa/docker-socket-proxy`, `CONTAINERS:1, LOGS:1, POST:0`) is the only thing touching the real Docker socket (mounted read-only); exec/restart/create endpoints are default-denied. No published port/Nginx route. This is what makes it safe even for a fully compromised `user-service` — read-only, not just "no button in the UI."
+- `lib/docker.js` — `dockerode` via the proxy, looks up containers by Compose label (`com.docker.compose.service=<name>` + `project=${COMPOSE_PROJECT_NAME}`), not name strings.
+- `lib/systemHealth.js` — calls each HTTP service's own `/health` over the Docker network.
+- `routes/admin-system.js`: `GET /admin/system/services` (container state + `/health` per service, `grader-service` is container-only), `GET /admin/system/logs?service=&tail=` (service must be one of 7 known names, tail max 2000, demuxed + best-effort JSON-parsed), `GET /admin/system/database` (Postgres-instance-wide stats: `pg_stat_activity`, `pg_database_size`, per-schema sizes, recent migrations).
+- `/health` on all 6 HTTP services also pings `pool.query('SELECT 1')` and reports pool stats — `status` stays `'ok'` even on DB-ping failure (distinct signal from "process not responding").
+- Frontend: `systemApi`; `SystemServicesPanel` (polls ~25s), `SystemDatabasePanel`/`SystemLogsPanel` (manual refresh only).
 
 ### Rich-text exam description
-Exam `description` field is rich HTML (not plain text). In the create/edit forms, `RichTextEditor.svelte` provides a lightweight WYSIWYG editor (toolbar: bold, italic, underline, lists, links). On save, the HTML is sanitized server-side via an allowlist before storing. On the exam detail page, it renders formatted HTML. `apps/frontend/src/lib/sanitizeHtml.js` defines the allowlist used in both sanitization and rendering. `htmlToText()` in the same file strips tags to plain text (used for collection tag aggregation and search snippets).
+Exam `description` is rich HTML. `RichTextEditor.svelte` (bold/italic/underline/lists/links) on create/edit; sanitized server-side via allowlist before storing (`apps/frontend/src/lib/sanitizeHtml.js`, also has `htmlToText()` for tag-stripping used in collection tag aggregation/search snippets); rendered as formatted HTML on detail page.
 
-The exam detail page (`/exams/[id]`) shows a **1-random-question preview** (`ORDER BY RANDOM() LIMIT 1`) to give students a taste without revealing the full question set.
-
-Collection tags are **derived** (not stored): the backend computes the union of all member exams' `tags` arrays in the query, so collection tag filters on `/exams` and `/collections` always reflect current exam state.
-
-Custom SvelteKit error pages (`+error.svelte`) handle 404 and 5xx responses with brand-consistent styling.
+`/exams/[id]` shows a 1-random-question preview (`ORDER BY RANDOM() LIMIT 1`). Collection tags are **derived** (union of member exams' `tags`, computed in-query, never stored). Custom `+error.svelte` pages handle 404/5xx.
 
 ### Analytics & error monitoring
-- **Zoho PageSense** and **Umami** tracking scripts are embedded in `apps/frontend/src/app.html` (quiz app) and `landing/index.html`. Both are load-time embeds — no npm packages; update the script src URLs directly in those files.
-- **Sentry** (`@sentry/sveltekit`) is configured in `apps/frontend/src/hooks.client.js` and `hooks.server.js`. It is **enabled only when `import.meta.env.PROD` is true** (i.e., skipped during `vite dev`). Source maps are uploaded at Docker build time when `SENTRY_AUTH_TOKEN` is passed as a BuildKit secret (`--secret id=SENTRY_AUTH_TOKEN`); the token is never baked into any image layer. If the secret is absent, `sentrySvelteKit()` in `vite.config.js` silently skips the upload.
-- To rotate the Sentry DSN or org/project slugs, update `hooks.client.js`, `hooks.server.js`, and `vite.config.js` together.
+- **Zoho PageSense** + **Umami** — load-time script embeds in `apps/frontend/src/app.html` and `landing/index.html`; no npm packages.
+- **Sentry** (`@sentry/sveltekit`) in `hooks.client.js`/`hooks.server.js`, enabled only when `import.meta.env.PROD`. Source maps uploaded at Docker build time via BuildKit secret `SENTRY_AUTH_TOKEN` (never baked into image layers; upload silently skipped if absent).
+- Rotating Sentry DSN/org/project: update `hooks.client.js`, `hooks.server.js`, `vite.config.js` together.
 
 ### Landing page
-`landing/` contains static HTML pages served by Nginx for the production domain (`novaquiz.net` / `www.novaquiz.net`): `index.html` (`/`), `brand.html` (`/brand` — brand kit: logo lockups, color palette, typography, usage rules) and `contact.html` (`/contact` — contact form). Each is its own self-contained file (inline `<style>`/`<script>`, no build step, no shared includes) matched by an **exact** Nginx `location` block (`location = /brand { try_files /brand.html =404; }`, etc.) — adding another top-level landing page means adding both the `.html` file and its `location` block. `landing/brand-assets/` holds the downloadable brand kit (logo SVG/PNG at standard sizes, multi-res `favicon.ico`, `apple-touch-icon.png`, OG banner) served via `location /brand-assets/ { root /var/www/landing; }`. The `default_server` block (used locally, and for `app.novaquiz.net` in production) skips all of this and goes straight to the frontend SPA.
+`landing/` — static HTML for `novaquiz.net`/`www.novaquiz.net`: `index.html` (`/`), `brand.html` (`/brand`), `contact.html` (`/contact`). Each self-contained (inline style/script, no build step), matched by exact Nginx `location` blocks — a new landing page needs both the `.html` and its `location`. `landing/brand-assets/` served via `/brand-assets/`. The `default_server` block (local + `app.novaquiz.net`) skips all this, goes straight to the SPA.
 
-The contact form (`landing/contact.html`) posts JSON (`name`, `email`, `message`) to `POST /api/notifications/contact` — same-origin through the landing server block's existing `/api/notifications/` proxy, no CORS needed. That route (`apps/notification-service/src/routes/contact.js`) is the one unauthenticated, public endpoint in notification-service; unlike every other notification path it bypasses the subscription/queue system entirely (there's no logged-in recipient to look up) and sends straight through the Resend channel adapter (`lib/channels/email.js`) to `CONTACT_EMAIL_TO` (falls back to `NOTIFICATION_EMAIL_FROM` if unset). Rate-limited at the route level (5/min via Fastify's `config.rateLimit`, tighter than the service's global 300/min) since it's a spam-prone public form.
+Contact form posts JSON to `POST /api/notifications/contact` (`apps/notification-service/src/routes/contact.js`) — the one unauthenticated public route in that service, bypasses the subscription/queue system, sends directly via the Resend adapter to `CONTACT_EMAIL_TO`. Rate-limited 5/min (route-level, tighter than the service's global 300/min).
 
 ### CI/CD
-Three GitHub Actions workflows:
-- `build-push.yml` — triggered on push to `main`; builds multi-platform (amd64 + arm64) Docker images to GHCR. Matrix: `auth-service` (legacy, built but not deployed), `user-service`, `exam-service`, `submission-service`, `interaction-service`, `generator-service`, `notification-service`, `grader-service`, `frontend`.
-- `deploy.yml` — triggered after `build-push.yml` succeeds; SSHs into the production server and runs `deploy.sh --update`.
-- `cleanup-images.yml` — runs weekly (Sunday 00:00 ICT); deletes GHCR image versions beyond the 5 most recent, keeping all semver-tagged releases.
+- `build-push.yml` — on push to `main`; multi-platform (amd64+arm64) images to GHCR. Matrix: `auth-service` (legacy, built not deployed), `user/exam/submission/interaction/generator/notification/grader-service`, `frontend`.
+- `deploy.yml` — after `build-push.yml` succeeds; SSHs into prod, runs `deploy.sh --update`.
+- `cleanup-images.yml` — weekly (Sun 00:00 ICT); deletes GHCR versions beyond 5 most recent, keeps semver releases.
 
-`GHCR_ORG` env var (default `tranphu-devops`) controls the GHCR org prefix used in `docker-compose.yml` image names.
+`GHCR_ORG` env var (default `tranphu-devops`) controls image name prefix.
 
 ## Conventions
 
 - **Package manager:** npm per service (Dockerfiles use `npm install`). pnpm only for workspace tooling.
-- **JWT role:** Always read from `payload.user_metadata.role`. `payload.role` is GoTrue-internal (`"authenticated"`).
-- **DB search_path:** Set via `?search_path=<schema>` in `DATABASE_URL`; never hardcode it.
-- **Exam answers visibility:** Strip `correct_answer` and `explanation` from questions returned to students. For `multiple` type, return `correct_count` instead.
-- **Internal exam endpoint:** `GET /exams/internal/:id` requires `x-internal-key` header; used only by submission-service for grading. Nginx blocks this path from external clients.
-- **Multiple-choice answers:** Stored as sorted comma-separated option keys, e.g. `"A,C"`. Always sort before storing.
-- **Image URL construction:** Built as `${AWS_PUBLIC_URL}/${key}` where key is `uploads/{type}/{timestamp}-{uuid}.{ext}`. Extract key for deletion by slicing from `uploads/` in the URL.
-- **Admin settings:** Read from DB at runtime, not from env. Add new configurable thresholds to `quiz_users.admin_settings` rather than hardcoding.
-- **Credit system:** `profiles.credits` tracks balance. Deducted by `POST /api/submissions/start` (calls user-service internal API). Credit cost per exam stored in `exams.credit_cost` (default from `admin_settings.default_exam_cost`). Admin configures `default_credits`, `teacher_upgrade_cost`, `default_exam_cost` in the Credits tab.
-- **Internal credit endpoint:** `POST /internal/credits/deduct` on user-service — atomic UPDATE with `credits >= amount` check; returns 402 if insufficient. Called only by submission-service with `x-internal-key`.
-- **Public settings:** `GET /api/users/public/settings` — exposes `teacher_upgrade_cost`, `default_credits`, `default_exam_cost` without auth.
-- **Teacher upgrade:** `POST /api/users/upgrade-to-teacher` — deducts credits, updates `auth.users.raw_user_meta_data` directly. User must log out and back in for new role to take effect.
-- **Session credit flag:** Take page stores `credit_deducted: true` in localStorage session to avoid double-charging on page refresh.
-- **Single-device exam session:** `POST /submissions/start` generates a UUID `session_id` and stores it as `exam_session_id`. Each `PUT /submissions/:id/progress` (heartbeat + answer save) and `POST /submissions/:id/submit` must pass this UUID in the `X-Session-Id` header. If the header doesn't match the stored `exam_session_id`, the server returns HTTP 409 — preventing a second tab or device from taking over the session. If `session_last_active` is stale (>300 s / 5 min — `SESSION_STALE_SECS` constant), the new session may claim the submission. `GET /submissions/active?exam_id=` returns any existing `in_progress` submission for the user+exam pair.
-- **Scheduled publish:** `exams.scheduled_at` — if set to a future datetime and `is_published = true`, the exam is visible to students but locked. The frontend shows a live countdown (1 s interval via `setInterval`). Server blocks `POST /submissions/start` with HTTP 423 if `scheduled_at > NOW()`. Create/edit forms have a 3-way publish mode selector: draft / now / scheduled. `PUT /exams/:id` uses a `(has_scheduled_at, scheduled_at_val)` param pair so `null` can clear the field.
-- **Interactions gating:** Comments — any authenticated user. Likes — **students only** (server rejects others with 403). Reports — only after a completed submission (server verifies via cross-schema query, 403 otherwise). Comment moderation is **author + admin only** (teachers can't moderate comments on their own exams). Report responses are **owner + admin** and flip `status` to `resolved`.
-- **Exam notes are not persisted:** the take-page note textareas are in-memory only (Svelte `$state`), never sent to a server; don't add a notes table/endpoint — losing them on refresh is intended behavior.
-- **Soft-delete pattern (exams / questions / collections):** DELETE endpoints set `deleted_at = NOW()` instead of hard-deleting. All SELECT queries must include `AND deleted_at IS NULL` (or `AND e.deleted_at IS NULL` for aliased tables). Deleting an exam cascades the same timestamp to all its questions. `deleted_at` rows are never returned to the frontend; no restore UI exists yet — recovery is done directly in DB if needed.
-- **`POST /exams` requires an explicit `credit_cost`:** the column is `NOT NULL DEFAULT 10`, but the route inserts whatever value is given (including a literal `null`) rather than falling back to the column default — an omitted/`null` `credit_cost` always 500s. Any programmatic caller that doesn't set `credit_cost` itself (see `apps/generator-service`) must resolve `admin_settings.default_exam_cost` and send a concrete number.
+- **JWT role:** always `payload.user_metadata.role`. `payload.role` is GoTrue-internal (`"authenticated"`).
+- **DB search_path:** via `?search_path=<schema>` in `DATABASE_URL`; never hardcode.
+- **Exam answers visibility:** strip `correct_answer`/`explanation` from student-facing questions. `multiple` type returns `correct_count` instead.
+- **Internal exam endpoint:** `GET /exams/internal/:id` requires `x-internal-key`, used only by submission-service, Nginx-blocked externally.
+- **Multiple-choice answers:** sorted comma-separated option keys, e.g. `"A,C"` — always sort before storing.
+- **Image URL construction:** `${AWS_PUBLIC_URL}/${key}`, key = `uploads/{type}/{timestamp}-{uuid}.{ext}`; extract key for deletion by slicing from `uploads/`.
+- **Admin settings:** read from DB at runtime, never env. New configurable thresholds go in `quiz_users.admin_settings`.
+- **Credit system:** `profiles.credits`; deducted by `POST /api/submissions/start` (user-service internal API). `exams.credit_cost` defaults from `admin_settings.default_exam_cost`. Admin configures `default_credits`, `teacher_upgrade_cost`, `default_exam_cost` in Credits tab.
+- **Internal credit endpoint:** `POST /internal/credits/deduct` (user-service) — atomic `credits >= amount` UPDATE, 402 if insufficient, called only by submission-service with `x-internal-key`.
+- **Public settings:** `GET /api/users/public/settings` — `teacher_upgrade_cost`, `default_credits`, `default_exam_cost`, no auth.
+- **Teacher upgrade:** `POST /api/users/upgrade-to-teacher` — deducts credits, updates `auth.users.raw_user_meta_data` directly; user must log out/in for new role to apply.
+- **Session credit flag:** take-page stores `credit_deducted: true` in localStorage to avoid double-charging on refresh.
+- **Single-device exam session:** `POST /submissions/start` issues a UUID `exam_session_id`; every `PUT /submissions/:id/progress` and `POST /submissions/:id/submit` must pass it in `X-Session-Id` — mismatch → 409 (blocks a second tab/device). Stale session (>300s, `SESSION_STALE_SECS`) may be claimed by a new one. `GET /submissions/active?exam_id=` returns any existing `in_progress` submission.
+- **Scheduled publish:** `exams.scheduled_at` future + `is_published=true` → visible but locked (live countdown, `POST /submissions/start` blocked with 423). Create/edit forms: draft/now/scheduled selector. `PUT /exams/:id` uses `(has_scheduled_at, scheduled_at_val)` pair so `null` can clear it.
+- **Interactions gating:** comments — any authenticated user; likes — students only (403 otherwise); reports — only after a completed submission. Comment moderation: author+admin only. Report responses: owner+admin, flip to `resolved`.
+- **Exam notes are not persisted:** take-page note is in-memory `$state` only — don't add a notes table/endpoint.
+- **Soft-delete (exams/questions/collections):** DELETE sets `deleted_at=NOW()`; all SELECTs must filter `AND deleted_at IS NULL`. Deleting an exam cascades to its questions. No restore UI — recovery is manual DB.
+- **`POST /exams` requires explicit `credit_cost`:** column is `NOT NULL DEFAULT 10` but the route inserts whatever's given (including `null`) — omitted/`null` always 500s. Programmatic callers (e.g. generator-service) must resolve `admin_settings.default_exam_cost` themselves.
 
 ## Design System
 
 Xem chi tiết đầy đủ tại `DESIGN.md`. Tóm tắt nhanh:
 
-- **Brand gradient**: `linear-gradient(135deg, #5625d1, #6d29d3)` — monochromatic deep purple, dùng thống nhất trên cả landing page và quiz app (Udemy-inspired). Landing page (light-only) always uses these exact values.
+- **Brand gradient**: `linear-gradient(135deg, #5625d1, #6d29d3)` — monochromatic deep purple, dùng thống nhất trên landing page và quiz app.
 - **CSS tokens** (quiz app — `+layout.svelte` `:root`):
-  - Light (default): `--primary: #5625d1` · `--accent: #6d29d3` · `--primary-light: #ede6ff`
-  - `--bg: #f8f7ff` · `--surface: #ffffff` · `--text: #2b2a3f` · `--border: #d0d2e1`
-  - Dark (`[data-theme="dark"]`): `--bg: #202331` · `--surface: #2d2b42` · `--text: #f1f5f9` · `--border: #3d4055`
-  - Dark brand override: `--primary: #c084fc` · `--primary-dark: #a855f7` · `--accent: #e879f9` · `--primary-light: rgba(192,132,252,0.18)` — the light-mode purple (`#5625d1`) only has ~1.9:1 contrast against dark surfaces, so dark mode uses lighter purple/fuchsia tones (~6:1) instead of reusing the light-mode brand hex.
-- **Typography**: Inter (body/UI), JetBrains Mono (code). Google Fonts import.
-- **Border radius**: `--radius-card: 16px` · `--radius-btn: 10px` · inputs 8px
-- **Shadows**: `0 4px 20px rgba(86,37,209,0.08)` default · `0 12px 36px rgba(86,37,209,0.18)` hover
-- **Dark mode**: toggle via `localStorage('quiz-theme')`, applied as `document.documentElement.dataset.theme`
-- Dùng CSS custom properties (`var(--primary)`, không hard-code hex)
-- Mobile-first, breakpoint 768px
-- Không dùng Bootstrap/jQuery, vanilla CSS
+  - Light (default): `--primary: #5625d1` · `--accent: #6d29d3` · `--primary-light: #ede6ff` · `--bg: #f8f7ff` · `--surface: #ffffff` · `--text: #2b2a3f` · `--border: #d0d2e1`
+  - Dark (`[data-theme="dark"]`): `--bg: #202331` · `--surface: #2d2b42` · `--text: #f1f5f9` · `--border: #3d4055`; brand override `--primary: #c084fc` · `--primary-dark: #a855f7` · `--accent: #e879f9` · `--primary-light: rgba(192,132,252,0.18)` (light-mode hex has ~1.9:1 contrast on dark surfaces, so dark mode uses lighter tones ~6:1).
+- **Typography**: Inter (body/UI), JetBrains Mono (code), Google Fonts.
+- **Border radius**: `--radius-card: 16px` · `--radius-btn: 10px` · inputs 8px.
+- **Shadows**: `0 4px 20px rgba(86,37,209,0.08)` default · `0 12px 36px rgba(86,37,209,0.18)` hover.
+- **Dark mode**: toggle via `localStorage('quiz-theme')` → `document.documentElement.dataset.theme`.
+- Dùng CSS custom properties, không hard-code hex. Mobile-first, breakpoint 768px. Không dùng Bootstrap/jQuery, vanilla CSS.
