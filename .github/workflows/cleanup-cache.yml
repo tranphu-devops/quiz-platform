@@ -1,0 +1,29 @@
+name: Cleanup GitHub Actions cache
+
+on:
+  schedule:
+    - cron: '30 17 * * 6'  # 00:30 Chủ Nhật giờ Việt Nam (UTC+7 = UTC 17:30 Thứ 7)
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+
+    steps:
+      - name: Delete all Actions caches (chủ yếu Buildx layer cache, an toàn xóa — build sau tự tạo lại)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Cache trước khi xóa:"
+          gh cache list -R "$REPO" --limit 100
+          while :; do
+            ids=$(gh cache list -R "$REPO" --limit 100 --json id -q '.[].id')
+            [ -z "$ids" ] && break
+            for id in $ids; do
+              gh cache delete "$id" -R "$REPO"
+            done
+          done
+          echo "Đã xóa xong."
