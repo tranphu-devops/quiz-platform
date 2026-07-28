@@ -283,7 +283,10 @@ export default async function examRoutes(fastify) {
   })
 
   // POST /exams/:id/questions
-  fastify.post('/exams/:id/questions', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
+  // Higher than other mutation routes (20/min): generator-service imports up
+  // to ai_generation_max_questions (default 50) sequentially in one job via
+  // this route, all from the same caller IP within seconds of each other.
+  fastify.post('/exams/:id/questions', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id } = req.params
     const { content, image_url = null, options, correct_answer: ca, points = 1.0, order_index = 0, explanation = null, question_type = 'single' } = req.body ?? {}
     const correct_answer = Array.isArray(ca) ? [...ca].sort().join(',') : ca

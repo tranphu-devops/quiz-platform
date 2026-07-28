@@ -34,6 +34,12 @@ All notable changes to this project will be documented in this file.
 
   Toàn bộ luồng đã được kiểm chứng end-to-end bằng GoTrue thật (gửi mail thật, đọc mail thật, bấm link thật), không chỉ đọc code.
 
+### Fixed
+- **Sinh đề bằng AI với đề nhiều câu hỏi không còn báo lỗi "Too Many Requests" giữa chừng** — bước import câu hỏi vào exam-service chạy tuần tự, không có retry; đề trên 20 câu sẽ vượt rate-limit của endpoint tạo câu hỏi và job generate bị huỷ dở dang (đề đã tạo nhưng thiếu câu, phải xoá tay). Nay tự động chờ và thử lại theo `Retry-After` khi gặp lỗi 429, đồng thời nới rate-limit của endpoint đó để đủ dư cho một lượt import.
+
+### Changed
+- **Số câu hỏi tối đa khi sinh đề bằng AI**: nâng mặc định từ 30 lên 50 câu (`ai_generation_max_questions`, chỉnh được ở `/admin` → "Tạo đề bằng AI").
+
 ## [Unreleased] — 2026-07-26
 
 ### Added

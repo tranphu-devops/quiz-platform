@@ -29,6 +29,21 @@ async function getAdminSettings(keys) {
   return Object.fromEntries(rows.map(r => [r.key, r.value]))
 }
 
+// Bulk imports (POST /exams/:id/questions per question) can outrun
+// exam-service's per-route rate limit on bursty jobs — retry the single
+// request on 429 using its Retry-After header instead of failing the whole
+// job partway through.
+const IMPORT_MAX_RETRIES = 4
+
+async function fetchWithRetry(url, options) {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, options)
+    if (res.status !== 429 || attempt >= IMPORT_MAX_RETRIES) return res
+    const retryAfterSecs = Number(res.headers.get('retry-after')) || 2
+    await new Promise(resolve => setTimeout(resolve, retryAfterSecs * 1000))
+  }
+}
+
 // Job starts as 'processing' (completed_at NULL) so POST /generate can
 // respond immediately and the frontend polls GET /generate/jobs/:id for the
 // outcome — see finalizeJob(). This sidesteps the 524 a slow LLM call would
@@ -68,7 +83,7 @@ async function importExam(authHeader, { title, description, tags, questions }, c
   // NULL still violates the column's NOT NULL constraint. Since our Teacher
   // API contract treats credit_cost as optional ("null = admin default"),
   // we resolve that default ourselves and always send a concrete value.
-  const examRes = await fetch(`${EXAM_SERVICE_URL}/exams`, {
+  const examRes = await fetchWithRetry(`${EXAM_SERVICE_URL}/exams`, {
     method: 'POST',
     headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
     body: JSON.stringify({ title, description, tags, credit_cost: creditCost })
@@ -82,7 +97,7 @@ async function importExam(authHeader, { title, description, tags, questions }, c
   const exam = await examRes.json()
 
   for (const [index, q] of questions.entries()) {
-    const qRes = await fetch(`${EXAM_SERVICE_URL}/exams/${exam.id}/questions`, {
+    const qRes = await fetchWithRetry(`${EXAM_SERVICE_URL}/exams/${exam.id}/questions`, {
       method: 'POST',
       headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
       body: JSON.stringify(q)
@@ -265,7 +280,7 @@ export default async function generateRoutes(fastify) {
       ? settings.ai_generation_pdf_engine
       : DEFAULT_PDF_ENGINE
     const maxFileSizeMb = Number(settings.ai_generation_max_file_size_mb ?? 20)
-    const maxQuestions = Number(settings.ai_generation_max_questions ?? 30)
+    const maxQuestions = Number(settings.ai_generation_max_questions ?? 50)
     const questionCount = Math.max(1, Math.min(Number(params.question_count) || 15, maxQuestions))
 
     if (buffer.length > maxFileSizeMb * 1024 * 1024) {
