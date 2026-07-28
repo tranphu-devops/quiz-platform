@@ -10,9 +10,21 @@ All notable changes to this project will be documented in this file.
 - **README song ngữ**: `README.md` viết lại hoàn toàn bằng tiếng Anh (context cập nhật đầy đủ: notification-service, referral, Teacher API, Admin System Overview...), thêm `README.vi.md` và `README.ja.md` là bản dịch, link chéo qua lại giữa 3 file. Các bản dịch chỉ cập nhật khi có yêu cầu, không tự động đồng bộ mỗi lần đổi README.md.
 - **Landing page: 3 tính năng mới lên trang chủ** — giới thiệu bạn bè nhận credit (referral), thông báo đa kênh (Email/Pushover/Telegram), và Teacher API — đủ cả 3 ngôn ngữ. Bỏ badge "Mới" khỏi các tính năng đã ra mắt trước đó (bình luận/thích/báo lỗi, khám phá đề theo tag, ghi chú nháp, tạo đề bằng AI).
 
+### Added
+- **`cleanup-cache.yml`**: workflow hàng tuần (Chủ Nhật 00:30 giờ VN) xóa toàn bộ GitHub Actions cache — dùng khi cache sắp chạm giới hạn 10GB của repo (chủ yếu do Buildx layer cache `type=gha` từ `build-push.yml`); an toàn xóa vì build sau tự tạo lại cache mới.
+
 ### Changed
 - **`cleanup-images.yml` khớp lại matrix service với `build-push.yml`**: thêm `interaction-service`, `generator-service`, `notification-service`, `grader-service` — trước đây job dọn image GHCR hàng tuần bỏ sót 4 service này, image cũ tích luỹ không giới hạn.
 - **Hook `PreToolUse`/`Edit|Write` tự đồng bộ `CHANGELOG.md` với `origin/main` trước lần sửa đầu tiên trong session** (chỉ khi file đang sạch, không có edit dở) — giảm conflict khi nhiều worktree cùng append vào mục Unreleased rồi mở PR (`.claude/settings.json`).
+- **`build-push.yml` không còn build trên pull request** — trước đây mỗi PR chạy full multi-platform (amd64+arm64) build cho cả 9 service kèm ghi Buildx cache (`cache-to: type=gha,mode=max`), vừa tốn thời gian CI vừa là nguồn chính khiến Actions cache đầy nhanh; giờ chỉ build khi push/merge vào `main` hoặc tag `v*`.
+
+### Fixed
+- **Đăng nhập bằng link qua email giờ mới thật sự hoạt động** — lần sửa trước không có tác dụng nên link vẫn báo 404 và email vẫn không có giao diện. Có ba lỗi riêng biệt, mỗi lỗi đều hỏng trong im lặng:
+  1. **Link trong email vẫn 404**: cách cấu hình cũ về nguyên tắc không thể chạy được — GoTrue ghép link theo chuẩn URL khiến phần `/auth` bị loại bỏ, nên link luôn ra `/verify` thay vì `/auth/verify`. Nay đặt đường dẫn `/auth/verify` đúng chỗ GoTrue dùng.
+  2. **Bấm link xong vẫn lỗi** (lỗi này trước đây bị lỗi 404 ở trên che khuất): trang đích sau khi xác thực trỏ vào `/auth/callback` — vốn thuộc về GoTrue chứ không phải giao diện app — nên trả về lỗi thay vì đăng nhập. Nay dùng chung `/auth-callback` với đăng nhập Google.
+  3. **Email không có giao diện**: khi không tải được template, GoTrue lặng lẽ gửi email thô mà không báo lỗi. Đã ghi lại cách chẩn đoán trong `CLAUDE.md`.
+
+  Toàn bộ luồng đã được kiểm chứng end-to-end bằng GoTrue thật (gửi mail thật, đọc mail thật, bấm link thật), không chỉ đọc code.
 
 ## [Unreleased] — 2026-07-26
 
