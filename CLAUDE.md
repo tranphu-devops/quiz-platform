@@ -58,10 +58,12 @@ Schema managed by **ordered, idempotent migration files** in `infra/postgres/mig
 ### Other commands
 ```bash
 node scripts/generate-badges.js   # regen badge SVGs → apps/frontend/static/badges/ + src/lib/badge-presets.json
+node --env-file=.env scripts/mint-test-jwt.js [--email hs.minh@quiz.test]   # dev-only: mint a JWT for a seeded user, bypassing GoTrue/login
 sudo bash deploy.sh                  # prod: fresh install (Ubuntu server, run as root)
 sudo bash deploy.sh --update         # prod: pull latest, rebuild, rolling restart
 sudo bash deploy.sh --set-admin      # prod: promote ADMIN_EMAIL to admin role without full redeploy
 ```
+`mint-test-jwt.js` requires the local stack running (`docker compose up`); signs with the local `JWT_SECRET` for a user seeded in `infra/postgres/seed.sql`. Paste the printed `localStorage.setItem('quiz_session', ...)` snippet into the browser console for UI testing, or use the token as a Bearer header for API testing. Dev/local only — never run against a production `JWT_SECRET`/database.
 
 **Tests:** none in this repo — verify by running the app and exercising the feature manually.
 
@@ -143,7 +145,7 @@ Nginx has two `server` blocks: `novaquiz.net`/`www.novaquiz.net` (landing page a
 > `apps/auth-service/` is a legacy prototype, not wired into compose/Nginx — ignore it.
 
 ### Auth flow — GoTrue + local JWT verification
-**GoTrue** (`supabase/gotrue:v2.151.0`) handles signup, login, Google OAuth, JWT issuance. Claims: `sub`→`req.user.id`, `email`→`req.user.email`, `user_metadata.role`→`req.user.role` (`student|teacher|admin`), `role` is always `"authenticated"` (GoTrue-internal, **not** our app role).
+**GoTrue** (`supabase/gotrue:v2.151.0`) handles signup, login, Google OAuth, JWT issuance. Claims: `sub`→`req.user.id`, `email`→`req.user.email`, `user_metadata.role`→`req.user.role` (`student|teacher|admin`), `role` is always `"authenticated"` (GoTrue-internal, **not** our app role). **No passwords for end users** — login is Google OAuth or passwordless email magic link (`signInWithOtp`, `apps/frontend/src/routes/login/+page.svelte`), both provisioning the same `auth.users`/`profiles` rows keyed by email/`sub`. GoTrue's SMTP relays through Resend (`docker-compose.yml`, reusing `RESEND_API_KEY`), `GOTRUE_MAILER_OTP_EXP: 600` (magic links expire in 10 min). Locked-out recovery: admin changes the user's email via `PATCH /admin/users/:id/email` (`/admin/users/:id/edit`) — no self-service password reset.
 
 Each backend verifies JWT locally via `JWT_SECRET` in `src/middleware/auth.js`, setting `req.user`/`req.ability`, then does a **live DB query** to check `banned` role — bans take effect immediately, no waiting for token expiry.
 

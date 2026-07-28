@@ -18,6 +18,10 @@ jobs:
           - user-service
           - exam-service
           - submission-service
+          - interaction-service
+          - generator-service
+          - notification-service
+          - grader-service
           - frontend
 
     steps:

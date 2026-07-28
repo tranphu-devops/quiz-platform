@@ -1,21 +1,26 @@
 # NovaQuiz
 
-Ứng dụng tạo & thi trắc nghiệm trực tuyến, kiến trúc microservices. Một PostgreSQL dùng chung (mỗi service một schema riêng), Nginx là ingress duy nhất, auth qua GoTrue (SSO + Google OAuth).
+*[Tiếng Việt](README.vi.md) · [日本語](README.ja.md)*
+
+An online quiz platform (create, publish, and take exams) built as a microservices monorepo. One shared PostgreSQL instance (a dedicated schema per service), a single Nginx ingress, and GoTrue for auth (email/password + Google OAuth).
 
 ## Services
 
-| Service | Port (Docker) | Dev Port | Mô tả |
+| Service | Docker port | Dev port | Description |
 |---|---|---|---|
-| GoTrue (SSO) | 9999 | 9999 | Đăng ký / đăng nhập / Google OAuth / JWT |
-| user-service | 3002 | 4002 | Profile, upload ảnh (S3), credit, admin settings |
-| exam-service | 3003 | 4003 | Đề thi, câu hỏi, bộ đề (collections) |
-| submission-service | 3004 | 4004 | Nộp bài, chấm điểm, phiên thi 1-thiết-bị |
-| interaction-service | 3005 | 4005 | Bình luận / thích / báo lỗi |
-| generator-service | 3006 | 4006 | Tạo đề thi bằng AI từ tài liệu upload (PDF/DOCX/text) |
-| grader-service | — | — | Worker cron (15 phút/lần) tự chấm bài hết giờ — không có HTTP |
-| migrate | — | — | Job one-shot chạy migration rồi thoát; các service chờ nó xong mới khởi động |
-| frontend | 3000 | 4000 | SvelteKit 5 SPA (SSR tắt) |
-| nginx | 80 | 80 | Reverse proxy / ingress |
+| GoTrue (SSO) | 9999 | 9999 | Signup / login / Google OAuth / JWT issuance |
+| user-service | 3002 | 4002 | Profiles, image uploads (S3), credits, admin settings, Teacher API keys |
+| exam-service | 3003 | 4003 | Exams, questions, collections |
+| submission-service | 3004 | 4004 | Submissions, grading, single-device exam sessions |
+| interaction-service | 3005 | 4005 | Comments / likes / error reports |
+| generator-service | 3006 | 4006 | AI-generated exams from uploaded documents (PDF/DOCX/text) |
+| notification-service | 3007 | 4007 | Admin alerts + per-user activity notifications (Email/Pushover/Telegram) |
+| grader-service | — | — | Cron worker (every 15 min) auto-grading expired submissions — no HTTP server |
+| migrate | — | — | One-shot job that applies DB migrations then exits; every service waits on it |
+| frontend | 3000 | 4000 | SvelteKit 5 SPA (SSR disabled) |
+| nginx | 80 | 80 | Reverse proxy / single ingress |
+
+> `apps/auth-service/` is a legacy prototype, not wired into Compose/Nginx — ignore it.
 
 ## Quick Start
 
@@ -23,40 +28,40 @@
 
 ```bash
 cp .env.example .env
-# Điền tối thiểu: POSTGRES_PASSWORD, JWT_SECRET (≥32 ký tự),
-# INTERNAL_API_KEY (≥32 ký tự), SITE_URL, và các *_DATABASE_URL.
+# Fill in at minimum: POSTGRES_PASSWORD, JWT_SECRET (>=32 chars),
+# INTERNAL_API_KEY (>=32 chars), SITE_URL, and the *_DATABASE_URL vars.
 
 docker compose up --build
 ```
 
-Truy cập: http://localhost
+Visit: http://localhost
 
-Schema DB được áp **tự động** bởi service `migrate` mỗi lần `up` (không cần chạy `psql` thủ công). Xem chi tiết ở [CLAUDE.md](CLAUDE.md#database-migrations-automatic).
+The DB schema is applied **automatically** by the `migrate` service on every `up` (no manual `psql` step). See [CLAUDE.md](CLAUDE.md#database-migrations-automatic) for details.
 
 ## Dev (hot reload)
 
-`docker-compose.override.yml` tự áp dụng khi chạy `docker compose up`. Nó:
-- Mount `src/` của mỗi service → hot reload qua `node --watch`
-- Expose thêm port trên host (4000–4005, 9999, 5432)
+`docker-compose.override.yml` is applied automatically by `docker compose up`. It:
+- Mounts each service's `src/` for hot reload via `node --watch`
+- Exposes extra ports on the host (4000–4007, 9999, 5432, 6379)
 
-## Test nhanh bằng curl
+## Quick test with curl
 
 ```bash
-# Đăng ký
+# Sign up
 curl -s -X POST http://localhost/auth/signup \
   -H "Content-Type: application/json" \
   -d '{"email":"teacher@test.com","password":"123456","data":{"role":"teacher"}}' | jq
 
-# Đăng nhập → lấy token
+# Log in -> get a token
 TOKEN=$(curl -s -X POST http://localhost/auth/token?grant_type=password \
   -H "Content-Type: application/json" \
   -d '{"email":"teacher@test.com","password":"123456"}' | jq -r '.access_token')
 
-# Tạo đề thi
+# Create an exam
 curl -s -X POST http://localhost/api/exams/exams \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"title":"Test Exam","time_limit":30}' | jq
+  -d '{"title":"Test Exam","time_limit":30,"credit_cost":0}' | jq
 
 # Health checks
 curl http://localhost/auth/health
@@ -65,37 +70,42 @@ curl http://localhost/api/users/health
 curl http://localhost/api/submissions/health
 curl http://localhost/api/interactions/health
 curl http://localhost/api/generator/health
+curl http://localhost/api/notifications/health
 ```
 
-## Tính năng chính
+## Key features
 
-- **Soạn đề**: wizard 4 bước, import câu hỏi từ JSON, ảnh bìa & ảnh câu hỏi, câu đơn/nhiều đáp án đúng, giải thích markdown.
-- **Tạo đề bằng AI**: teacher upload tài liệu (PDF/DOCX/text) tại `/exams/generate` — hệ thống gọi Claude API soạn sẵn bộ câu hỏi trắc nghiệm, tự tạo đề nháp để hoàn thiện. Dùng key LLM riêng của teacher hoặc key nền tảng do admin cấu hình (trừ credit).
-- **Bộ đề & Huy hiệu**: gom nhiều đề thành lộ trình; hoàn thành toàn bộ → tự động trao huy hiệu trên profile.
-- **Hệ thống Credit**: mỗi đề có credit cost; trừ credit khi bắt đầu thi; admin cấu hình mức credit.
-- **Phiên thi an toàn**: mỗi bài chỉ trên một thiết bị (session UUID); auto-save tiến trình; resume khi login lại; auto-grade khi hết giờ (grader-service); xuất bản theo lịch với đếm ngược.
-- **Tương tác**: bình luận, thích (❤️ chỉ student), báo lỗi đề (sau khi hoàn thành bài) + hộp thư xử lý cho teacher/admin.
-- **Khám phá đề**: trang `/exams` lọc theo tag, sắp xếp (mới nhất / phổ biến), hiển thị số lượt thích & bình luận trên mỗi thẻ.
-- **Hồ sơ công khai** (`/users/[id]`): xem thông tin người tạo đề + danh sách đề đã công bố.
+- **Exam builder**: 4-step wizard, JSON question import, cover & per-question images, single/multiple-correct-answer questions, markdown explanations.
+- **AI-generated exams**: teachers upload a document (PDF/DOCX/text) at `/exams/generate` — an LLM (via OpenRouter) drafts a full multiple-choice exam as a draft for review. Uses the teacher's own LLM key or an admin-configured platform key (deducts credits).
+- **Collections & badges**: group exams into a learning path; completing every exam in a published collection automatically awards a badge on the student's profile.
+- **Credit system**: each exam has a credit cost, deducted when a student starts it; admin configures the defaults. Referral program: invite a friend, both sides earn credits once the referee upgrades to teacher or completes a paid action.
+- **Secure exam sessions**: one device per attempt (session UUID); progress auto-saves; resumes on re-login; auto-graded when time runs out (grader-service); scheduled publishing with a live countdown.
+- **Interactions**: comments, likes (students only), error reports (after finishing an attempt) with a resolution inbox for teachers/admins.
+- **Discover exams**: `/exams` filterable by tag, sortable (newest / most popular), with like/comment counts on every card.
+- **Public profiles** (`/users/[id]`): a creator's bio, social links, and published exams.
+- **Multi-channel notifications**: per-user activity alerts (submission graded, comment reply, report resolved, etc.) and admin/system alerts, delivered over Email (Resend), Pushover, or Telegram — each user opts in per event type on `/profile`.
+- **Teacher API**: long-lived API keys (`/profile`) let teachers manage exams programmatically without a browser session — see `/api-docs`.
+- **Admin System Overview**: read-only service health, logs, and DB stats on `/admin`, no SSH required.
 
-## Tech Stack
+## Tech stack
 
-- **Frontend**: SvelteKit 5 + Node adapter + @supabase/auth-js (SSR tắt, SPA)
+- **Frontend**: SvelteKit 5 + Node adapter + `@supabase/auth-js` (SSR disabled, SPA)
 - **Backend**: Node.js 24 + Fastify + CASL (authorization)
-- **Auth**: GoTrue (supabase/gotrue:v2.151.0) — JWT HS256, Google OAuth optional
-- **Database**: PostgreSQL 16 (multi-schema; migration đánh số tự động)
-- **Storage**: Lightsail / S3-compatible object storage (upload ảnh)
-- **Container**: Docker Compose + Nginx
+- **Auth**: GoTrue (`supabase/gotrue:v2.151.0`) — JWT HS256, optional Google OAuth
+- **Database**: PostgreSQL 16 (multi-schema; numbered, idempotent migrations)
+- **Cache**: Redis (best-effort read-through cache for exam/user/interaction services)
+- **Storage**: Lightsail / S3-compatible object storage (image uploads)
+- **Containers**: Docker Compose + Nginx
 - **Registry**: GitHub Container Registry (GHCR)
-- **CI/CD**: GitHub Actions — matrix build (user / exam / submission / interaction / generator / grader / frontend), auto-deploy lên server sau khi build thành công
+- **CI/CD**: GitHub Actions — matrix build (user / exam / submission / interaction / generator / notification / grader / frontend), auto-deploy to the server on a successful build
 
 ## Roles
 
-| Role | Quyền |
+| Role | Permissions |
 |---|---|
-| `student` | Xem đề đã publish, làm bài, xem submission của mình, thích & báo lỗi đề |
-| `teacher` | CRUD đề của mình, xem tất cả submissions, xử lý báo lỗi đề của mình |
+| `student` | View published exams, take exams, view own submissions, like & report exams |
+| `teacher` | CRUD own exams, view all submissions, resolve reports on own exams |
 | `admin` | Full access |
-| `banned` | Bị chặn ngay ở middleware (kiểm tra live trong DB) |
+| `banned` | Blocked at the auth middleware (checked live against the DB) |
 
-Role đặt tại đăng ký trong `user_metadata.role` và embed vào JWT. Chi tiết kiến trúc & quy ước xem [CLAUDE.md](CLAUDE.md); design system xem [DESIGN.md](DESIGN.md).
+The role is set at signup in `user_metadata.role` and embedded in the JWT. See [CLAUDE.md](CLAUDE.md) for architecture/conventions, and [DESIGN.md](DESIGN.md) for the design system.
