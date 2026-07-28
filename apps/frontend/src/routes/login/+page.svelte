@@ -44,7 +44,10 @@
     magicError = ''
     const { error } = await auth.signInWithOtp({
       email: trimmed,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` }
+      // /auth-callback, not /auth/callback — nginx proxies all of /auth/* to
+      // GoTrue, so the hyphenated route is the only callback the SPA can serve
+      // (same reason the Google button above uses it).
+      options: { emailRedirectTo: `${window.location.origin}/auth-callback` }
     })
     sending = false
 

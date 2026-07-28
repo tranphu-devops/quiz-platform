@@ -39,13 +39,7 @@ services:
       GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOTRUE_EXTERNAL_GOOGLE_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: ${SITE_URL:-http://localhost}/auth/callback
-      # Must include the /auth prefix — nginx mounts GoTrue at /auth/ and
-      # strips that prefix when proxying, so GoTrue's self-referencing links
-      # (e.g. the magic-link {{ .ConfirmationURL }}, built as API_EXTERNAL_URL
-      # + /verify) only round-trip through nginx back to GoTrue when this
-      # already includes /auth. Without it, the emailed link 404s against the
-      # frontend SPA instead of reaching GoTrue's /verify handler.
-      API_EXTERNAL_URL: ${SITE_URL:-http://localhost}/auth
+      API_EXTERNAL_URL: ${SITE_URL:-http://localhost}
       GOTRUE_MAILER_AUTOCONFIRM: "true"
       GOTRUE_SMTP_HOST: "smtp.resend.com"
       GOTRUE_SMTP_PORT: 587
@@ -54,7 +48,19 @@ services:
       GOTRUE_SMTP_ADMIN_EMAIL: ${NOTIFICATION_EMAIL_FROM:-noreply@novaquiz.net}
       GOTRUE_SMTP_SENDER_NAME: "NovaQuiz"
       GOTRUE_MAILER_OTP_EXP: 600
+      # The /auth prefix MUST live here, not in API_EXTERNAL_URL. GoTrue builds
+      # emailed links as externalURL.ResolveReference(urlPath) — and because
+      # these paths are absolute ("/verify"), RFC 3986 discards the base URL's
+      # path entirely, so an API_EXTERNAL_URL of "<site>/auth" silently yields
+      # "<site>/verify" and 404s against the frontend SPA. Nginx proxies
+      # /auth/* to GoTrue, so the path itself has to carry the prefix.
+      GOTRUE_MAILER_URLPATHS_INVITE: /auth/verify
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/verify
+      GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/verify
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/verify
       GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: "Your NovaQuiz login link"
+      # http(s) only — GoTrue fetches this per send and, if the fetch fails,
+      # silently falls back to its plain-text default (see CLAUDE.md).
       GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: "http://nginx/mail-templates/magic-link.html"
     depends_on:
       postgres:
