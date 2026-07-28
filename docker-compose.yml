@@ -7,7 +7,6 @@ services:
     volumes:
       - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./landing:/var/www/landing:ro
-      - ./infra/nginx/mail-templates:/var/www/mail-templates:ro
       - /opt/nginx:/opt/nginx:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -20,6 +19,20 @@ services:
       - generator-service
       - notification-service
       - frontend
+    restart: unless-stopped
+
+  # Static host for GoTrue's email templates — deliberately its own container,
+  # not a route on `nginx`. GoTrue re-fetches the template over HTTP on every
+  # send and silently falls back to its plain-text default when the fetch
+  # fails, and `nginx` is recreated + restarted on every `deploy.sh --update`.
+  # A magic link requested inside that restart window therefore arrived
+  # unstyled (with GoTrue's OTP-code line) — which is exactly how this shipped
+  # broken. This service has no upstreams and no config that changes between
+  # deploys, so `docker compose up -d` leaves it running untouched.
+  mail-templates:
+    image: nginx:alpine
+    volumes:
+      - ./infra/nginx/mail-templates:/usr/share/nginx/html:ro
     restart: unless-stopped
 
   gotrue:
@@ -61,12 +74,14 @@ services:
       GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: "Your NovaQuiz login link"
       # http(s) only — GoTrue fetches this per send and, if the fetch fails,
       # silently falls back to its plain-text default (see CLAUDE.md).
-      GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: "http://nginx/mail-templates/magic-link.html"
+      GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: "http://mail-templates/magic-link.html"
     depends_on:
       postgres:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      mail-templates:
+        condition: service_started
     restart: unless-stopped
 
   user-service:

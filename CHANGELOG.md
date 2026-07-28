@@ -9,8 +9,6 @@ All notable changes to this project will be documented in this file.
 ### Added
 - **README song ngữ**: `README.md` viết lại hoàn toàn bằng tiếng Anh (context cập nhật đầy đủ: notification-service, referral, Teacher API, Admin System Overview...), thêm `README.vi.md` và `README.ja.md` là bản dịch, link chéo qua lại giữa 3 file. Các bản dịch chỉ cập nhật khi có yêu cầu, không tự động đồng bộ mỗi lần đổi README.md.
 - **Landing page: 3 tính năng mới lên trang chủ** — giới thiệu bạn bè nhận credit (referral), thông báo đa kênh (Email/Pushover/Telegram), và Teacher API — đủ cả 3 ngôn ngữ. Bỏ badge "Mới" khỏi các tính năng đã ra mắt trước đó (bình luận/thích/báo lỗi, khám phá đề theo tag, ghi chú nháp, tạo đề bằng AI).
-
-### Added
 - **`cleanup-cache.yml`**: workflow hàng tuần (Chủ Nhật 00:30 giờ VN) xóa toàn bộ GitHub Actions cache — dùng khi cache sắp chạm giới hạn 10GB của repo (chủ yếu do Buildx layer cache `type=gha` từ `build-push.yml`); an toàn xóa vì build sau tự tạo lại cache mới.
 
 ### Changed
@@ -25,14 +23,7 @@ All notable changes to this project will be documented in this file.
   3. **Email không có giao diện**: khi không tải được template, GoTrue lặng lẽ gửi email thô mà không báo lỗi. Đã ghi lại cách chẩn đoán trong `CLAUDE.md`.
 
   Toàn bộ luồng đã được kiểm chứng end-to-end bằng GoTrue thật (gửi mail thật, đọc mail thật, bấm link thật), không chỉ đọc code.
-
-### Fixed
-- **Đăng nhập bằng link qua email giờ mới thật sự hoạt động** — lần sửa trước không có tác dụng nên link vẫn báo 404 và email vẫn không có giao diện. Có ba lỗi riêng biệt, mỗi lỗi đều hỏng trong im lặng:
-  1. **Link trong email vẫn 404**: cách cấu hình cũ về nguyên tắc không thể chạy được — GoTrue ghép link theo chuẩn URL khiến phần `/auth` bị loại bỏ, nên link luôn ra `/verify` thay vì `/auth/verify`. Nay đặt đường dẫn `/auth/verify` đúng chỗ GoTrue dùng.
-  2. **Bấm link xong vẫn lỗi** (lỗi này trước đây bị lỗi 404 ở trên che khuất): trang đích sau khi xác thực trỏ vào `/auth/callback` — vốn thuộc về GoTrue chứ không phải giao diện app — nên trả về lỗi thay vì đăng nhập. Nay dùng chung `/auth-callback` với đăng nhập Google.
-  3. **Email không có giao diện**: khi không tải được template, GoTrue lặng lẽ gửi email thô mà không báo lỗi. Đã ghi lại cách chẩn đoán trong `CLAUDE.md`.
-
-  Toàn bộ luồng đã được kiểm chứng end-to-end bằng GoTrue thật (gửi mail thật, đọc mail thật, bấm link thật), không chỉ đọc code.
+- **Email đăng nhập không còn mất giao diện mỗi lần deploy** — template email chuyển sang một container riêng thay vì phục vụ kèm Nginx. Nginx bị restart ở cuối mỗi lần deploy; ai bấm "gửi link đăng nhập" đúng lúc đó sẽ nhận email thô kèm dòng "enter the code: 123456" (mã 6 số vô dụng vì giao diện không có ô nhập mã). Container mới không phụ thuộc service nào và không đổi cấu hình giữa các lần deploy nên không bị restart theo. Template cũng không còn truy cập được từ ngoài internet.
 
 ## [Unreleased] — 2026-07-26
 
