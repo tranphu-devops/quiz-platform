@@ -15,6 +15,12 @@ const TIMEZONE = process.env.NOTIFICATION_TIMEZONE || 'Asia/Ho_Chi_Minh'
 export const BRAND = {
   name: 'NovaQuiz',
   tagline: 'Smart online exam platform',
+  // Header avatar. Must be an absolute URL on the *marketing* host: it is
+  // served by Nginx from `landing/brand-assets/` (novaquiz.net), not by the
+  // app. PNG, not the .svg next to it — Gmail and Outlook don't render SVG in
+  // mail. Images are blocked by default in most clients, so the wordmark
+  // beside it stays real text and the header still reads without this.
+  logoUrl: `${SITE_URL}/brand-assets/icon-128.png`,
   blurb: 'NovaQuiz is an online exam platform for creating, sharing and taking quizzes — with AI-assisted exam generation, collections, badges and detailed result analytics.',
   appUrl: APP_URL,
   siteUrl: SITE_URL,
