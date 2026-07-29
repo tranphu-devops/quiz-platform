@@ -162,10 +162,26 @@ ${options}
     </select>`
 }
 
+// Both `code` and `path` are re-derived as string literals inside the branch
+// rather than carried over from the <select> value. That is deliberate: a
+// DOM-read string reaching `location.href` is a javascript:-URL sink
+// (CodeQL js/xss-through-dom, high) and reaching `document.cookie` is cookie
+// injection. Neither is reachable through our own <option> values, but an
+// allowlist costs nothing, states the intent, and keeps the value provably
+// untainted — a lookup table indexed by the raw input would not, since the
+// tainted key taints the result.
+const langBranches = LANGS.map(
+  (l, i) =>
+    `    ${i === 0 ? 'if' : 'else if'} (input === '${l.code}') { code = '${l.code}'; path = '${l.path}'; }`
+).join('\n')
+
 const LANG_SCRIPT = `<script>
-  function nqSetLang(code) {
+  function nqSetLang(input) {
+    var code, path;
+${langBranches}
+    else return;
     document.cookie = 'nqlang=' + code + ';path=/;max-age=31536000;samesite=lax';
-    location.href = code === 'en' ? '/' : '/' + code;
+    location.href = path;
   }
 </script>`
 

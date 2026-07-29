@@ -874,9 +874,14 @@
 </footer>
 
 <script>
-  function nqSetLang(code) {
+  function nqSetLang(input) {
+    var code, path;
+    if (input === 'en') { code = 'en'; path = '/'; }
+    else if (input === 'vi') { code = 'vi'; path = '/vi'; }
+    else if (input === 'ja') { code = 'ja'; path = '/ja'; }
+    else return;
     document.cookie = 'nqlang=' + code + ';path=/;max-age=31536000;samesite=lax';
-    location.href = code === 'en' ? '/' : '/' + code;
+    location.href = path;
   }
 </script>
 
