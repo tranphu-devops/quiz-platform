@@ -1,0 +1,12 @@
+# robots.txt for novaquiz.net (landing page).
+# The app vhost (app.novaquiz.net) serves its own, disallow-all robots.txt
+# from apps/frontend/static/robots.txt.
+#
+# AI crawlers are deliberately NOT blocked: answers in ChatGPT / Claude /
+# Perplexity are a real discovery channel, and the landing page holds no
+# private data.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://novaquiz.net/sitemap.xml

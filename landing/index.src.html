@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- SEO:HEAD — title/description/canonical/hreflang/OG/JSON-LD are injected
+       per language by scripts/build-landing-i18n.js. Do not hand-edit there. -->
+  <link rel="icon" href="/brand-assets/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:      #5625d1;
+      --primary-dark: #4318b0;
+      --accent:       #6d29d3;
+      --primary-lt:   #ede6ff;
+      --text:         #2b2a3f;
+      --muted:        #595d72;
+      --border:       #d0d2e1;
+      --white:        #ffffff;
+      --bg:           #f8f7ff;
+      --success:      #22c55e;
+      --warning:      #f59e0b;
+      --danger:       #ef4444;
+      --radius:       16px;
+    }
+
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+
+    /* ─── NAV ─── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,.95); backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 1.75rem;
+      height: 64px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-brand { font-size: 1.2rem; font-weight: 800; background: linear-gradient(135deg,var(--primary),var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: -.03em; text-decoration: none; }
+    .nav-links { display: flex; align-items: center; gap: 0.25rem; }
+    .nav-links a { text-decoration: none; font-size: .875rem; font-weight: 500; padding: .4rem .75rem; border-radius: 8px; transition: color .15s, background .15s; }
+    .nav-links a:hover { color: var(--text); background: var(--bg); }
+    .btn-ghost { padding: .45rem .9rem; border-radius: 8px; border: 1.5px solid var(--border); background: white; color: var(--text); font-size: .875rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: all .15s; }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--primary); }
+    .btn-nav { padding: .5rem 1.1rem; border-radius: 8px; border: none; background: linear-gradient(135deg,var(--primary),var(--accent)); color: white; font-size: .875rem; font-weight: 700; cursor: pointer; text-decoration: none; transition: opacity .15s, transform .15s; box-shadow: 0 2px 8px rgba(86,37,209,.3); }
+    .btn-nav:hover { opacity: .92; transform: translateY(-1px); }
+    @media (max-width: 640px) { .nav-hide { display: none; } }
+
+    /* ─── LANG SELECT ─── */
+    .lang-select {
+      border: 1.5px solid var(--border); background: white; color: var(--muted);
+      border-radius: 8px; padding: .4rem 1.9rem .4rem .7rem; font-size: .82rem; font-weight: 600;
+      font-family: inherit; cursor: pointer; transition: all .15s;
+      -webkit-appearance: none; -moz-appearance: none; appearance: none;
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23595d72' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right .6rem center;
+    }
+    .lang-select:hover { border-color: var(--accent); color: var(--primary); }
+    .lang-select:focus { outline: none; border-color: var(--accent); }
+
+    /* ─── HERO ─── */
+    .hero {
+      padding: 6rem 1.5rem 5rem;
+      text-align: center;
+      background: linear-gradient(165deg, #f0f0ff 0%, #ede6ff 35%, #f2edff 65%, #fdf4ff 100%);
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: ''; position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 90% 70% at 30% 0%, rgba(59,130,246,.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 20%, rgba(124,58,237,.1) 0%, transparent 60%);
+    }
+    .hero > * { position: relative; }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: .5rem;
+      background: white; border: 1px solid #c0adfa;
+      border-radius: 99px; padding: .3rem 1rem; font-size: .78rem; font-weight: 700;
+      color: var(--primary); margin-bottom: 1.75rem;
+      box-shadow: 0 2px 8px rgba(86,37,209,.1);
+    }
+    .hero h1 { font-size: clamp(2.1rem, 6vw, 3.75rem); font-weight: 900; line-height: 1.08; letter-spacing: -.05em; color: var(--text); margin-bottom: 1.5rem; }
+    .hero h1 em { font-style: normal; background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero p { font-size: 1.1rem; color: var(--muted); max-width: 560px; margin: 0 auto 2.5rem; line-height: 1.75; }
+    .hero-ctas { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; margin-bottom: 4rem; }
+    .btn-hero-primary {
+      padding: .8rem 2rem; border-radius: 10px; font-size: 1rem; font-weight: 700;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+      color: white; border: none; text-decoration: none; transition: transform .15s, box-shadow .15s;
+      box-shadow: 0 6px 20px rgba(86,37,209,.38);
+    }
+    .btn-hero-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(86,37,209,.46); }
+    .btn-hero-secondary {
+      padding: .8rem 2rem; border-radius: 10px; font-size: 1rem; font-weight: 700;
+      background: white; color: var(--primary); border: 2px solid #c0adfa;
+      text-decoration: none; transition: background .15s, border-color .15s;
+    }
+    .btn-hero-secondary:hover { background: var(--primary-lt); border-color: #9d74f2; }
+
+    /* ─── HERO MOCKUP ─── */
+    .hero-mockup { max-width: 780px; margin: 0 auto; position: relative; }
+    .hero-mockup::before {
+      content: ''; position: absolute; inset: -20px; border-radius: 28px;
+      background: linear-gradient(135deg, rgba(86,37,209,.15), rgba(109,41,211,.12));
+      filter: blur(30px); z-index: 0;
+    }
+    .mockup-card {
+      background: white; border-radius: 18px;
+      box-shadow: 0 28px 80px rgba(0,0,0,.13), 0 4px 16px rgba(0,0,0,.05);
+      overflow: hidden; border: 1px solid var(--border); position: relative; z-index: 1;
+    }
+    .mockup-bar { background: #f8fafc; border-bottom: 1px solid var(--border); padding: .65rem 1.1rem; display: flex; align-items: center; gap: .5rem; }
+    .dot { width: 11px; height: 11px; border-radius: 50%; }
+    .dot.r { background: #fca5a5; } .dot.y { background: #fcd34d; } .dot.g { background: #86efac; }
+    .mockup-url { flex: 1; background: white; border: 1px solid var(--border); border-radius: 6px; padding: .25rem .75rem; font-size: .75rem; color: var(--muted); margin: 0 .75rem; text-align: center; font-family: 'Courier New', monospace; }
+    .mockup-body { padding: 1.5rem 1.75rem; }
+    .mockup-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .m-title { font-weight: 700; font-size: .95rem; }
+    .m-badges { display: flex; gap: .4rem; }
+    .m-timer { background: #fef2f2; color: #dc2626; padding: .2rem .65rem; border-radius: 6px; font-weight: 700; font-size: .8rem; }
+    .m-credit { background: var(--primary-lt); color: var(--primary); padding: .2rem .65rem; border-radius: 6px; font-weight: 700; font-size: .8rem; }
+    .m-session { background: #f0fdf4; color: #16a34a; padding: .2rem .65rem; border-radius: 6px; font-weight: 700; font-size: .78rem; }
+    .m-progress { height: 6px; background: #e2e8f0; border-radius: 99px; margin-bottom: 1.35rem; }
+    .m-progress-fill { height: 100%; width: 55%; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 99px; }
+    .m-question { background: #f0f7ff; border-radius: 10px; padding: 1rem 1.1rem; margin-bottom: 1rem; }
+    .m-question .m-q-meta { font-size: .78rem; color: var(--muted); font-weight: 600; margin-bottom: .5rem; }
+    .m-question p { font-weight: 600; font-size: .9rem; }
+    .m-opt { display: flex; align-items: center; gap: .65rem; padding: .5rem .85rem; border-radius: 8px; font-size: .86rem; margin-bottom: .4rem; border: 1.5px solid var(--border); background: white; cursor: default; }
+    .m-opt.selected { border-color: var(--primary); background: var(--primary-lt); font-weight: 600; color: var(--primary); }
+    .m-opt-key { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 700; flex-shrink: 0; }
+    .m-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; }
+    .m-btn { padding: .4rem .9rem; border-radius: 8px; font-size: .82rem; font-weight: 600; cursor: default; border: none; }
+    .m-btn-prev { background: #f1f5f9; color: #475569; }
+    .m-btn-next { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; }
+    .m-autosave { font-size: .75rem; color: #16a34a; font-weight: 600; }
+
+    /* ─── TRUST BAR ─── */
+    .trust-bar {
+      display: flex; justify-content: center; gap: 2.5rem; flex-wrap: wrap;
+      padding: 1.5rem 1.5rem;
+      background: white; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    }
+    .trust-item { display: flex; align-items: center; gap: .5rem; font-size: .82rem; color: var(--muted); font-weight: 500; }
+    .trust-icon { font-size: 1rem; }
+
+    /* ─── STATS ─── */
+    .stats { display: flex; justify-content: center; gap: 3.5rem; flex-wrap: wrap; padding: 3.5rem 1.5rem; background: white; }
+    .stat { text-align: center; }
+    .stat-num { font-size: 2.4rem; font-weight: 900; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: -.05em; }
+    .stat-label { font-size: .84rem; color: var(--muted); margin-top: .3rem; }
+
+    /* ─── SECTION ─── */
+    section { padding: 5.5rem 1.5rem; }
+    .section-inner { max-width: 1080px; margin: 0 auto; }
+    .section-tag { font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: var(--primary); margin-bottom: .75rem; display: inline-block; }
+    .section-title { font-size: clamp(1.6rem, 3.5vw, 2.4rem); font-weight: 900; letter-spacing: -.04em; margin-bottom: 1rem; line-height: 1.15; color: var(--text); }
+    .section-sub { font-size: 1rem; color: var(--muted); max-width: 560px; line-height: 1.75; }
+    .divider { border: none; border-top: 1px solid var(--border); }
+
+    /* ─── FEATURES ─── */
+    .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-top: 3rem; }
+    @media (max-width: 900px) { .features-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { .features-grid { grid-template-columns: 1fr; } }
+    .feature-card {
+      background: white; border-radius: var(--radius); padding: 1.5rem 1.6rem;
+      border: 1.5px solid var(--border); transition: box-shadow .2s, transform .2s, border-color .2s;
+    }
+    .feature-card:hover { box-shadow: 0 10px 30px rgba(86,37,209,.1); transform: translateY(-3px); border-color: #9d74f2; }
+    .feature-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; margin-bottom: 1rem; }
+    .feature-card h3 { font-size: .98rem; font-weight: 700; margin-bottom: .5rem; color: var(--text); }
+    .feature-card p { font-size: .86rem; color: var(--muted); line-height: 1.68; }
+    .feature-card .new-badge { font-size: .65rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; background: #fffbeb; color: #d97706; border: 1px solid #fde68a; border-radius: 99px; padding: .1rem .5rem; margin-left: .4rem; vertical-align: middle; }
+
+    /* ─── SHOWCASE ─── */
+    .showcase { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; max-width: 1080px; margin: 0 auto; }
+    .showcase.flip { direction: rtl; }
+    .showcase.flip > * { direction: ltr; }
+    @media (max-width: 760px) { .showcase, .showcase.flip { grid-template-columns: 1fr; gap: 2.5rem; direction: ltr; } }
+    .showcase-text .section-title { font-size: clamp(1.4rem, 2.8vw, 2rem); }
+    .showcase-text p { font-size: .95rem; color: var(--muted); line-height: 1.8; margin-bottom: 1.25rem; }
+    .check-list { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
+    .check-list li { display: flex; align-items: flex-start; gap: .65rem; font-size: .9rem; }
+    .ck { color: #16a34a; flex-shrink: 0; line-height: 1.55; font-size: 1rem; }
+
+    /* Preview cards */
+    .preview-card { background: white; border-radius: 18px; border: 1px solid var(--border); padding: 1.5rem; box-shadow: 0 10px 40px rgba(0,0,0,.08); }
+    .preview-card h4 { font-size: .85rem; font-weight: 700; color: var(--muted); margin-bottom: 1.1rem; }
+
+    /* Badge grid */
+    .badge-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: .5rem; margin-bottom: 1.25rem; }
+    .badge-item { width: 52px; height: 52px; border-radius: 12px; background: #f0f7ff; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; border: 2px solid transparent; }
+    .badge-item.earned { border-color: #fbbf24; background: linear-gradient(135deg, #fefce8, #fef3c7); }
+    .badge-item.locked { filter: grayscale(1) opacity(.35); }
+    .coll-progress { background: var(--primary-lt); border-radius: 10px; padding: .85rem 1rem; display: flex; align-items: center; gap: .75rem; }
+    .coll-icon { font-size: 1.35rem; }
+    .coll-info { flex: 1; }
+    .coll-name { font-size: .84rem; font-weight: 700; margin-bottom: .3rem; }
+    .coll-bar-wrap { background: #dbeafe; border-radius: 99px; height: 5px; }
+    .coll-bar { height: 100%; width: 66%; background: var(--primary); border-radius: 99px; }
+    .coll-label { font-size: .74rem; color: var(--muted); margin-top: .25rem; }
+
+    /* Security card */
+    .security-card { background: linear-gradient(135deg, #202331, #200f57); border-radius: 18px; padding: 1.75rem; color: white; }
+    .security-card h4 { font-size: .88rem; font-weight: 700; color: rgba(255,255,255,.65); margin-bottom: 1.25rem; }
+    .sec-row { display: flex; align-items: flex-start; gap: .75rem; padding: .75rem 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .sec-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .sec-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: .1rem; }
+    .sec-title { font-size: .88rem; font-weight: 700; margin-bottom: .2rem; }
+    .sec-desc { font-size: .8rem; color: rgba(255,255,255,.6); line-height: 1.6; }
+
+    /* Credit card */
+    .credit-card { background: white; border-radius: 18px; border: 1px solid var(--border); padding: 1.5rem; box-shadow: 0 10px 40px rgba(0,0,0,.08); }
+    .credit-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.1rem; }
+    .credit-header h4 { font-size: .85rem; font-weight: 700; color: var(--muted); }
+    .credit-balance { font-size: 2.1rem; font-weight: 900; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: -.04em; }
+    .credit-balance small { font-size: 1rem; }
+    .credit-list { display: flex; flex-direction: column; gap: .45rem; margin-top: 1.1rem; }
+    .credit-row { display: flex; align-items: center; justify-content: space-between; padding: .55rem .85rem; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); }
+    .credit-row-name { font-size: .84rem; font-weight: 600; }
+    .cost-tag { font-size: .76rem; font-weight: 700; background: var(--primary-lt); color: var(--primary); border: 1px solid #c0adfa; border-radius: 99px; padding: .1rem .55rem; }
+    .credit-cta { margin-top: 1.1rem; width: 100%; padding: .65rem; background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; border: none; border-radius: 8px; font-weight: 700; font-size: .9rem; cursor: default; }
+
+    /* Resume card */
+    .resume-card { background: white; border-radius: 18px; border: 1px solid var(--border); padding: 1.5rem; box-shadow: 0 10px 40px rgba(0,0,0,.08); }
+    .resume-card h4 { font-size: .85rem; font-weight: 700; color: var(--muted); margin-bottom: 1.1rem; }
+    .resume-step { display: flex; align-items: center; gap: .75rem; padding: .65rem 0; border-bottom: 1px solid var(--border); }
+    .resume-step:last-child { border-bottom: none; }
+    .step-dot { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 800; flex-shrink: 0; }
+    .step-dot.done { background: #dcfce7; color: #16a34a; }
+    .step-dot.active { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; }
+    .step-dot.pending { background: #f1f5f9; color: var(--muted); }
+    .step-text { font-size: .86rem; }
+    .step-label { font-weight: 600; color: var(--text); }
+    .step-sub { font-size: .78rem; color: var(--muted); margin-top: .1rem; }
+
+    /* ─── HOW IT WORKS ─── */
+    .steps-wrap { background: white; border-radius: 18px; border: 1px solid var(--border); overflow: hidden; margin-top: 3rem; }
+    .steps { display: grid; grid-template-columns: repeat(4, 1fr); }
+    @media (max-width: 760px) { .steps { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 480px) { .steps { grid-template-columns: 1fr; } }
+    .step { padding: 2rem 1.75rem; border-right: 1px solid var(--border); position: relative; }
+    .step:last-child { border-right: none; }
+    @media (max-width: 760px) {
+      .step { border-bottom: 1px solid var(--border); }
+      .step:nth-child(even) { border-right: none; }
+      .step:nth-last-child(-n+2) { border-bottom: none; }
+    }
+    @media (max-width: 480px) { .step { border-right: none !important; } .step:last-child { border-bottom: none; } }
+    .step-num { font-size: 2.6rem; font-weight: 900; background: linear-gradient(135deg, #dbeafe, #e0e7ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; margin-bottom: .85rem; }
+    .step h3 { font-size: .97rem; font-weight: 700; margin-bottom: .5rem; color: var(--text); }
+    .step p { font-size: .85rem; color: var(--muted); line-height: 1.7; }
+
+    /* ─── ROLES ─── */
+    .roles-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 1080px; margin: 3rem auto 0; }
+    @media (max-width: 620px) { .roles-grid { grid-template-columns: 1fr; } }
+    .role-card { border-radius: 18px; padding: 2.25rem; }
+    .role-card.teacher { background: linear-gradient(140deg, #202331, #200f57 40%, #3d1a9e 80%, #4318b0); color: white; }
+    .role-card.student { background: white; border: 1.5px solid var(--border); }
+    .role-label { font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; opacity: .6; margin-bottom: .8rem; }
+    .role-card.student .role-label { color: var(--muted); }
+    .role-card h3 { font-size: 1.3rem; font-weight: 900; margin-bottom: 1.35rem; letter-spacing: -.03em; }
+    .role-card.student h3 { color: var(--text); }
+    .role-ul { list-style: none; display: flex; flex-direction: column; gap: .65rem; }
+    .role-ul li { display: flex; align-items: flex-start; gap: .65rem; font-size: .9rem; }
+    .role-card.teacher .role-ul li { opacity: .9; }
+    .role-card.student .role-ul li { color: var(--text); }
+    .role-check { flex-shrink: 0; line-height: 1.55; }
+    .role-card.teacher .role-check { color: #86efac; }
+    .role-card.student .role-check { color: #22c55e; }
+    .role-cta { display: inline-block; margin-top: 1.9rem; padding: .65rem 1.4rem; border-radius: 10px; font-weight: 700; font-size: .9rem; text-decoration: none; transition: transform .15s; }
+    .role-cta:hover { transform: translateY(-1px); }
+    .role-card.teacher .role-cta { background: white; color: var(--primary); }
+    .role-card.student .role-cta { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; box-shadow: 0 4px 14px rgba(86,37,209,.32); }
+
+    /* ─── FAQ ─── */
+    .faq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; max-width: 1080px; margin: 3rem auto 0; }
+    @media (max-width: 640px) { .faq-grid { grid-template-columns: 1fr; } }
+    .faq-item { background: white; border-radius: var(--radius); padding: 1.35rem 1.5rem; border: 1.5px solid var(--border); }
+    .faq-item h4 { font-size: .95rem; font-weight: 700; margin-bottom: .5rem; color: var(--text); }
+    .faq-item p { font-size: .86rem; color: var(--muted); line-height: 1.7; }
+
+    /* ─── CTA ─── */
+    .cta-section {
+      background: linear-gradient(140deg, #202331 0%, #200f57 35%, #3d1a9e 70%, #4318b0 100%);
+      color: white; text-align: center; padding: 6rem 1.5rem; position: relative; overflow: hidden;
+    }
+    .cta-section::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse 70% 80% at 50% 50%, rgba(86,37,209,.35), transparent 70%);
+    }
+    .cta-section > * { position: relative; }
+    .cta-section h2 { font-size: clamp(1.8rem, 4.5vw, 2.8rem); font-weight: 900; letter-spacing: -.05em; max-width: 680px; margin: 0 auto 1.1rem; line-height: 1.12; }
+    .cta-section p { font-size: 1.05rem; opacity: .72; max-width: 500px; margin: 0 auto 2.75rem; line-height: 1.75; }
+    .cta-actions { display: flex; gap: .85rem; justify-content: center; flex-wrap: wrap; }
+    .btn-white { padding: .8rem 1.9rem; border-radius: 10px; font-size: 1rem; font-weight: 700; background: white; color: var(--primary); text-decoration: none; border: none; box-shadow: 0 4px 20px rgba(0,0,0,.22); transition: transform .15s, box-shadow .15s; }
+    .btn-white:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,.3); }
+    .btn-outline-white { padding: .8rem 1.9rem; border-radius: 10px; font-size: 1rem; font-weight: 700; background: transparent; color: white; border: 2px solid rgba(255,255,255,.4); text-decoration: none; transition: all .15s; }
+    .btn-outline-white:hover { border-color: white; background: rgba(255,255,255,.1); }
+
+    /* ─── FOOTER ─── */
+    footer { background: #202331; color: #64748b; text-align: center; padding: 3rem 1.5rem; font-size: .84rem; }
+    footer strong { color: white; }
+    .footer-links { display: flex; justify-content: center; align-items: center; gap: 1.5rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .footer-links a { color: #64748b; text-decoration: none; font-weight: 500; transition: color .15s; }
+    .footer-links a:hover { color: white; }
+    .footer-divider { color: #3d4055; }
+  </style>
+  <!-- Umami analytics -->
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="48416adf-94dc-46a2-843c-6a98cb044701"></script>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-brand" href="/">NovaQuiz</a>
+  <div class="nav-links">
+    <a href="#features" class="nav-hide" data-i18n="nav.features">Tính năng</a>
+    <a href="#security" class="nav-hide" data-i18n="nav.security">Bảo mật</a>
+    <a href="#how" class="nav-hide" data-i18n="nav.how">Cách dùng</a>
+    <a href="#faq" class="nav-hide" data-i18n="nav.faq">FAQ</a>
+    <select class="lang-select" onchange="applyLang(this.value)" aria-label="Language">
+      <option value="en">English</option>
+      <option value="vi">Tiếng Việt</option>
+      <option value="ja">日本語</option>
+    </select>
+    <a href="https://app.novaquiz.net/login" class="btn-nav" data-i18n="nav.cta">Bắt đầu khám phá</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-eyebrow" data-i18n="hero.eyebrow">✦ Nền tảng thi trực tuyến thế hệ mới</div>
+  <h1 data-i18n="hero.title" data-i18n-html="true">Thi trực tuyến <em>thông minh</em>,<br/>bảo mật, công bằng</h1>
+  <p data-i18n="hero.desc">Soạn đề wizard 4 bước, auto-save tiến trình, chống gian lận theo thời gian thực và trao huy hiệu tự động — tất cả trên một nền tảng.</p>
+  <div class="hero-ctas">
+    <a href="https://app.novaquiz.net/login" class="btn-hero-primary" data-i18n="hero.cta">Bắt đầu khám phá →</a>
+  </div>
+
+  <!-- Browser Mockup -->
+  <div class="hero-mockup">
+    <div class="mockup-card">
+      <div class="mockup-bar">
+        <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+        <div class="mockup-url">app.novaquiz.net/exams/aws-saa/take</div>
+      </div>
+      <div class="mockup-body">
+        <div class="mockup-header">
+          <div class="m-title">AWS Solutions Architect — Practice</div>
+          <div class="m-badges">
+            <span class="m-session" data-i18n="mockup.session">🔒 1 thiết bị</span>
+            <span class="m-credit">💳 85</span>
+            <span class="m-timer">⏱ 42:17</span>
+          </div>
+        </div>
+        <div class="m-progress"><div class="m-progress-fill"></div></div>
+        <div class="m-question">
+          <div class="m-q-meta" data-i18n="mockup.qmeta">Câu 3 / 5 · 1 điểm · Đáp án đã lưu</div>
+          <p data-i18n="mockup.question">Dịch vụ AWS nào cho phép lưu trữ object với độ bền 99.999999999%?</p>
+        </div>
+        <div class="m-opt"><div class="m-opt-key">A</div> Amazon EBS</div>
+        <div class="m-opt"><div class="m-opt-key">B</div> Amazon EFS</div>
+        <div class="m-opt selected"><div class="m-opt-key">C</div> Amazon S3</div>
+        <div class="m-opt"><div class="m-opt-key">D</div> AWS Storage Gateway</div>
+        <div class="m-nav">
+          <span class="m-autosave" data-i18n="mockup.autosave">✓ Đã lưu tự động</span>
+          <div style="display:flex;gap:.5rem">
+            <button class="m-btn m-btn-prev" data-i18n="mockup.prev">← Câu trước</button>
+            <button class="m-btn m-btn-next" data-i18n="mockup.next">Câu sau →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TRUST BAR -->
+<div class="trust-bar">
+  <div class="trust-item"><span class="trust-icon">🔒</span> <span data-i18n="trust.1">1 tài khoản = 1 thiết bị làm bài</span></div>
+  <div class="trust-item"><span class="trust-icon">💾</span> <span data-i18n="trust.2">Auto-save mỗi câu, không mất tiến trình</span></div>
+  <div class="trust-item"><span class="trust-icon">🔄</span> <span data-i18n="trust.3">Resume khi mất mạng hoặc đóng tab</span></div>
+  <div class="trust-item"><span class="trust-icon">🛡️</span> <span data-i18n="trust.4">Mã hoá response API end-to-end</span></div>
+  <div class="trust-item"><span class="trust-icon">⏰</span> <span data-i18n="trust.5">Auto-grade khi hết giờ</span></div>
+</div>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat"><div class="stat-num">500+</div><div class="stat-label" data-i18n="stats.exams">Đề thi đã tạo</div></div>
+  <div class="stat"><div class="stat-num">12 000+</div><div class="stat-label" data-i18n="stats.submissions">Bài thi đã nộp</div></div>
+  <div class="stat"><div class="stat-num">3 000+</div><div class="stat-label" data-i18n="stats.students">Học viên đang học</div></div>
+  <div class="stat"><div class="stat-num">50+</div><div class="stat-label" data-i18n="stats.badges">Huy hiệu hoàn thành</div></div>
+</div>
+
+<hr class="divider" />
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="section-inner" style="text-align:center;margin-bottom:0">
+    <div class="section-tag" data-i18n="features.tag">Tính năng</div>
+    <div class="section-title" data-i18n="features.title" data-i18n-html="true">Mọi thứ cần thiết để dạy và<br/>học hiệu quả</div>
+    <p class="section-sub" style="margin:0 auto" data-i18n="features.sub">Từ soạn đề đến phân tích kết quả — NovaQuiz lo từ A đến Z.</p>
+  </div>
+  <div class="section-inner">
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#ede6ff">📝</div>
+        <h3 data-i18n="features.f1.title">Wizard soạn đề 4 bước</h3>
+        <p data-i18n="features.f1.desc">Thông tin → Import JSON → Sửa câu hỏi → Review. Tiết kiệm 80% thời gian, hỗ trợ câu đơn và nhiều đáp án đúng.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#f2edff">🗂️</div>
+        <h3 data-i18n="features.f2.title" data-i18n-html="true">Bộ đề &amp; Huy hiệu tự động</h3>
+        <p data-i18n="features.f2.desc">Teacher nhóm đề thi thành lộ trình. Student hoàn thành toàn bộ → tự động nhận huy hiệu trên profile.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#fefce8">💳</div>
+        <h3 data-i18n="features.f3.title">Hệ thống Credit</h3>
+        <p data-i18n="features.f3.desc">Kiểm soát quyền truy cập bằng credit. Admin cấu hình cost theo từng đề, student thấy số dư trước khi thi.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#f0fdf4">💾</div>
+        <h3 data-i18n="features.f4.title">Auto-save tiến trình</h3>
+        <p data-i18n="features.f4.desc">Mỗi lần chuyển câu, đáp án lưu ngay lên server. Đóng tab, mất điện, mất mạng — không mất câu trả lời nào.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#f0fdf4">🔄</div>
+        <h3 data-i18n="features.f5.title">Resume bài thi</h3>
+        <p data-i18n="features.f5.desc">Login lại trên bất kỳ thiết bị nào — nếu bài thi còn giờ, đồng hồ tiếp tục đúng chỗ cũ, đáp án được khôi phục đầy đủ.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#f0fdf4">⏰</div>
+        <h3 data-i18n="features.f6.title">Auto-grade hết giờ</h3>
+        <p data-i18n="features.f6.desc">Grader service chạy ngầm 15 phút/lần, tự chấm điểm bài thi hết giờ. Student không cần bấm nộp — kết quả luôn được ghi nhận.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#fdf4ff">📤</div>
+        <h3 data-i18n="features.f7.title">Import câu hỏi từ JSON</h3>
+        <p data-i18n="features.f7.desc">Soạn ngân hàng câu hỏi trong Notion hay Excel rồi import một lần. Preview lỗi từng câu ngay trong wizard.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#fff7ed">📅</div>
+        <h3 data-i18n="features.f8.title">Xuất bản theo lịch</h3>
+        <p data-i18n="features.f8.desc">Đặt giờ mở đề thi — student thấy bộ đếm ngược, nút bắt đầu tự kích hoạt đúng giờ. Server chặn submit sớm.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#fff1f2">📊</div>
+        <h3 data-i18n="features.f9.title" data-i18n-html="true">Kết quả &amp; Giải thích tức thì</h3>
+        <p data-i18n="features.f9.desc">Điểm số, tỷ lệ đúng, phân tích từng câu và giải thích markdown ngay sau khi nộp bài. Xem lại bất cứ lúc nào.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#f0fdf4">💬</div>
+        <h3 data-i18n="features.f10.title" data-i18n-html="true">Bình luận, thích &amp; báo lỗi</h3>
+        <p data-i18n="features.f10.desc" data-i18n-html="true">Học viên thảo luận dưới mỗi đề, thả tim đề hay, và báo lỗi câu hỏi sau khi thi. Giáo viên nhận &amp; phản hồi báo lỗi ngay trong hộp thư.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#f0fdf4">🔎</div>
+        <h3 data-i18n="features.f11.title">Khám phá đề theo tag</h3>
+        <p data-i18n="features.f11.desc" data-i18n-html="true">Lọc đề theo chủ đề, sắp xếp theo mới nhất hoặc phổ biến nhất. Mỗi thẻ hiện lượt thích &amp; bình luận để chọn đề tự tin hơn.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#f0fdf4">🗒️</div>
+        <h3 data-i18n="features.f12.title">Ghi chú nháp khi làm bài</h3>
+        <p data-i18n="features.f12.desc">Ô ghi chú nổi dùng chung cho cả bài thi — nháp công thức, gạch ý mà không rời màn hình. Riêng tư, không gửi lên server.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#eef2ff">👤</div>
+        <h3 data-i18n="features.f13.title">Hồ sơ công khai</h3>
+        <p data-i18n="features.f13.desc">Mỗi người tạo đề có trang hồ sơ riêng — giới thiệu, liên kết mạng xã hội và danh sách đề đã công bố cho học viên khám phá.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#ede6ff">✨</div>
+        <h3 data-i18n="features.f14.title">Tạo đề bằng AI</h3>
+        <p data-i18n="features.f14.desc" data-i18n-html="true">Upload tài liệu PDF, DOCX hoặc text — AI soạn sẵn bộ câu hỏi trắc nghiệm thành đề nháp để giáo viên chỉ việc kiểm tra &amp; hoàn thiện.</p>
+      </div>
+      <div class="feature-card" style="border-color:#bbf7d0">
+        <div class="feature-icon" style="background:#fefce8">🎁</div>
+        <h3><span data-i18n="features.f15.title">Giới thiệu bạn bè, nhận credit</span> <span class="new-badge" data-i18n="features.newBadge">Mới</span></h3>
+        <p data-i18n="features.f15.desc">Mời bạn bè tham gia bằng link giới thiệu riêng — cả hai nhận credit khi người được mời nâng cấp lên teacher hoặc phát sinh hoạt động trả phí.</p>
+      </div>
+      <div class="feature-card" style="border-color:#bbf7d0">
+        <div class="feature-icon" style="background:#eef2ff">🔔</div>
+        <h3><span data-i18n="features.f16.title">Thông báo đa kênh</span> <span class="new-badge" data-i18n="features.newBadge">Mới</span></h3>
+        <p data-i18n="features.f16.desc" data-i18n-html="true">Nhận cảnh báo khi bài thi được chấm, có bình luận trả lời, báo lỗi được xử lý... qua Email, Pushover hoặc Telegram. Tự chọn kênh &amp; loại thông báo trên trang cá nhân.</p>
+      </div>
+      <div class="feature-card" style="border-color:#bbf7d0">
+        <div class="feature-icon" style="background:#f2edff">🔑</div>
+        <h3><span data-i18n="features.f17.title">Teacher API</span> <span class="new-badge" data-i18n="features.newBadge">Mới</span></h3>
+        <p data-i18n="features.f17.desc" data-i18n-html="true">Cấp API key riêng để tự động hoá việc tạo &amp; quản lý đề thi bằng script, không cần đăng nhập trình duyệt.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- SHOWCASE: Security -->
+<section id="security">
+  <div class="showcase section-inner" style="padding:0">
+    <div class="showcase-text">
+      <div class="section-tag" data-i18n="security.tag" data-i18n-html="true">Bảo mật &amp; Chống gian lận</div>
+      <div class="section-title" data-i18n="security.title" data-i18n-html="true">Mỗi bài thi,<br/>chỉ một thiết bị</div>
+      <p data-i18n="security.desc">Hệ thống theo dõi session real-time: khi một thiết bị đang làm bài, mọi thiết bị khác đăng nhập cùng tài khoản đều bị chặn ngay lập tức.</p>
+      <ul class="check-list">
+        <li><span class="ck">✓</span> <span data-i18n="security.check1">Session token duy nhất per submission — không chia sẻ được</span></li>
+        <li><span class="ck">✓</span> <span data-i18n="security.check2">Heartbeat 30s/lần để phát hiện thiết bị cũ bị ngắt kết nối</span></li>
+        <li><span class="ck">✓</span> <span data-i18n="security.check3">Response API mã hoá AES-256-GCM — ECDH key exchange</span></li>
+        <li><span class="ck">✓</span> <span data-i18n="security.check4">Auto-recovery sau 5 phút không heartbeat (crash / mất mạng)</span></li>
+      </ul>
+    </div>
+    <div>
+      <div class="security-card">
+        <h4 data-i18n="security.cardTitle">🛡️ Trạng thái bảo mật bài thi</h4>
+        <div class="sec-row">
+          <div class="sec-icon">🔒</div>
+          <div>
+            <div class="sec-title" data-i18n="security.row1.title">Session độc quyền</div>
+            <div class="sec-desc" data-i18n="security.row1.desc">Thiết bị này đang giữ session. Mọi thiết bị khác thử vào đều bị chặn với thông báo rõ ràng.</div>
+          </div>
+        </div>
+        <div class="sec-row">
+          <div class="sec-icon">💾</div>
+          <div>
+            <div class="sec-title" data-i18n="security.row2.title">Auto-save liên tục</div>
+            <div class="sec-desc" data-i18n="security.row2.desc">Đáp án lưu mỗi lần chuyển câu + heartbeat 30 giây, kể cả khi user đang đọc câu hỏi.</div>
+          </div>
+        </div>
+        <div class="sec-row">
+          <div class="sec-icon">🔐</div>
+          <div>
+            <div class="sec-title" data-i18n="security.row3.title">Mã hoá end-to-end</div>
+            <div class="sec-desc" data-i18n="security.row3.desc">Backend mã hoá toàn bộ API response. Proxy hay packet sniffer chỉ thấy ciphertext.</div>
+          </div>
+        </div>
+        <div class="sec-row">
+          <div class="sec-icon">⏰</div>
+          <div>
+            <div class="sec-title" data-i18n="security.row4.title">Server-authoritative timer</div>
+            <div class="sec-desc" data-i18n="security.row4.desc">Thời gian làm bài tính từ server, không thể can thiệp bằng DevTools hay sửa local storage.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- SHOWCASE: Collections & Badges -->
+<section>
+  <div class="showcase flip section-inner" style="padding:0">
+    <div class="showcase-text">
+      <div class="section-tag" data-i18n="collections.tag" data-i18n-html="true">Bộ đề &amp; Huy hiệu</div>
+      <div class="section-title" data-i18n="collections.title" data-i18n-html="true">Tạo lộ trình học,<br/>trao phần thưởng xứng đáng</div>
+      <p data-i18n="collections.desc" data-i18n-html="true">Teacher nhóm nhiều đề thi vào một <strong>bộ đề</strong> có chủ đề chung. Khi student vượt qua tất cả, hệ thống <strong>tự động trao huy hiệu</strong> vào profile.</p>
+      <ul class="check-list">
+        <li><span class="ck">✓</span> <span data-i18n="collections.check1">50 huy hiệu preset sẵn hoặc tải lên ảnh tùy chỉnh</span></li>
+        <li><span class="ck">✓</span> <span data-i18n="collections.check2">Huy hiệu hiển thị nổi bật trên trang profile</span></li>
+        <li><span class="ck">✓</span> <span data-i18n="collections.check3">Tạo động lực hoàn thành toàn bộ lộ trình</span></li>
+        <li><span class="ck">✓</span> <span data-i18n="collections.check4">Admin theo dõi số huy hiệu đã trao theo từng bộ đề</span></li>
+      </ul>
+    </div>
+    <div>
+      <div class="preview-card">
+        <h4 data-i18n="collections.cardTitle">🗂️ Bộ đề — AWS Complete Roadmap</h4>
+        <div class="badge-grid">
+          <div class="badge-item earned">🏆</div>
+          <div class="badge-item earned">⭐</div>
+          <div class="badge-item earned">🎯</div>
+          <div class="badge-item locked">🔥</div>
+          <div class="badge-item locked">💎</div>
+        </div>
+        <div class="coll-progress">
+          <div class="coll-icon">📚</div>
+          <div class="coll-info">
+            <div class="coll-name">AWS Solutions Architect Series</div>
+            <div class="coll-bar-wrap"><div class="coll-bar"></div></div>
+            <div class="coll-label" data-i18n="collections.progressLabel">Hoàn thành 2 / 3 đề thi · Còn 1 đề để nhận huy hiệu</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- SHOWCASE: Resume & Recovery -->
+<section>
+  <div class="showcase section-inner" style="padding:0">
+    <div class="showcase-text">
+      <div class="section-tag" data-i18n="resume.tag">Không mất tiến trình</div>
+      <div class="section-title" data-i18n="resume.title" data-i18n-html="true">Đóng tab, login lại —<br/>tiếp tục đúng chỗ</div>
+      <p data-i18n="resume.desc">Dù mất điện, hết pin hay vô tình đóng tab — khi login lại và vào trang bài thi, hệ thống tự động phát hiện session chưa kết thúc và khôi phục đúng trạng thái.</p>
+      <ul class="check-list">
+        <li><span class="ck">✓</span> <span data-i18n="resume.check1">Đáp án đã chọn được khôi phục từ server (không phụ thuộc localStorage)</span></li>
+        <li><span class="ck">✓</span> <span data-i18n="resume.check2">Đồng hồ đếm ngược từ thời gian còn lại (server-authoritative)</span></li>
+        <li><span class="ck">✓</span> <span data-i18n="resume.check3">Hoạt động trên mọi thiết bị có cùng tài khoản</span></li>
+        <li><span class="ck">✓</span> <span data-i18n="resume.check4">Credit không bị trừ lần 2 khi resume</span></li>
+      </ul>
+    </div>
+    <div>
+      <div class="resume-card">
+        <h4 data-i18n="resume.cardTitle">🔄 Khôi phục bài thi tự động</h4>
+        <div class="resume-step">
+          <div class="step-dot done">✓</div>
+          <div class="step-text">
+            <div class="step-label" data-i18n="resume.step1.title">Bắt đầu làm bài — trừ credit</div>
+            <div class="step-sub" data-i18n="resume.step1.sub">Session được tạo, đồng hồ bắt đầu chạy</div>
+          </div>
+        </div>
+        <div class="resume-step">
+          <div class="step-dot done">✓</div>
+          <div class="step-text">
+            <div class="step-label" data-i18n="resume.step2.title">Đóng tab / mất kết nối</div>
+            <div class="step-sub" data-i18n="resume.step2.sub">Đáp án đã lưu lên server, session vẫn còn hiệu lực</div>
+          </div>
+        </div>
+        <div class="resume-step">
+          <div class="step-dot active">▶</div>
+          <div class="step-text">
+            <div class="step-label" data-i18n="resume.step3.title">Login lại → vào trang đề thi</div>
+            <div class="step-sub" data-i18n="resume.step3.sub">Hệ thống phát hiện session chưa kết thúc</div>
+          </div>
+        </div>
+        <div class="resume-step">
+          <div class="step-dot pending">→</div>
+          <div class="step-text">
+            <div class="step-label" data-i18n="resume.step4.title">Tiếp tục đúng câu đang làm</div>
+            <div class="step-sub" data-i18n="resume.step4.sub" data-i18n-html="true">Đáp án &amp; thời gian còn lại được khôi phục đầy đủ</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="section-inner" style="text-align:center">
+    <div class="section-tag" data-i18n="how.tag">Cách hoạt động</div>
+    <div class="section-title" data-i18n="how.title">Bắt đầu trong vài phút</div>
+    <p class="section-sub" style="margin:0 auto" data-i18n="how.sub">Không cần cài đặt, không cần thẻ tín dụng — chỉ cần tài khoản.</p>
+    <div class="steps-wrap">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">01</div>
+          <h3 data-i18n="how.s1.title">Tạo tài khoản</h3>
+          <p data-i18n="how.s1.desc">Dùng email hoặc Google để đăng nhập. Học sinh nhận credit mặc định, có thể thi ngay.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">02</div>
+          <h3 data-i18n="how.s2.title">Tạo hoặc chọn đề thi</h3>
+          <p data-i18n="how.s2.desc">Teacher soạn đề wizard 4 bước hoặc import JSON. Student duyệt danh sách đề và bắt đầu khi sẵn sàng.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">03</div>
+          <h3 data-i18n="how.s3.title">Làm bài an toàn</h3>
+          <p data-i18n="how.s3.desc">Thi với đồng hồ đếm ngược, auto-save từng câu, session bảo mật — không lo mất dữ liệu.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">04</div>
+          <h3 data-i18n="how.s4.title" data-i18n-html="true">Xem kết quả &amp; nhận huy hiệu</h3>
+          <p data-i18n="how.s4.desc">Điểm số và phân tích chi tiết hiển thị ngay. Hoàn thành bộ đề — nhận huy hiệu tự động.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ROLES -->
+<section>
+  <div class="section-inner" style="text-align:center">
+    <div class="section-tag" data-i18n="roles.tag">Vai trò</div>
+    <div class="section-title" data-i18n="roles.title" data-i18n-html="true">Phù hợp cho cả<br/>giáo viên lẫn học sinh</div>
+  </div>
+  <div class="roles-grid">
+    <div class="role-card teacher">
+      <div class="role-label" data-i18n="roles.teacherLabel">Giáo viên / Người tạo đề</div>
+      <h3 data-i18n="roles.teacherTitle" data-i18n-html="true">Tạo và quản lý<br/>toàn bộ nội dung</h3>
+      <ul class="role-ul">
+        <li><span class="role-check">✓</span> <span data-i18n="roles.t1">Tạo đề thi với wizard 4 bước</span></li>
+        <li><span class="role-check">✓</span> <span data-i18n="roles.t2">Import hàng loạt câu hỏi từ JSON</span></li>
+        <li><span class="role-check">✓</span> <span data-i18n="roles.t3">Tổ chức bộ đề và trao huy hiệu</span></li>
+        <li><span class="role-check">✓</span> <span data-i18n="roles.t4">Đặt lịch xuất bản tự động</span></li>
+        <li><span class="role-check">✓</span> <span data-i18n="roles.t5">Xem thống kê lượt thi và tỷ lệ pass</span></li>
+        <li><span class="role-check">✓</span> <span data-i18n="roles.t6">Cấu hình credit cost, cooldown, max attempts</span></li>
+      </ul>
+      <a href="https://app.novaquiz.net/login" class="role-cta" data-i18n="hero.cta">Bắt đầu khám phá →</a>
+    </div>
+    <div class="role-card student">
+      <div class="role-label" data-i18n="roles.studentLabel">Học sinh / Người thi</div>
+      <h3 data-i18n="roles.studentTitle" data-i18n-html="true">Học và thi<br/>theo lộ trình</h3>
+      <ul class="role-ul">
+        <li><span class="role-check">✓</span> <span data-i18n="roles.s1">Nhận 20 credit khi đăng ký</span></li>
+        <li><span class="role-check">✓</span> <span data-i18n="roles.s2">Thi bài với đồng hồ và auto-save</span></li>
+        <li><span class="role-check">✓</span> <span data-i18n="roles.s3">Resume bài thi nếu mất kết nối</span></li>
+        <li><span class="role-check">✓</span> <span data-i18n="roles.s4">Xem kết quả chi tiết và giải thích</span></li>
+        <li><span class="role-check">✓</span> <span data-i18n="roles.s5">Sưu tập huy hiệu hoàn thành bộ đề</span></li>
+        <li><span class="role-check">✓</span> <span data-i18n="roles.s6">Nâng cấp lên Teacher bằng credit tích lũy</span></li>
+      </ul>
+      <a href="https://app.novaquiz.net/login" class="role-cta" data-i18n="hero.cta">Bắt đầu khám phá →</a>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- FAQ -->
+<section id="faq">
+  <div class="section-inner" style="text-align:center;margin-bottom:0">
+    <div class="section-tag" data-i18n="nav.faq">FAQ</div>
+    <div class="section-title" data-i18n="faq.title">Câu hỏi thường gặp</div>
+  </div>
+  <div class="faq-grid">
+    <div class="faq-item">
+      <h4 data-i18n="faq.q1">Tôi có thể dùng nhiều thiết bị cùng lúc không?</h4>
+      <p data-i18n="faq.a1">Không — trong lúc làm bài, hệ thống chỉ cho phép 1 thiết bị hoạt động. Nếu mở trên thiết bị khác, thiết bị đó sẽ bị chặn. Sau 5 phút không có hoạt động, session cũ tự giải phóng để thiết bị mới có thể vào.</p>
+    </div>
+    <div class="faq-item">
+      <h4 data-i18n="faq.q2">Nếu đóng tab hoặc mất điện, bài thi có bị mất không?</h4>
+      <p data-i18n="faq.a2">Không. Đáp án được lưu tự động lên server mỗi lần chuyển câu và mỗi 30 giây. Khi login lại, hệ thống tự phát hiện bài thi còn dang dở và khôi phục đúng trạng thái — không mất câu trả lời, không mất thời gian còn lại.</p>
+    </div>
+    <div class="faq-item">
+      <h4 data-i18n="faq.q3">Nếu hết giờ mà chưa nộp thì sao?</h4>
+      <p data-i18n="faq.a3">Grader service tự động chấm điểm tất cả bài thi hết giờ mỗi 15 phút. Kết quả được ghi nhận dựa trên những đáp án đã lưu. Student nhận kết quả chính xác dù không bấm nộp bài.</p>
+    </div>
+    <div class="faq-item">
+      <h4 data-i18n="faq.q4">Credit là gì và tôi có thể mua thêm không?</h4>
+      <p data-i18n="faq.a4">Credit là đơn vị để làm bài thi — mỗi đề có mức phí riêng. Bạn nhận 20 credit khi đăng ký. Hiện tại admin cấp thêm credit; tương lai sẽ có hệ thống mua thêm trực tiếp.</p>
+    </div>
+    <div class="faq-item">
+      <h4 data-i18n="faq.q5">Làm sao trở thành Giáo viên?</h4>
+      <p data-i18n="faq.a5">Sau khi đăng ký tài khoản Student, vào trang Profile → dùng credit để nâng cấp lên Teacher. Sau khi nâng cấp, bạn có thể tạo đề thi, bộ đề và quản lý học viên. Cần đăng xuất và đăng nhập lại để role có hiệu lực.</p>
+    </div>
+    <div class="faq-item">
+      <h4 data-i18n="faq.q6">Dữ liệu tôi có được bảo mật không?</h4>
+      <p data-i18n="faq.a6">Có. Toàn bộ API response được mã hoá AES-256-GCM với ECDH P-256 key exchange — dữ liệu truyền giữa trình duyệt và server không thể đọc được nếu bị chặn. JWT auth, CASL authorization và rate limiting bảo vệ mọi endpoint.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-section">
+  <h2 data-i18n="cta.title" data-i18n-html="true">Sẵn sàng tổ chức bài thi<br/>công bằng và thông minh?</h2>
+  <p data-i18n="cta.desc">Miễn phí để khám phá. Không cần thẻ tín dụng. Chạy trong vài phút.</p>
+  <div class="cta-actions">
+    <a href="https://app.novaquiz.net/login" class="btn-white" data-i18n="hero.cta">Bắt đầu khám phá →</a>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-links">
+    <a href="https://app.novaquiz.net/login" data-i18n="nav.cta">Bắt đầu khám phá</a>
+    <span class="footer-divider">·</span>
+    <a href="#features" data-i18n="nav.features">Tính năng</a>
+    <span class="footer-divider">·</span>
+    <a href="#faq" data-i18n="nav.faq">FAQ</a>
+    <span class="footer-divider">·</span>
+    <a href="/brand" data-i18n="nav.brand">Thương hiệu</a>
+    <span class="footer-divider">·</span>
+    <a href="/contact" data-i18n="nav.contact">Liên hệ</a>
+  </div>
+  <p style="margin-bottom:.75rem">© 2026 <strong>NovaQuiz</strong> · <span data-i18n="footer.tagline">Nền tảng thi trực tuyến thông minh</span></p>
+  <p style="font-size:.8rem;opacity:.6">
+    <span data-i18n="footer.builtBy">Được xây dựng bởi</span> <strong style="color:#94a3b8">Trần Phú</strong>
+    &nbsp;·&nbsp; <a href="mailto:tranphu.dev@gmail.com" style="color:#94a3b8;text-decoration:none">tranphu.dev@gmail.com</a>
+    &nbsp;·&nbsp; <a href="https://novaquiz.net" style="color:#94a3b8;text-decoration:none">novaquiz.net</a>
+  </p>
+</footer>
+
+<script>
+  var I18N = {
+    vi: {
+      'meta.title': 'NovaQuiz — Nền tảng thi trực tuyến thông minh',
+      'meta.description': 'Tạo đề thi, quản lý bộ đề, trao huy hiệu và theo dõi kết quả học tập — tất cả trên một nền tảng đơn giản, mạnh mẽ, bảo mật.',
+      'nav.features': 'Tính năng', 'nav.security': 'Bảo mật', 'nav.how': 'Cách dùng', 'nav.faq': 'FAQ', 'nav.brand': 'Thương hiệu', 'nav.contact': 'Liên hệ', 'nav.cta': 'Bắt đầu khám phá',
+      'hero.eyebrow': '✦ Nền tảng thi trực tuyến thế hệ mới',
+      'hero.title': 'Thi trực tuyến <em>thông minh</em>,<br/>bảo mật, công bằng',
+      'hero.desc': 'Soạn đề wizard 4 bước, auto-save tiến trình, chống gian lận theo thời gian thực và trao huy hiệu tự động — tất cả trên một nền tảng.',
+      'hero.cta': 'Bắt đầu khám phá →',
+      'mockup.session': '🔒 1 thiết bị',
+      'mockup.qmeta': 'Câu 3 / 5 · 1 điểm · Đáp án đã lưu',
+      'mockup.question': 'Dịch vụ AWS nào cho phép lưu trữ object với độ bền 99.999999999%?',
+      'mockup.autosave': '✓ Đã lưu tự động',
+      'mockup.prev': '← Câu trước',
+      'mockup.next': 'Câu sau →',
+      'trust.1': '1 tài khoản = 1 thiết bị làm bài',
+      'trust.2': 'Auto-save mỗi câu, không mất tiến trình',
+      'trust.3': 'Resume khi mất mạng hoặc đóng tab',
+      'trust.4': 'Mã hoá response API end-to-end',
+      'trust.5': 'Auto-grade khi hết giờ',
+      'stats.exams': 'Đề thi đã tạo', 'stats.submissions': 'Bài thi đã nộp', 'stats.students': 'Học viên đang học', 'stats.badges': 'Huy hiệu hoàn thành',
+      'features.tag': 'Tính năng',
+      'features.title': 'Mọi thứ cần thiết để dạy và<br/>học hiệu quả',
+      'features.sub': 'Từ soạn đề đến phân tích kết quả — NovaQuiz lo từ A đến Z.',
+      'features.f1.title': 'Wizard soạn đề 4 bước',
+      'features.f1.desc': 'Thông tin → Import JSON → Sửa câu hỏi → Review. Tiết kiệm 80% thời gian, hỗ trợ câu đơn và nhiều đáp án đúng.',
+      'features.f2.title': 'Bộ đề &amp; Huy hiệu tự động',
+      'features.f2.desc': 'Teacher nhóm đề thi thành lộ trình. Student hoàn thành toàn bộ → tự động nhận huy hiệu trên profile.',
+      'features.f3.title': 'Hệ thống Credit',
+      'features.f3.desc': 'Kiểm soát quyền truy cập bằng credit. Admin cấu hình cost theo từng đề, student thấy số dư trước khi thi.',
+      'features.f4.title': 'Auto-save tiến trình',
+      'features.f4.desc': 'Mỗi lần chuyển câu, đáp án lưu ngay lên server. Đóng tab, mất điện, mất mạng — không mất câu trả lời nào.',
+      'features.f5.title': 'Resume bài thi',
+      'features.f5.desc': 'Login lại trên bất kỳ thiết bị nào — nếu bài thi còn giờ, đồng hồ tiếp tục đúng chỗ cũ, đáp án được khôi phục đầy đủ.',
+      'features.f6.title': 'Auto-grade hết giờ',
+      'features.f6.desc': 'Grader service chạy ngầm 15 phút/lần, tự chấm điểm bài thi hết giờ. Student không cần bấm nộp — kết quả luôn được ghi nhận.',
+      'features.f7.title': 'Import câu hỏi từ JSON',
+      'features.f7.desc': 'Soạn ngân hàng câu hỏi trong Notion hay Excel rồi import một lần. Preview lỗi từng câu ngay trong wizard.',
+      'features.f8.title': 'Xuất bản theo lịch',
+      'features.f8.desc': 'Đặt giờ mở đề thi — student thấy bộ đếm ngược, nút bắt đầu tự kích hoạt đúng giờ. Server chặn submit sớm.',
+      'features.f9.title': 'Kết quả &amp; Giải thích tức thì',
+      'features.f9.desc': 'Điểm số, tỷ lệ đúng, phân tích từng câu và giải thích markdown ngay sau khi nộp bài. Xem lại bất cứ lúc nào.',
+      'features.f10.title': 'Bình luận, thích &amp; báo lỗi',
+      'features.f10.desc': 'Học viên thảo luận dưới mỗi đề, thả tim đề hay, và báo lỗi câu hỏi sau khi thi. Giáo viên nhận &amp; phản hồi báo lỗi ngay trong hộp thư.',
+      'features.f11.title': 'Khám phá đề theo tag',
+      'features.f11.desc': 'Lọc đề theo chủ đề, sắp xếp theo mới nhất hoặc phổ biến nhất. Mỗi thẻ hiện lượt thích &amp; bình luận để chọn đề tự tin hơn.',
+      'features.f12.title': 'Ghi chú nháp khi làm bài',
+      'features.f12.desc': 'Ô ghi chú nổi dùng chung cho cả bài thi — nháp công thức, gạch ý mà không rời màn hình. Riêng tư, không gửi lên server.',
+      'features.f13.title': 'Hồ sơ công khai',
+      'features.f13.desc': 'Mỗi người tạo đề có trang hồ sơ riêng — giới thiệu, liên kết mạng xã hội và danh sách đề đã công bố cho học viên khám phá.',
+      'features.f14.title': 'Tạo đề bằng AI',
+      'features.f14.desc': 'Upload tài liệu PDF, DOCX hoặc text — AI soạn sẵn bộ câu hỏi trắc nghiệm thành đề nháp để giáo viên chỉ việc kiểm tra &amp; hoàn thiện.',
+      'features.f15.title': 'Giới thiệu bạn bè, nhận credit',
+      'features.f15.desc': 'Mời bạn bè tham gia bằng link giới thiệu riêng — cả hai nhận credit khi người được mời nâng cấp lên teacher hoặc phát sinh hoạt động trả phí.',
+      'features.f16.title': 'Thông báo đa kênh',
+      'features.f16.desc': 'Nhận cảnh báo khi bài thi được chấm, có bình luận trả lời, báo lỗi được xử lý... qua Email, Pushover hoặc Telegram. Tự chọn kênh &amp; loại thông báo trên trang cá nhân.',
+      'features.f17.title': 'Teacher API',
+      'features.f17.desc': 'Cấp API key riêng để tự động hoá việc tạo & quản lý đề thi bằng script, không cần đăng nhập trình duyệt.',
+      'features.newBadge': 'Mới',
+      'security.tag': 'Bảo mật &amp; Chống gian lận',
+      'security.title': 'Mỗi bài thi,<br/>chỉ một thiết bị',
+      'security.desc': 'Hệ thống theo dõi session real-time: khi một thiết bị đang làm bài, mọi thiết bị khác đăng nhập cùng tài khoản đều bị chặn ngay lập tức.',
+      'security.check1': 'Session token duy nhất per submission — không chia sẻ được',
+      'security.check2': 'Heartbeat 30s/lần để phát hiện thiết bị cũ bị ngắt kết nối',
+      'security.check3': 'Response API mã hoá AES-256-GCM — ECDH key exchange',
+      'security.check4': 'Auto-recovery sau 5 phút không heartbeat (crash / mất mạng)',
+      'security.cardTitle': '🛡️ Trạng thái bảo mật bài thi',
+      'security.row1.title': 'Session độc quyền',
+      'security.row1.desc': 'Thiết bị này đang giữ session. Mọi thiết bị khác thử vào đều bị chặn với thông báo rõ ràng.',
+      'security.row2.title': 'Auto-save liên tục',
+      'security.row2.desc': 'Đáp án lưu mỗi lần chuyển câu + heartbeat 30 giây, kể cả khi user đang đọc câu hỏi.',
+      'security.row3.title': 'Mã hoá end-to-end',
+      'security.row3.desc': 'Backend mã hoá toàn bộ API response. Proxy hay packet sniffer chỉ thấy ciphertext.',
+      'security.row4.title': 'Server-authoritative timer',
+      'security.row4.desc': 'Thời gian làm bài tính từ server, không thể can thiệp bằng DevTools hay sửa local storage.',
+      'collections.tag': 'Bộ đề &amp; Huy hiệu',
+      'collections.title': 'Tạo lộ trình học,<br/>trao phần thưởng xứng đáng',
+      'collections.desc': 'Teacher nhóm nhiều đề thi vào một <strong>bộ đề</strong> có chủ đề chung. Khi student vượt qua tất cả, hệ thống <strong>tự động trao huy hiệu</strong> vào profile.',
+      'collections.check1': '50 huy hiệu preset sẵn hoặc tải lên ảnh tùy chỉnh',
+      'collections.check2': 'Huy hiệu hiển thị nổi bật trên trang profile',
+      'collections.check3': 'Tạo động lực hoàn thành toàn bộ lộ trình',
+      'collections.check4': 'Admin theo dõi số huy hiệu đã trao theo từng bộ đề',
+      'collections.cardTitle': '🗂️ Bộ đề — AWS Complete Roadmap',
+      'collections.progressLabel': 'Hoàn thành 2 / 3 đề thi · Còn 1 đề để nhận huy hiệu',
+      'resume.tag': 'Không mất tiến trình',
+      'resume.title': 'Đóng tab, login lại —<br/>tiếp tục đúng chỗ',
+      'resume.desc': 'Dù mất điện, hết pin hay vô tình đóng tab — khi login lại và vào trang bài thi, hệ thống tự động phát hiện session chưa kết thúc và khôi phục đúng trạng thái.',
+      'resume.check1': 'Đáp án đã chọn được khôi phục từ server (không phụ thuộc localStorage)',
+      'resume.check2': 'Đồng hồ đếm ngược từ thời gian còn lại (server-authoritative)',
+      'resume.check3': 'Hoạt động trên mọi thiết bị có cùng tài khoản',
+      'resume.check4': 'Credit không bị trừ lần 2 khi resume',
+      'resume.cardTitle': '🔄 Khôi phục bài thi tự động',
+      'resume.step1.title': 'Bắt đầu làm bài — trừ credit', 'resume.step1.sub': 'Session được tạo, đồng hồ bắt đầu chạy',
+      'resume.step2.title': 'Đóng tab / mất kết nối', 'resume.step2.sub': 'Đáp án đã lưu lên server, session vẫn còn hiệu lực',
+      'resume.step3.title': 'Login lại → vào trang đề thi', 'resume.step3.sub': 'Hệ thống phát hiện session chưa kết thúc',
+      'resume.step4.title': 'Tiếp tục đúng câu đang làm', 'resume.step4.sub': 'Đáp án &amp; thời gian còn lại được khôi phục đầy đủ',
+      'how.tag': 'Cách hoạt động', 'how.title': 'Bắt đầu trong vài phút',
+      'how.sub': 'Không cần cài đặt, không cần thẻ tín dụng — chỉ cần tài khoản.',
+      'how.s1.title': 'Tạo tài khoản', 'how.s1.desc': 'Dùng email hoặc Google để đăng nhập. Học sinh nhận credit mặc định, có thể thi ngay.',
+      'how.s2.title': 'Tạo hoặc chọn đề thi', 'how.s2.desc': 'Teacher soạn đề wizard 4 bước hoặc import JSON. Student duyệt danh sách đề và bắt đầu khi sẵn sàng.',
+      'how.s3.title': 'Làm bài an toàn', 'how.s3.desc': 'Thi với đồng hồ đếm ngược, auto-save từng câu, session bảo mật — không lo mất dữ liệu.',
+      'how.s4.title': 'Xem kết quả &amp; nhận huy hiệu', 'how.s4.desc': 'Điểm số và phân tích chi tiết hiển thị ngay. Hoàn thành bộ đề — nhận huy hiệu tự động.',
+      'roles.tag': 'Vai trò', 'roles.title': 'Phù hợp cho cả<br/>giáo viên lẫn học sinh',
+      'roles.teacherLabel': 'Giáo viên / Người tạo đề', 'roles.teacherTitle': 'Tạo và quản lý<br/>toàn bộ nội dung',
+      'roles.t1': 'Tạo đề thi với wizard 4 bước', 'roles.t2': 'Import hàng loạt câu hỏi từ JSON',
+      'roles.t3': 'Tổ chức bộ đề và trao huy hiệu', 'roles.t4': 'Đặt lịch xuất bản tự động',
+      'roles.t5': 'Xem thống kê lượt thi và tỷ lệ pass', 'roles.t6': 'Cấu hình credit cost, cooldown, max attempts',
+      'roles.studentLabel': 'Học sinh / Người thi', 'roles.studentTitle': 'Học và thi<br/>theo lộ trình',
+      'roles.s1': 'Nhận 20 credit khi đăng ký', 'roles.s2': 'Thi bài với đồng hồ và auto-save',
+      'roles.s3': 'Resume bài thi nếu mất kết nối', 'roles.s4': 'Xem kết quả chi tiết và giải thích',
+      'roles.s5': 'Sưu tập huy hiệu hoàn thành bộ đề', 'roles.s6': 'Nâng cấp lên Teacher bằng credit tích lũy',
+      'faq.title': 'Câu hỏi thường gặp',
+      'faq.q1': 'Tôi có thể dùng nhiều thiết bị cùng lúc không?',
+      'faq.a1': 'Không — trong lúc làm bài, hệ thống chỉ cho phép 1 thiết bị hoạt động. Nếu mở trên thiết bị khác, thiết bị đó sẽ bị chặn. Sau 5 phút không có hoạt động, session cũ tự giải phóng để thiết bị mới có thể vào.',
+      'faq.q2': 'Nếu đóng tab hoặc mất điện, bài thi có bị mất không?',
+      'faq.a2': 'Không. Đáp án được lưu tự động lên server mỗi lần chuyển câu và mỗi 30 giây. Khi login lại, hệ thống tự phát hiện bài thi còn dang dở và khôi phục đúng trạng thái — không mất câu trả lời, không mất thời gian còn lại.',
+      'faq.q3': 'Nếu hết giờ mà chưa nộp thì sao?',
+      'faq.a3': 'Grader service tự động chấm điểm tất cả bài thi hết giờ mỗi 15 phút. Kết quả được ghi nhận dựa trên những đáp án đã lưu. Student nhận kết quả chính xác dù không bấm nộp bài.',
+      'faq.q4': 'Credit là gì và tôi có thể mua thêm không?',
+      'faq.a4': 'Credit là đơn vị để làm bài thi — mỗi đề có mức phí riêng. Bạn nhận 20 credit khi đăng ký. Hiện tại admin cấp thêm credit; tương lai sẽ có hệ thống mua thêm trực tiếp.',
+      'faq.q5': 'Làm sao trở thành Giáo viên?',
+      'faq.a5': 'Sau khi đăng ký tài khoản Student, vào trang Profile → dùng credit để nâng cấp lên Teacher. Sau khi nâng cấp, bạn có thể tạo đề thi, bộ đề và quản lý học viên. Cần đăng xuất và đăng nhập lại để role có hiệu lực.',
+      'faq.q6': 'Dữ liệu tôi có được bảo mật không?',
+      'faq.a6': 'Có. Toàn bộ API response được mã hoá AES-256-GCM với ECDH P-256 key exchange — dữ liệu truyền giữa trình duyệt và server không thể đọc được nếu bị chặn. JWT auth, CASL authorization và rate limiting bảo vệ mọi endpoint.',
+      'cta.title': 'Sẵn sàng tổ chức bài thi<br/>công bằng và thông minh?',
+      'cta.desc': 'Miễn phí để khám phá. Không cần thẻ tín dụng. Chạy trong vài phút.',
+      'footer.tagline': 'Nền tảng thi trực tuyến thông minh',
+      'footer.builtBy': 'Được xây dựng bởi',
+    },
+    en: {
+      'meta.title': 'NovaQuiz — Smart Online Exam Platform',
+      'meta.description': 'Create exams, manage collections, award badges and track learning results — all on one simple, powerful and secure platform.',
+      'nav.features': 'Features', 'nav.security': 'Security', 'nav.how': 'How it works', 'nav.faq': 'FAQ', 'nav.brand': 'Brand', 'nav.contact': 'Contact', 'nav.cta': 'Get started',
+      'hero.eyebrow': '✦ A new generation online testing platform',
+      'hero.title': '<em>Smart</em> online exams,<br/>secure and fair',
+      'hero.desc': 'A 4-step exam wizard, auto-saved progress, real-time anti-cheat, and automatic badge awards — all on one platform.',
+      'hero.cta': 'Get started →',
+      'mockup.session': '🔒 1 device',
+      'mockup.qmeta': 'Question 3 / 5 · 1 point · Answer saved',
+      'mockup.question': 'Which AWS service offers object storage with 99.999999999% durability?',
+      'mockup.autosave': '✓ Auto-saved',
+      'mockup.prev': '← Previous',
+      'mockup.next': 'Next →',
+      'trust.1': '1 account = 1 device while taking an exam',
+      'trust.2': 'Auto-save on every question, never lose progress',
+      'trust.3': 'Resume after losing connection or closing the tab',
+      'trust.4': 'End-to-end encrypted API responses',
+      'trust.5': 'Auto-graded when time runs out',
+      'stats.exams': 'Exams created', 'stats.submissions': 'Submissions graded', 'stats.students': 'Active students', 'stats.badges': 'Completion badges',
+      'features.tag': 'Features',
+      'features.title': 'Everything you need to teach and<br/>learn effectively',
+      'features.sub': 'From authoring exams to analyzing results — NovaQuiz handles it end to end.',
+      'features.f1.title': '4-step exam wizard',
+      'features.f1.desc': 'Info → Import JSON → Edit questions → Review. Saves 80% of your time, supports single and multiple-answer questions.',
+      'features.f2.title': 'Collections &amp; automatic badges',
+      'features.f2.desc': 'Teachers group exams into a learning path. Students who complete them all automatically earn a badge on their profile.',
+      'features.f3.title': 'Credit system',
+      'features.f3.desc': 'Control access with credits. Admins configure the cost per exam; students see their balance before starting.',
+      'features.f4.title': 'Auto-saved progress',
+      'features.f4.desc': 'Every time you move to the next question, your answer is saved to the server instantly. Closed tab, power outage, lost connection — no answer is ever lost.',
+      'features.f5.title': 'Resume an exam',
+      'features.f5.desc': 'Log back in on any device — if time remains, the timer picks up exactly where you left off and your answers are fully restored.',
+      'features.f6.title': 'Auto-grade on timeout',
+      'features.f6.desc': 'A background grader service runs every 15 minutes and automatically grades exams that ran out of time. Students never need to click submit — results are always recorded.',
+      'features.f7.title': 'Import questions from JSON',
+      'features.f7.desc': 'Draft your question bank in Notion or Excel, then import it all at once. Per-question error previews right inside the wizard.',
+      'features.f8.title': 'Scheduled publishing',
+      'features.f8.desc': 'Set an opening time for an exam — students see a countdown, and the start button activates automatically. The server blocks early submissions.',
+      'features.f9.title': 'Instant results &amp; explanations',
+      'features.f9.desc': 'Score, accuracy rate, per-question analysis, and markdown explanations right after submission. Review any time.',
+      'features.f10.title': 'Comments, likes &amp; reports',
+      'features.f10.desc': 'Students discuss under each exam, like the ones they enjoy, and report question issues after taking the exam. Teachers receive &amp; respond to reports right in their inbox.',
+      'features.f11.title': 'Discover exams by tag',
+      'features.f11.desc': 'Filter exams by topic, sort by newest or most popular. Every card shows likes &amp; comments to help you choose with confidence.',
+      'features.f12.title': 'Scratch notes while testing',
+      'features.f12.desc': 'A floating note shared across the whole exam — jot down formulas or outlines without leaving the screen. Private, never sent to the server.',
+      'features.f13.title': 'Public profile',
+      'features.f13.desc': 'Every exam creator gets their own profile page — bio, social links, and a list of their published exams for students to discover.',
+      'features.f14.title': 'AI-generated exams',
+      'features.f14.desc': 'Upload a PDF, DOCX, or text document — the AI drafts a full multiple-choice exam so the teacher just reviews &amp; finishes it.',
+      'features.f15.title': 'Refer a friend, earn credits',
+      'features.f15.desc': 'Invite friends with your own referral link — both sides earn credits once the referee upgrades to teacher or completes a paid action.',
+      'features.f16.title': 'Multi-channel notifications',
+      'features.f16.desc': 'Get alerted when a submission is graded, a comment gets a reply, a report is resolved, and more — via Email, Pushover, or Telegram. Pick channels &amp; event types on your profile.',
+      'features.f17.title': 'Teacher API',
+      'features.f17.desc': 'Issue your own API key to automate exam creation &amp; management from a script, no browser session required.',
+      'features.newBadge': 'New',
+      'security.tag': 'Security &amp; anti-cheat',
+      'security.title': 'One exam,<br/>one device only',
+      'security.desc': 'The system tracks sessions in real time: while one device is taking an exam, any other device logging into the same account is blocked immediately.',
+      'security.check1': 'A unique session token per submission — can\'t be shared',
+      'security.check2': 'A heartbeat every 30s to detect disconnected devices',
+      'security.check3': 'API responses encrypted with AES-256-GCM — ECDH key exchange',
+      'security.check4': 'Auto-recovery after 5 minutes without a heartbeat (crash / lost connection)',
+      'security.cardTitle': '🛡️ Exam security status',
+      'security.row1.title': 'Exclusive session',
+      'security.row1.desc': 'This device holds the active session. Any other device that tries to join is blocked with a clear message.',
+      'security.row2.title': 'Continuous auto-save',
+      'security.row2.desc': 'Answers are saved on every question change plus a 30-second heartbeat, even while the user is just reading.',
+      'security.row3.title': 'End-to-end encryption',
+      'security.row3.desc': 'The backend encrypts every API response. A proxy or packet sniffer only ever sees ciphertext.',
+      'security.row4.title': 'Server-authoritative timer',
+      'security.row4.desc': 'Exam time is tracked on the server — it can\'t be tampered with via DevTools or local storage edits.',
+      'collections.tag': 'Collections &amp; badges',
+      'collections.title': 'Build learning paths,<br/>award well-earned rewards',
+      'collections.desc': 'Teachers group several exams into a <strong>collection</strong> with a shared theme. When a student passes them all, the system <strong>automatically awards a badge</strong> to their profile.',
+      'collections.check1': '50 preset badges available, or upload a custom image',
+      'collections.check2': 'Badges are shown prominently on the profile page',
+      'collections.check3': 'Creates motivation to complete the entire path',
+      'collections.check4': 'Admins track how many badges were awarded per collection',
+      'collections.cardTitle': '🗂️ Collection — AWS Complete Roadmap',
+      'collections.progressLabel': '2 / 3 exams completed · 1 more to earn the badge',
+      'resume.tag': 'Never lose your progress',
+      'resume.title': 'Close the tab, log back in —<br/>pick up right where you left off',
+      'resume.desc': 'Whether it\'s a power outage, a dead battery, or an accidentally closed tab — logging back in and opening the exam page automatically detects the unfinished session and restores the exact state.',
+      'resume.check1': 'Selected answers are restored from the server (not dependent on localStorage)',
+      'resume.check2': 'The countdown resumes from the time remaining (server-authoritative)',
+      'resume.check3': 'Works on any device with the same account',
+      'resume.check4': 'Credit is never deducted a second time on resume',
+      'resume.cardTitle': '🔄 Automatic exam recovery',
+      'resume.step1.title': 'Start the exam — credit deducted', 'resume.step1.sub': 'A session is created and the timer starts',
+      'resume.step2.title': 'Tab closed / connection lost', 'resume.step2.sub': 'Answers are saved to the server, the session is still valid',
+      'resume.step3.title': 'Log back in → open the exam page', 'resume.step3.sub': 'The system detects the unfinished session',
+      'resume.step4.title': 'Resume on the exact question', 'resume.step4.sub': 'Answers &amp; remaining time are fully restored',
+      'how.tag': 'How it works', 'how.title': 'Get started in minutes',
+      'how.sub': 'No install, no credit card — just an account.',
+      'how.s1.title': 'Create an account', 'how.s1.desc': 'Sign in with email or Google. Students get default credits and can start an exam right away.',
+      'how.s2.title': 'Create or pick an exam', 'how.s2.desc': 'Teachers author exams with the 4-step wizard or import JSON. Students browse the exam list and start whenever ready.',
+      'how.s3.title': 'Take the exam safely', 'how.s3.desc': 'A countdown timer, per-question auto-save, and secure sessions — no risk of losing your data.',
+      'how.s4.title': 'View results &amp; earn badges', 'how.s4.desc': 'Score and detailed analysis appear instantly. Complete a collection to earn a badge automatically.',
+      'roles.tag': 'Roles', 'roles.title': 'Built for both<br/>teachers and students',
+      'roles.teacherLabel': 'Teacher / Exam creator', 'roles.teacherTitle': 'Create and manage<br/>all your content',
+      'roles.t1': 'Create exams with the 4-step wizard', 'roles.t2': 'Bulk import questions from JSON',
+      'roles.t3': 'Organize collections and award badges', 'roles.t4': 'Schedule automatic publishing',
+      'roles.t5': 'View attempt stats and pass rates', 'roles.t6': 'Configure credit cost, cooldown, max attempts',
+      'roles.studentLabel': 'Student / Test taker', 'roles.studentTitle': 'Learn and test<br/>along a path',
+      'roles.s1': 'Get 20 credits on sign-up', 'roles.s2': 'Take exams with a timer and auto-save',
+      'roles.s3': 'Resume an exam if you lose connection', 'roles.s4': 'View detailed results and explanations',
+      'roles.s5': 'Collect badges for completed collections', 'roles.s6': 'Upgrade to Teacher using accumulated credits',
+      'faq.title': 'Frequently asked questions',
+      'faq.q1': 'Can I use multiple devices at the same time?',
+      'faq.a1': 'No — while taking an exam, the system only allows one active device. Opening it on another device blocks that one. After 5 minutes of inactivity, the old session is released so a new device can take over.',
+      'faq.q2': 'If I close the tab or lose power, is my exam lost?',
+      'faq.a2': 'No. Answers are auto-saved to the server every time you move to the next question and every 30 seconds. When you log back in, the system detects the unfinished exam and restores the exact state — no lost answers, no lost time.',
+      'faq.q3': 'What happens if time runs out before I submit?',
+      'faq.a3': 'A grader service automatically grades every timed-out exam every 15 minutes. Results are recorded based on the answers already saved. Students get an accurate result even without clicking submit.',
+      'faq.q4': 'What are credits, and can I buy more?',
+      'faq.a4': 'Credits are the unit used to take exams — each exam has its own cost. You get 20 credits on sign-up. Currently, admins grant additional credits; a direct purchase system is planned for the future.',
+      'faq.q5': 'How do I become a Teacher?',
+      'faq.a5': 'After signing up as a Student, go to the Profile page → use credits to upgrade to Teacher. Once upgraded, you can create exams, collections, and manage students. You\'ll need to log out and back in for the role to take effect.',
+      'faq.q6': 'Is my data secure?',
+      'faq.a6': 'Yes. Every API response is encrypted with AES-256-GCM using ECDH P-256 key exchange — data traveling between the browser and server can\'t be read if intercepted. JWT auth, CASL authorization, and rate limiting protect every endpoint.',
+      'cta.title': 'Ready to run exams<br/>that are fair and smart?',
+      'cta.desc': 'Free to explore. No credit card required. Up and running in minutes.',
+      'footer.tagline': 'A smart online testing platform',
+      'footer.builtBy': 'Built by',
+    },
+    ja: {
+      'meta.title': 'NovaQuiz — スマートなオンライン試験プラットフォーム',
+      'meta.description': '試験の作成、問題集の管理、バッジの授与、学習成果の追跡 — シンプルで強力、そして安全なプラットフォームで。',
+      'nav.features': '機能', 'nav.security': 'セキュリティ', 'nav.how': '使い方', 'nav.faq': 'FAQ', 'nav.brand': 'ブランド', 'nav.contact': 'お問い合わせ', 'nav.cta': '今すぐ始める',
+      'hero.eyebrow': '✦ 新世代のオンライン試験プラットフォーム',
+      'hero.title': '<em>スマート</em>なオンライン試験、<br/>安全で公平',
+      'hero.desc': '4ステップの試験ウィザード、自動保存される進捗、リアルタイム不正防止、自動バッジ授与 — すべてを1つのプラットフォームで。',
+      'hero.cta': '今すぐ始める →',
+      'mockup.session': '🔒 1台のみ',
+      'mockup.qmeta': '問題 3 / 5 · 1点 · 回答は保存済み',
+      'mockup.question': '99.999999999%の耐久性を持つオブジェクトストレージを提供するAWSサービスはどれですか？',
+      'mockup.autosave': '✓ 自動保存済み',
+      'mockup.prev': '← 前へ',
+      'mockup.next': '次へ →',
+      'trust.1': '1アカウント = 受験中は1台のデバイスのみ',
+      'trust.2': '問題ごとに自動保存、進捗を失いません',
+      'trust.3': '接続切断やタブを閉じても再開可能',
+      'trust.4': 'API レスポンスをエンドツーエンドで暗号化',
+      'trust.5': '時間切れで自動採点',
+      'stats.exams': '作成された試験数', 'stats.submissions': '採点された提出数', 'stats.students': 'アクティブな受講生数', 'stats.badges': '完了バッジ数',
+      'features.tag': '機能',
+      'features.title': '教えることも学ぶことも<br/>効果的にするすべての機能',
+      'features.sub': '試験の作成から結果の分析まで — NovaQuiz がすべてをカバーします。',
+      'features.f1.title': '4ステップの試験作成ウィザード',
+      'features.f1.desc': '基本情報 → JSON インポート → 問題編集 → 確認。時間を80%節約し、単一選択・複数選択問題に対応。',
+      'features.f2.title': 'コレクション &amp; 自動バッジ',
+      'features.f2.desc': '講師は試験をグループ化して学習パスを作成。受講生がすべて完了すると、自動的にプロフィールにバッジが付与されます。',
+      'features.f3.title': 'クレジットシステム',
+      'features.f3.desc': 'クレジットでアクセスを制御。管理者が試験ごとのコストを設定し、受講生は受験前に残高を確認できます。',
+      'features.f4.title': '進捗の自動保存',
+      'features.f4.desc': '次の問題に進むたびに回答が即座にサーバーへ保存されます。タブを閉じても、停電しても、接続が切れても、回答は失われません。',
+      'features.f5.title': '試験の再開',
+      'features.f5.desc': 'どのデバイスからでも再ログイン可能 — 時間が残っていればタイマーは中断した箇所から再開し、回答も完全に復元されます。',
+      'features.f6.title': '時間切れ時の自動採点',
+      'features.f6.desc': 'バックグラウンドの採点サービスが15分ごとに実行され、時間切れの試験を自動採点。受講生が提出ボタンを押さなくても結果は必ず記録されます。',
+      'features.f7.title': 'JSON から問題をインポート',
+      'features.f7.desc': 'Notion や Excel で問題バンクを作成し、一括でインポート。ウィザード内で問題ごとのエラープレビューも確認できます。',
+      'features.f8.title': '予約公開',
+      'features.f8.desc': '試験の公開時刻を設定 — 受講生にはカウントダウンが表示され、開始ボタンは時刻通りに自動的に有効化。サーバーが早期の提出をブロックします。',
+      'features.f9.title': '結果 &amp; 解説を即座に表示',
+      'features.f9.desc': '得点、正答率、問題ごとの分析、Markdown 解説を提出直後に表示。いつでも見返せます。',
+      'features.f10.title': 'コメント・いいね &amp; 報告機能',
+      'features.f10.desc': '受講生は各試験の下で議論し、気に入った試験にいいねをつけ、受験後に問題を報告できます。講師は受信箱で報告を受け取り &amp; 返信できます。',
+      'features.f11.title': 'タグで試験を探す',
+      'features.f11.desc': 'トピック別にフィルタリングし、新着順や人気順で並び替え。各カードにいいね数 &amp; コメント数が表示され、自信を持って試験を選べます。',
+      'features.f12.title': '受験中のメモ機能',
+      'features.f12.desc': '試験全体で共有されるフローティングメモ — 画面を離れずに公式やアウトラインをメモできます。プライベートで、サーバーには送信されません。',
+      'features.f13.title': '公開プロフィール',
+      'features.f13.desc': '試験作成者にはそれぞれ専用のプロフィールページがあります — 自己紹介、ソーシャルリンク、公開済み試験の一覧を受講生が閲覧できます。',
+      'features.f14.title': 'AIで試験を作成',
+      'features.f14.desc': 'PDF、DOCX、テキストドキュメントをアップロードすると、AIが選択式問題を自動作成 — あとは内容を確認して仕上げるだけです。',
+      'features.f15.title': '友達紹介でクレジット獲得',
+      'features.f15.desc': '専用の紹介リンクで友達を招待。招待された側が教師にアップグレードするか有料アクションを完了すると、双方にクレジットが付与されます。',
+      'features.f16.title': 'マルチチャンネル通知',
+      'features.f16.desc': '採点完了、コメントへの返信、報告の対応完了などをEmail、Pushover、Telegramで通知。プロフィールでチャンネルと通知種別を選択できます。',
+      'features.f17.title': 'Teacher API',
+      'features.f17.desc': '専用のAPIキーを発行し、スクリプトから試験の作成・管理を自動化。ブラウザセッション不要。',
+      'features.newBadge': '新機能',
+      'security.tag': 'セキュリティ &amp; 不正防止',
+      'security.title': '1つの試験は、<br/>1台のデバイスのみ',
+      'security.desc': 'システムはセッションをリアルタイムで追跡します。1台のデバイスが受験中の場合、同じアカウントで別のデバイスからログインしようとすると即座にブロックされます。',
+      'security.check1': '提出ごとに一意のセッショントークン — 共有不可',
+      'security.check2': '30秒ごとのハートビートで切断されたデバイスを検出',
+      'security.check3': 'API レスポンスは AES-256-GCM で暗号化 — ECDH 鍵交換',
+      'security.check4': 'ハートビートが5分間ない場合は自動復旧（クラッシュ・接続断）',
+      'security.cardTitle': '🛡️ 試験セキュリティの状態',
+      'security.row1.title': '専有セッション',
+      'security.row1.desc': 'このデバイスがセッションを保持しています。他のデバイスからのアクセス試行は明確な通知とともにブロックされます。',
+      'security.row2.title': '継続的な自動保存',
+      'security.row2.desc': '問題を切り替えるたびに加え、30秒ごとのハートビートで回答が保存されます。ユーザーが問題を読んでいるだけの間も同様です。',
+      'security.row3.title': 'エンドツーエンド暗号化',
+      'security.row3.desc': 'バックエンドがすべての API レスポンスを暗号化。プロキシやパケットスニファーには暗号文しか見えません。',
+      'security.row4.title': 'サーバー基準のタイマー',
+      'security.row4.desc': '試験時間はサーバー側で計測されるため、DevTools やローカルストレージの改ざんでは操作できません。',
+      'collections.tag': 'コレクション &amp; バッジ',
+      'collections.title': '学習パスを構築し、<br/>ふさわしい報酬を授与',
+      'collections.desc': '講師は複数の試験を共通テーマの<strong>コレクション</strong>にまとめます。受講生がすべてに合格すると、システムが<strong>自動的にバッジを授与</strong>します。',
+      'collections.check1': '50種類のプリセットバッジ、またはカスタム画像をアップロード',
+      'collections.check2': 'プロフィールページにバッジが目立つように表示',
+      'collections.check3': '学習パス全体を完了する動機付けになります',
+      'collections.check4': '管理者はコレクションごとの授与バッジ数を確認できます',
+      'collections.cardTitle': '🗂️ コレクション — AWS Complete Roadmap',
+      'collections.progressLabel': '3件中2件の試験が完了 · あと1件でバッジ獲得',
+      'resume.tag': '進捗を失わない',
+      'resume.title': 'タブを閉じて再ログイン —<br/>中断した箇所から再開',
+      'resume.desc': '停電、バッテリー切れ、うっかりタブを閉じてしまった場合でも — 再ログインして試験ページを開くと、未完了のセッションを自動検出し、正確な状態を復元します。',
+      'resume.check1': '選択した回答はサーバーから復元されます（localStorage に依存しません）',
+      'resume.check2': 'カウントダウンは残り時間から再開（サーバー基準）',
+      'resume.check3': '同じアカウントであればどのデバイスでも動作',
+      'resume.check4': '再開時にクレジットが二重に差し引かれることはありません',
+      'resume.cardTitle': '🔄 自動的な試験の復元',
+      'resume.step1.title': '試験を開始 — クレジット差し引き', 'resume.step1.sub': 'セッションが作成され、タイマーが開始',
+      'resume.step2.title': 'タブを閉じる / 接続切断', 'resume.step2.sub': '回答はサーバーに保存済み、セッションはまだ有効',
+      'resume.step3.title': '再ログイン → 試験ページを開く', 'resume.step3.sub': 'システムが未完了のセッションを検出',
+      'resume.step4.title': '受験していた問題から再開', 'resume.step4.sub': '回答 &amp; 残り時間が完全に復元されます',
+      'how.tag': '使い方', 'how.title': '数分で始められます',
+      'how.sub': 'インストール不要、クレジットカード不要 — アカウントだけで利用できます。',
+      'how.s1.title': 'アカウントを作成', 'how.s1.desc': 'メールまたは Google でログイン。受講生にはデフォルトのクレジットが付与され、すぐに受験できます。',
+      'how.s2.title': '試験を作成または選択', 'how.s2.desc': '講師は4ステップウィザードまたは JSON インポートで試験を作成。受講生は試験一覧を閲覧し、準備ができたら開始します。',
+      'how.s3.title': '安全に受験', 'how.s3.desc': 'カウントダウンタイマー、問題ごとの自動保存、安全なセッション — データを失う心配はありません。',
+      'how.s4.title': '結果を確認 &amp; バッジを獲得', 'how.s4.desc': '得点と詳細な分析がすぐに表示されます。コレクションを完了すると自動的にバッジを獲得できます。',
+      'roles.tag': '役割', 'roles.title': '講師にも受講生にも<br/>対応しています',
+      'roles.teacherLabel': '講師 / 試験作成者', 'roles.teacherTitle': 'すべてのコンテンツを<br/>作成・管理',
+      'roles.t1': '4ステップウィザードで試験を作成', 'roles.t2': 'JSON から問題を一括インポート',
+      'roles.t3': 'コレクションを整理してバッジを授与', 'roles.t4': '自動公開のスケジュール設定',
+      'roles.t5': '受験統計と合格率を確認', 'roles.t6': 'クレジットコスト、クールダウン、最大受験回数を設定',
+      'roles.studentLabel': '受講生 / 受験者', 'roles.studentTitle': '学習パスに沿って<br/>学び、受験する',
+      'roles.s1': '登録時に20クレジット付与', 'roles.s2': 'タイマーと自動保存付きで受験',
+      'roles.s3': '接続が切れても試験を再開可能', 'roles.s4': '詳細な結果と解説を確認',
+      'roles.s5': 'コレクション完了バッジを収集', 'roles.s6': '蓄積したクレジットで講師にアップグレード',
+      'faq.title': 'よくある質問',
+      'faq.q1': '複数のデバイスを同時に使用できますか？',
+      'faq.a1': 'いいえ — 受験中は1台のデバイスのみが有効です。別のデバイスで開くと、そのデバイスはブロックされます。5分間操作がない場合、古いセッションは解放され新しいデバイスが利用できるようになります。',
+      'faq.q2': 'タブを閉じたり停電した場合、試験は失われますか？',
+      'faq.a2': 'いいえ。回答は次の問題に進むたびと30秒ごとにサーバーへ自動保存されます。再ログインすると、システムが未完了の試験を検出し正確な状態を復元します — 回答も残り時間も失われません。',
+      'faq.q3': '時間切れで提出できなかった場合はどうなりますか？',
+      'faq.a3': '採点サービスが15分ごとにすべての時間切れ試験を自動採点します。結果はすでに保存された回答に基づいて記録されます。受講生は提出ボタンを押さなくても正確な結果を受け取れます。',
+      'faq.q4': 'クレジットとは何ですか？追加購入はできますか？',
+      'faq.a4': 'クレジットは試験を受けるための単位です — 試験ごとに費用が異なります。登録時に20クレジットが付与されます。現在は管理者が追加クレジットを付与しますが、将来的には直接購入できるシステムを予定しています。',
+      'faq.q5': '講師になるにはどうすればよいですか？',
+      'faq.a5': '受講生として登録した後、プロフィールページ → クレジットを使って講師にアップグレードしてください。アップグレード後、試験やコレクションを作成し、受講生を管理できます。ロールを有効にするにはログアウトして再度ログインする必要があります。',
+      'faq.q6': '私のデータは安全に保護されますか？',
+      'faq.a6': 'はい。すべての API レスポンスは ECDH P-256 鍵交換を用いた AES-256-GCM で暗号化されています — ブラウザとサーバー間のデータは傍受されても読み取れません。JWT 認証、CASL 認可、レート制限がすべてのエンドポイントを保護します。',
+      'cta.title': '公平でスマートな試験を<br/>実施する準備はできましたか？',
+      'cta.desc': '無料でお試しいただけます。クレジットカード不要。数分で利用開始できます。',
+      'footer.tagline': 'スマートなオンライン試験プラットフォーム',
+      'footer.builtBy': '開発者',
+    }
+  };
+
+  var LANGS = ['en', 'vi', 'ja'];
+  var DEFAULT_LANG = 'en';
+
+  function applyLang(lang) {
+    if (LANGS.indexOf(lang) === -1) lang = DEFAULT_LANG;
+    var dict = I18N[lang] || I18N[DEFAULT_LANG];
+    document.documentElement.lang = lang;
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      var key = el.getAttribute('data-i18n');
+      var val = dict[key];
+      if (val === undefined) return;
+      if (el.getAttribute('data-i18n-html') === 'true') el.innerHTML = val;
+      else el.textContent = val;
+    });
+    document.querySelectorAll('.lang-select').forEach(function (el) { el.value = lang; });
+    try { localStorage.setItem('landing-lang', lang); } catch (e) {}
+  }
+
+  (function initLang() {
+    var saved = null;
+    try { saved = localStorage.getItem('landing-lang'); } catch (e) {}
+    applyLang(LANGS.indexOf(saved) !== -1 ? saved : DEFAULT_LANG);
+  })();
+</script>
+
+</body>
+</html>

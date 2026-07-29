@@ -1,0 +1,10 @@
+# app.novaquiz.net — the quiz application itself.
+#
+# Every route here is behind a login and client-rendered (ssr = false), so
+# there is nothing a crawler can usefully index; letting it try only fills
+# the index with soft-404 login redirects and dilutes the landing page.
+#
+# Public, indexable content lives on https://novaquiz.net/.
+
+User-agent: *
+Disallow: /
