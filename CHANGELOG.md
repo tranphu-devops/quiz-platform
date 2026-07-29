@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [Unreleased] — 2026-07-28
+## [Unreleased] — 2026-07-29
 
 ### Added
 - **README song ngữ**: `README.md` viết lại hoàn toàn bằng tiếng Anh (context cập nhật đầy đủ: notification-service, referral, Teacher API, Admin System Overview...), thêm `README.vi.md` và `README.ja.md` là bản dịch, link chéo qua lại giữa 3 file. Các bản dịch chỉ cập nhật khi có yêu cầu, không tự động đồng bộ mỗi lần đổi README.md.
@@ -27,6 +27,9 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - **Sinh đề bằng AI với đề nhiều câu hỏi không còn báo lỗi "Too Many Requests" giữa chừng** — bước import câu hỏi vào exam-service chạy tuần tự, không có retry; đề trên 20 câu sẽ vượt rate-limit của endpoint tạo câu hỏi và job generate bị huỷ dở dang (đề đã tạo nhưng thiếu câu, phải xoá tay). Nay tự động chờ và thử lại theo `Retry-After` khi gặp lỗi 429, đồng thời nới rate-limit của endpoint đó để đủ dư cho một lượt import.
+
+### Removed
+- **Zoho PageSense**: gỡ bỏ script tracking khỏi `apps/frontend/src/app.html` và `landing/index.html` — chỉ giữ lại Umami analytics.
 
 ### Changed
 - **Số câu hỏi tối đa khi sinh đề bằng AI**: nâng mặc định từ 30 lên 50 câu (`ai_generation_max_questions`, chỉnh được ở `/admin` → "Tạo đề bằng AI").
