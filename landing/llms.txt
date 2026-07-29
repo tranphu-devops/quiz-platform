@@ -1,0 +1,44 @@
+# NovaQuiz
+
+> Smart online exam platform: teachers author exams (manually or from a
+> document via AI), students take them with autosaved progress and anti-cheat
+> session locking, and results are graded automatically.
+
+NovaQuiz is a web application at https://app.novaquiz.net. Accounts are free
+and sign-in is passwordless (Google OAuth or an emailed magic link).
+
+## What it does
+
+- **Exam authoring** — a four-step wizard for single- and multiple-answer
+  questions, per-question images, rich-text descriptions, explanations,
+  cover images and tags.
+- **AI exam generation** — upload a PDF, DOCX or text document and a language
+  model drafts a full multiple-choice exam, imported as an editable draft.
+- **Collections and badges** — group exams under a shared goal; passing every
+  exam in a collection awards a badge automatically.
+- **Exam integrity** — one active device per attempt, answers autosaved on
+  every question change and every 30 seconds, resume after a lost connection,
+  and automatic grading of timed-out attempts.
+- **Scheduling** — publish an exam now or at a future date, with a live
+  countdown and start blocked until then.
+- **Interaction** — comments, likes and post-attempt problem reports routed to
+  the exam owner.
+- **Teacher API** — long-lived API keys for managing exams programmatically.
+
+## Pages
+
+- [Home (English)](https://novaquiz.net/): product overview, features, security, FAQ
+- [Home (Tiếng Việt)](https://novaquiz.net/vi): Vietnamese overview
+- [Home (日本語)](https://novaquiz.net/ja): Japanese overview
+- [Brand](https://novaquiz.net/brand): logo, colour palette, typography, usage guidelines
+- [Contact](https://novaquiz.net/contact): questions, feedback, partnership requests
+- [Application](https://app.novaquiz.net/): the product itself (sign-in required)
+
+## Notes
+
+- Interface languages: Vietnamese, English, Japanese.
+- Students receive starting credits on sign-up; each exam attempt costs
+  credits set by its author. Upgrading a student account to a teacher account
+  also costs credits.
+- Application routes are not crawlable — they require authentication and are
+  rendered client-side.

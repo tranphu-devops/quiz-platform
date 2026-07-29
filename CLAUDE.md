@@ -58,6 +58,7 @@ Schema managed by **ordered, idempotent migration files** in `infra/postgres/mig
 ### Other commands
 ```bash
 node scripts/generate-badges.js   # regen badge SVGs → apps/frontend/static/badges/ + src/lib/badge-presets.json
+node scripts/build-landing-i18n.js  # regen landing/{index,vi,ja}.html from landing/index.src.html (commit the output)
 node --env-file=.env scripts/mint-test-jwt.js [--email hs.minh@quiz.test]   # dev-only: mint a JWT for a seeded user, bypassing GoTrue/login
 sudo bash deploy.sh                  # prod: fresh install (Ubuntu server, run as root)
 sudo bash deploy.sh --update         # prod: pull latest, rebuild, rolling restart
@@ -344,7 +345,22 @@ Exam `description` is rich HTML. `RichTextEditor.svelte` (bold/italic/underline/
 - Rotating Sentry DSN/org/project: update `hooks.client.js`, `hooks.server.js`, `vite.config.js` together.
 
 ### Landing page
-`landing/` — static HTML for `novaquiz.net`/`www.novaquiz.net`: `index.html` (`/`), `brand.html` (`/brand`), `contact.html` (`/contact`). Each self-contained (inline style/script, no build step), matched by exact Nginx `location` blocks — a new landing page needs both the `.html` and its `location`. `landing/brand-assets/` served via `/brand-assets/`. The `default_server` block (local + `app.novaquiz.net`) skips all this, goes straight to the SPA.
+`landing/` — static HTML for `novaquiz.net`/`www.novaquiz.net`, matched by exact Nginx `location` blocks; a new landing page needs both the `.html` and its `location`. `landing/brand-assets/` served via `/brand-assets/`. The `default_server` block (local + `app.novaquiz.net`) skips all this, goes straight to the SPA.
+
+- **Hand-written, self-contained** (inline style/script, no build step): `brand.html` (`/brand`), `contact.html` (`/contact`).
+- **Generated** — `index.src.html` is the source of truth; `node scripts/build-landing-i18n.js` pre-renders it into `index.html` (en, `/`), `vi.html` (`/vi`), `ja.html` (`/ja`). **Never hand-edit the three outputs** — edit `index.src.html` (markup carries Vietnamese + `data-i18n` keys; the `I18N` dict holds all three languages) and re-run the script. Outputs are committed because `./landing` is a read-only bind mount with no build step (`docker-compose.yml`), same arrangement as `scripts/generate-badges.js`.
+
+> Enforced tự động bởi hook `PreToolUse` (`.claude/settings.json`): `Edit|Write` chặn sửa `landing/{index,vi,ja}.html`; `Bash` chặn `git commit` khi `landing/index.src.html` được stage mà 3 output chưa sinh lại — hook tự chạy generator rồi yêu cầu `git add` lại.
+
+**Why pre-rendered per language, not the old runtime `applyLang()` swap:** one URL can only ever have one language indexed, and the markup language (`vi`) disagreed with what a crawler actually rendered (`en`, the old `DEFAULT_LANG`). Each output now ships its own `<html lang>`, title/description, `canonical`, hreflang set and JSON-LD (`Organization` + `WebSite` + `FAQPage`, translated), so all three are independently indexable with no JS.
+
+**Language negotiation** happens in Nginx, not JS (`nginx.conf` maps, above the `server` blocks). `/` redirects **302** to `/vi` or `/ja` based on Cloudflare's `CF-IPCountry`; anything else — including a missing header when Cloudflare's "IP Geolocation" toggle is off — falls through to English, which is the intended degradation. Two exemptions, both load-bearing:
+- **Crawlers never get redirected** (`$is_crawler` UA map). They fetch from a narrow set of mostly-US IPs, so geo-redirecting would pin every bot to one language and leave `/vi` and `/ja` unindexed — defeating the split. Google advises against redirecting on inferred locale for exactly this reason.
+- **An explicit choice wins over geo** — the switcher sets a `nqlang` cookie before navigating (`$lang_chosen`). Without it, picking "English" from `/vi` inside Vietnam bounces straight back to `/vi`.
+
+`location = /` also sends `Cache-Control: private, max-age=0, must-revalidate` so no intermediary caches one visitor's variant for everyone; `/vi` and `/ja` are unconditional and stay cacheable.
+
+**SEO files:** `landing/robots.txt` (allow-all + sitemap ref; AI crawlers deliberately not blocked), `landing/sitemap.xml` (5 URLs, `xhtml:link` alternates mirroring the hreflang tags), `landing/llms.txt`. The app vhost serves its own **disallow-all** `apps/frontend/static/robots.txt` — every route there is login-gated and client-rendered, so crawling it only produces soft-404s. Adding a landing page means updating `sitemap.xml` too.
 
 Contact form posts JSON to `POST /api/notifications/contact` (`apps/notification-service/src/routes/contact.js`) — the one unauthenticated public route in that service, bypasses the subscription/queue system, sends directly via the Resend adapter to `CONTACT_EMAIL_TO`. Rate-limited 5/min (route-level, tighter than the service's global 300/min).
 
