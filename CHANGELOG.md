@@ -4,7 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [Unreleased] — 2026-07-29
+## [Unreleased] — 2026-07-30
+
+### Added
+- **Trang đề thi công khai, không cần đăng nhập** — `novaquiz.net/vi/exams` (danh sách), `/vi/exams/topics/{chủ-đề}` (gom theo chủ đề) và `/vi/exams/{tên-đề}` (chi tiết từng đề). Trước đây `novaquiz.net` chỉ có 5 trang được Google index (3 bản ngôn ngữ của trang chủ + Thương hiệu + Liên hệ) vì mọi thứ khác đều nằm sau đăng nhập, nên gần như không có gì để tìm thấy qua công cụ tìm kiếm. Các trang mới được render sẵn ở máy chủ (đọc được khi không có JavaScript), mỗi trang có tiêu đề/mô tả/dữ liệu có cấu trúc riêng, và liên kết chéo giữa danh sách ↔ chủ đề ↔ đề thi. Trang chi tiết hiển thị mô tả, tag, người soạn, số câu, thời lượng và **một câu hỏi mẫu — không kèm đáp án hay giải thích**; muốn làm bài vẫn phải sang app và đăng nhập như cũ. Trang chủ (cả 3 ngôn ngữ) có thêm link "Đề thi" ở thanh điều hướng và chân trang.
+- **Mỗi đề thi có một địa chỉ dễ đọc** thay cho chuỗi ID ngẫu nhiên — ví dụ `/vi/exams/kien-thuc-lich-su-viet-nam`. Địa chỉ sinh tự động từ tiêu đề (bỏ dấu tiếng Việt) và **không đổi khi đổi tên đề**, để một địa chỉ đã được Google ghi nhận không bị hỏng; đề trùng tên nhận thêm hậu tố ngắn. Địa chỉ bên trong app giữ nguyên như cũ.
+- **Đề thi có thuộc tính ngôn ngữ** (Tiếng Việt / English / 日本語, mặc định Tiếng Việt) — quyết định đề xuất hiện ở trang công khai nào và khai báo đúng ngôn ngữ cho công cụ tìm kiếm. Hiện chỉ bật `/vi`; `/en` và `/ja` mở khi có nội dung.
+- **`sitemap-exams.xml`** sinh tự động từ dữ liệu thật, khai báo trong `robots.txt` bên cạnh sitemap tĩnh sẵn có. Chủ đề chỉ có đúng 1 đề không được đưa vào (trùng nội dung với chính trang đề đó).
+- **Sau khi đăng nhập, người dùng quay lại đúng trang đang xem** — trước đây ai bấm "Vào thi" từ ngoài rồi đăng nhập/đăng ký đều bị đẩy về Bảng điều khiển và mất luôn đề đang quan tâm.
+
+### Fixed
+- **Mô tả đề thi được lọc mã độc ở phía máy chủ** — trước đây chỉ trình duyệt lọc, nên nội dung gửi qua Teacher API vào thẳng cơ sở dữ liệu mà không qua kiểm tra nào.
+- **Giới hạn tần suất gọi API thực sự tính theo từng người dùng** — Nginx không chuyển tiếp địa chỉ IP thật xuống các service nên mọi người bị gộp làm một: mức "300 lượt/phút mỗi IP" trên thực tế là 300 lượt/phút cho toàn hệ thống, và một người dùng bất thường có thể làm cả hệ thống bị chặn.
 
 ### Added
 - **Landing page có URL riêng cho từng ngôn ngữ** — `novaquiz.net/` (English), `/vi` (Tiếng Việt), `/ja` (日本語). Trước đây cả 3 ngôn ngữ dùng chung một URL và chuyển bằng JavaScript, nên Google chỉ index được một ngôn ngữ duy nhất và nội dung tiếng Việt/tiếng Nhật gần như vô hình với công cụ tìm kiếm. Mỗi trang giờ có tiêu đề, mô tả và dữ liệu có cấu trúc riêng theo ngôn ngữ.

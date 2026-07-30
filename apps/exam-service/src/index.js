@@ -3,6 +3,7 @@ import cors from '@fastify/cors'
 import rateLimit from '@fastify/rate-limit'
 import examRoutes from './routes/exams.js'
 import collectionRoutes from './routes/collections.js'
+import publicRoutes from './routes/public.js'
 import { encryptOnSend } from './lib/encryptResponse.js'
 import { pool } from './db.js'
 
@@ -38,6 +39,10 @@ fastify.get('/health', { config: { rateLimit: { max: 60, timeWindow: '1 minute' 
   }
 })
 
+// Its own plugin, so the auth preHandler inside examRoutes — which is scoped to
+// that plugin's encapsulation context — can never apply to it, and equally can
+// never be relaxed on its behalf.
+fastify.register(publicRoutes)
 fastify.register(examRoutes)
 fastify.register(collectionRoutes)
 
