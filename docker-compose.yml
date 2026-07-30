@@ -254,6 +254,25 @@ services:
       context: ./apps/frontend
     environment:
       PORT: 3000
+      # The public SEO pages under /{lang}/exams are server-rendered, so this
+      # container now makes outbound calls and needs to know who the visitor is.
+      # ADDRESS_HEADER is what makes getClientAddress() work behind nginx (it
+      # throws without it); PROTOCOL_HEADER/HOST_HEADER make event.url report
+      # the real public URL instead of http://localhost:3000.
+      # ORIGIN is deliberately NOT set: one app serves both novaquiz.net and
+      # app.novaquiz.net, and a fixed origin would misreport one of them.
+      ADDRESS_HEADER: x-forwarded-for
+      XFF_DEPTH: "1"
+      PROTOCOL_HEADER: x-forwarded-proto
+      HOST_HEADER: x-forwarded-host
+      # Server-side only (read via $env/dynamic/private, never bundled into the
+      # browser). Called directly over the Docker network rather than back
+      # through nginx, whose api_general zone is keyed on the caller IP — for an
+      # SSR call that is this container, so every visitor would share one 2r/s
+      # bucket and a burst of page views would 429.
+      EXAM_SERVICE_URL: http://exam-service:3003
+    depends_on:
+      - exam-service
     restart: unless-stopped
 
   # Read-only Docker API proxy for the admin System Overview screen

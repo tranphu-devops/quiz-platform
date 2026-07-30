@@ -9,4 +9,9 @@
 User-agent: *
 Allow: /
 
+# Two sitemaps, which the protocol allows. The first is this directory's
+# hand-maintained list of landing URLs; the second is generated from the
+# database by the SvelteKit app (apps/frontend/src/routes/sitemap-exams.xml)
+# and covers the public exam catalog, topic hubs and exam pages.
 Sitemap: https://novaquiz.net/sitemap.xml
+Sitemap: https://novaquiz.net/sitemap-exams.xml

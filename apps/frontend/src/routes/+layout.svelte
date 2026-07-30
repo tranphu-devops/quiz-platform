@@ -439,7 +439,15 @@
   }
 </style>
 
-{#if isBanned}
+{#if $page.data?.publicShell}
+  <!-- Public, crawlable pages (/{lang}/exams/...) render bare — they have their
+       own chrome in src/routes/[lang=lang]/+layout.svelte. This flag arrives in
+       the server data payload, so it is already set during SSR and stays set
+       through hydration: a logged-in visitor never sees the app shell flash in
+       over a public page, and Sidebar/$lib/api never load there at all. -->
+  {@render children()}
+
+{:else if isBanned}
   <div class="banned-screen">
     <div class="banned-card">
       <div class="banned-icon">🚫</div>

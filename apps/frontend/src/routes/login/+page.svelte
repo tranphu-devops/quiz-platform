@@ -3,8 +3,10 @@
   import { browser } from '$app/environment'
   import { user } from '$lib/stores/auth'
   import { goto } from '$app/navigation'
+  import { page } from '$app/stores'
   import { onMount } from 'svelte'
   import { t } from '$lib/i18n'
+  import { safeNext, rememberNext } from '$lib/nextUrl'
 
   let email = $state('')
   let sending = $state(false)
@@ -12,12 +14,19 @@
   let magicError = $state('')
   let cooldown = $state(0)
 
+  // ?next= is set by app pages that bounce an anonymous visitor here, so a
+  // journey that starts on a public exam page ends on that exam rather than on
+  // the dashboard.
+  const next = $derived(safeNext($page.url.searchParams.get('next')))
+
   onMount(() => {
-    if ($user) goto('/dashboard')
+    if ($user) goto(next ?? '/dashboard')
+    else rememberNext(next)
   })
 
   async function loginWithGoogle() {
     if (!browser) return
+    rememberNext(next)
     await auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth-callback` }
@@ -42,6 +51,7 @@
 
     sending = true
     magicError = ''
+    rememberNext(next)
     const { error } = await auth.signInWithOtp({
       email: trimmed,
       // /auth-callback, not /auth/callback — nginx proxies all of /auth/* to

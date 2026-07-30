@@ -201,8 +201,8 @@ POST /api/users/upload   (multipart/form-data)
 - `old_url` provided → old S3 object deleted first; key extracted by finding `uploads/` in the URL.
 - Validation (max size, MIME types) read from `quiz_users.admin_settings` at upload time, not hardcoded. Nginx `client_max_body_size: 10m`.
 
-### Frontend (SvelteKit 5 + Node adapter, SSR disabled)
-Fully client-rendered SPA (`export const ssr = false`). Auth persists in localStorage via GoTrueClient.
+### Frontend (SvelteKit 5 + Node adapter, SSR disabled — except the public tree)
+Client-rendered SPA (`export const ssr = false` in `src/routes/+layout.js`). Auth persists in localStorage via GoTrueClient. The one exception is `src/routes/[lang=lang]/` — see **Public SEO pages** below.
 
 Key files:
 - `src/lib/auth.js` — GoTrueClient, URL = `window.location.origin + '/auth'`
@@ -295,7 +295,7 @@ Defined by ordered migrations in `infra/postgres/migrations/` (idempotent, auto-
 Summary:
 - `quiz_users.profiles` — `id, full_name, avatar_url, role, credits, updated_at` + `bio, birth_year, gender, interests, facebook_url, zalo, tiktok_url, youtube_url, instagram_url, linkedin_url, website_url`
 - `quiz_users.admin_settings` — `key, value` (upload/credit/AI-generation config)
-- `quiz_exams.exams` — `cover_image_url, tags TEXT[], show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts (null=unlimited), scheduled_at, passing_score, deleted_at` (soft-delete)
+- `quiz_exams.exams` — `cover_image_url, tags TEXT[], show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts (null=unlimited), scheduled_at, passing_score, deleted_at` (soft-delete), `slug` (unique, immutable, `quiz_exams.slugify()` + `BEFORE INSERT OR UPDATE` trigger — the repo's only DB trigger, needed because seed SQL writes exams too), `language` (`vi|en|ja`), `updated_at` (drives sitemap `<lastmod>`)
 - `quiz_exams.questions` — `image_url, question_type (single|multiple), correct_answer (comma-sep keys), deleted_at`
 - `quiz_exams.collections` — `id, title, description, created_by, badge_image_url, is_published, deleted_at`
 - `quiz_exams.collection_exams` — `(collection_id, exam_id, position)`
@@ -335,9 +335,37 @@ Standalone Node worker, no HTTP server. `node-cron` every 15 min (+ once at star
 - Frontend: `systemApi`; `SystemServicesPanel` (polls ~25s), `SystemDatabasePanel`/`SystemLogsPanel` (manual refresh only).
 
 ### Rich-text exam description
-Exam `description` is rich HTML. `RichTextEditor.svelte` (bold/italic/underline/lists/links) on create/edit; sanitized server-side via allowlist before storing (`apps/frontend/src/lib/sanitizeHtml.js`, also has `htmlToText()` for tag-stripping used in collection tag aggregation/search snippets); rendered as formatted HTML on detail page.
+Exam `description` is rich HTML. `RichTextEditor.svelte` (bold/italic/underline/lists/links) on create/edit; rendered as formatted HTML on detail page.
+
+**Sanitized in two places, and the distinction matters:**
+- `apps/exam-service/src/lib/sanitizeDescription.js` (`sanitize-html` pkg, no DOM) — on write in `POST /exams`/`PUT /exams/:id`, and again on read in the `/public/*` payloads (rows written before this existed will never be re-saved). This is the authoritative pass; before it, the Teacher API could write arbitrary HTML straight to the DB.
+- `apps/frontend/src/lib/sanitizeHtml.js` — browser-only defence in depth, plus `htmlToText()` for tag-stripping (collection tag aggregation, search snippets).
+
+⚠️ `sanitizeHtml()` returns `''` when `document` is undefined. **Never call it from SSR** — the page renders fine in a browser and is empty to a crawler. The public pages render the exam-service-sanitized string with `{@html}` directly. Keep the two allowlists in sync.
 
 `/exams/[id]` shows a 1-random-question preview (`ORDER BY RANDOM() LIMIT 1`). Collection tags are **derived** (union of member exams' `tags`, computed in-query, never stored). Custom `+error.svelte` pages handle 404/5xx.
+
+### Public SEO pages (`novaquiz.net/{lang}/exams/...`)
+The only server-rendered, crawlable part of the app. Everything else on `app.novaquiz.net` stays `Disallow: /`.
+
+```
+/{lang}/exams                    catalog        src/routes/[lang=lang]/exams/
+/{lang}/exams/topics/{tag-slug}  topic hub      .../exams/topics/[tag]/
+/{lang}/exams/{exam-slug}        exam detail    .../exams/[slug]/   → CTA links to app.novaquiz.net
+/sitemap-exams.xml               generated      src/routes/sitemap-exams.xml/
+```
+
+- **No Nginx routing change was needed** — the landing vhost's catch-all `location /` already proxies to `frontend`, and `location = /vi` is an exact match so it doesn't shadow `/vi/exams`.
+- **`src/params/lang.js`** gates the prefix; only `vi` is enabled (a prefix with no content behind it would render empty listings). `/en`, `/ja` 404 until exams exist in them.
+- **`[lang=lang]/+layout.js`** sets `ssr = true` (overriding the root) **and `csr = false`** — these pages ship zero JS. That is what removes the hydration-mismatch class of bugs and the `$lib/i18n` post-hydration language flip. Public copy comes from `src/lib/i18n/public.js` (`publicT(lang)`, a plain lookup), **never the `$t` store**.
+- **`publicShell`** from `[lang=lang]/+layout.server.js` makes the root `+layout.svelte` render bare. It must come from server data (not a pathname check) so it holds through hydration and a logged-in visitor never sees the app shell flash in.
+- **Data**: `src/lib/server/examsApi.js` → `http://exam-service:3003/public/*` **direct over the Docker network**, never back through Nginx (whose `api_general` zone is keyed on caller IP — for SSR that's the frontend container, so every visitor would share one 2r/s bucket). Forwards `x-forwarded-for` so per-visitor limiting still works. Must never send `x-client-pubkey` (turns on response encryption) or `x-internal-key` (unlocks `/exams/internal/:id`, which returns answer keys).
+- **`clientIpOf(event)`** wraps `getClientAddress()`, which *throws* when `ADDRESS_HEADER` is set but absent — i.e. any request not via Nginx.
+- **Canonical is always `https://novaquiz.net`**, from the constant in `src/lib/seo.js`, never `event.url.origin` — the same app answers on both hosts. `hooks.server.js` additionally 301s these paths off `app.*`.
+- **`%nq.lang%` / `%nq.defaultmeta%`** in `app.html` are substituted by `hooks.server.js`. The default OG/description tags live in the static shell (app routes are `ssr:false`, so a `<svelte:head>` would be invisible to link-preview crawlers) and are blanked on public pages, which emit their own via `SeoHead.svelte` — `<svelte:head>` appends rather than replaces.
+- **JSON-LD**: `CollectionPage` + `ItemList` for catalog/hub, **`LearningResource` (not `Quiz`)** for exam pages — `Quiz` rich results require `acceptedAnswer`, which would publish the answer key the endpoints strip.
+- Exam slugs are **immutable** (DB trigger); `PUT /exams/:id` 400s on `slug`. `exams.language` picks the prefix. Sample question uses `ORDER BY order_index LIMIT 1`, deliberately *not* the app's `RANDOM()` — a page's main content must not change between crawls.
+- Clicking through to the app carries the destination via `src/lib/nextUrl.js` (localStorage, not a query param — GoTrue's `URI_ALLOW_LIST` globs reject redirect URLs whose query contains slashes).
 
 ### Analytics & error monitoring
 - **Zoho PageSense** + **Umami** — load-time script embeds in `apps/frontend/src/app.html` and `landing/index.html`; no npm packages.

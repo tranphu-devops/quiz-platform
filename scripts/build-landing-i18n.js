@@ -191,9 +191,19 @@ const I18N_SCRIPT = /<script>\n\s*var I18N = \{[\s\S]*?<\/script>/
 const LANG_SELECT = /<select class="lang-select"[\s\S]*?<\/select>/
 const I18N_EL = /<([a-zA-Z0-9]+)([^>]*\sdata-i18n="([^"]+)"[^>]*)>([\s\S]*?)<\/\1>/g
 
+// Where each language's landing page links into the public exam catalog. Only
+// Vietnamese exams exist today, so all three point at /vi/exams; when an /en or
+// /ja catalog ships, change the value here and re-run. A token rather than a
+// literal href keeps that switch to one line instead of a hunt through three
+// generated files.
+const CATALOG_PATH = { en: '/vi/exams', vi: '/vi/exams', ja: '/vi/exams' }
+const CATALOG_TOKEN = /%CATALOG_PATH%/g
+
 if (!SEO_MARKER.test(src)) throw new Error('index.src.html: SEO:HEAD marker not found')
 if (!I18N_SCRIPT.test(src)) throw new Error('index.src.html: I18N <script> block not found')
 if (!LANG_SELECT.test(src)) throw new Error('index.src.html: .lang-select not found')
+if (!CATALOG_TOKEN.test(src)) throw new Error('index.src.html: %CATALOG_PATH% token not found')
+CATALOG_TOKEN.lastIndex = 0 // /g regexes are stateful; .test() above left an offset
 
 const totalKeys = (src.match(/\sdata-i18n="/g) || []).length
 
@@ -206,6 +216,7 @@ for (const lang of LANGS) {
     .replace(SEO_MARKER, seoHead(lang, dict) + '\n')
     .replace(I18N_SCRIPT, LANG_SCRIPT)
     .replace(LANG_SELECT, langSelect(lang))
+    .replace(CATALOG_TOKEN, CATALOG_PATH[lang.code])
     .replace(/^<html lang="[^"]*">/m, `<html lang="${lang.code}">`)
     .replace(I18N_EL, (match, tag, attrs, key, body) => {
       applied++

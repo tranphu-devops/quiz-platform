@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="vi">
+<html lang="%nq.lang%">
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
@@ -8,14 +8,14 @@
     <link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#5625d1" />
-    <meta name="description" content="NovaQuiz — nền tảng thi trực tuyến thông minh: tạo đề thi, quản lý bộ đề, chấm điểm tự động." />
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="NovaQuiz" />
-    <meta property="og:title" content="NovaQuiz — Nền tảng thi trực tuyến thông minh" />
-    <meta property="og:description" content="Tạo đề thi, quản lý bộ đề, trao huy hiệu và theo dõi kết quả học tập — tất cả trên một nền tảng đơn giản, mạnh mẽ, bảo mật." />
-    <meta property="og:image" content="https://app.novaquiz.net/banner-og.png" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="https://app.novaquiz.net/banner-og.png" />
+    <!-- Site-wide description / og:* / twitter:*, substituted by the publicSeo
+         hook in src/hooks.server.js. They stay in this static shell because the
+         app routes are ssr:false — nothing they put in <svelte:head> exists
+         before hydration, and the crawlers that build link previews do not run
+         JavaScript. On the public SEO pages the hook replaces this with an
+         empty string instead, because <svelte:head> appends rather than
+         replaces and those pages emit their own. -->
+    %nq.defaultmeta%
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />

@@ -55,7 +55,9 @@
   const hasDescription = $derived(!isHtmlEmpty(exam?.description))
 
   onMount(async () => {
-    if (!$user) { goto('/login'); return }
+    // Carry the destination through login: this page is where the "Vào thi"
+    // CTA on the public exam pages at novaquiz.net lands.
+    if (!$user) { goto(`/login?next=${encodeURIComponent($page.url.pathname)}`); return }
     const id = $page.params.id
     try {
       // Students get preview (first 3 questions only); teachers/admins get full
