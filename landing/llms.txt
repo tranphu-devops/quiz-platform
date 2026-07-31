@@ -30,8 +30,8 @@ and sign-in is passwordless (Google OAuth or an emailed magic link).
 - [Home (English)](https://novaquiz.net/): product overview, features, security, FAQ
 - [Home (Tiếng Việt)](https://novaquiz.net/vi): Vietnamese overview
 - [Home (日本語)](https://novaquiz.net/ja): Japanese overview
-- [Brand](https://novaquiz.net/brand): logo, colour palette, typography, usage guidelines
-- [Contact](https://novaquiz.net/contact): questions, feedback, partnership requests
+- [Brand](https://novaquiz.net/brand): logo, colour palette, typography, usage guidelines (also /vi/brand, /ja/brand)
+- [Contact](https://novaquiz.net/contact): questions, feedback, partnership requests (also /vi/contact, /ja/contact)
 - [Application](https://app.novaquiz.net/): the product itself (sign-in required)
 
 ## Notes

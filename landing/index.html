@@ -31,18 +31,27 @@
       "@id": "https://novaquiz.net/#organization",
       "name": "NovaQuiz",
       "url": "https://novaquiz.net/",
-      "logo": "https://novaquiz.net/brand-assets/banner-og.png",
-      "description": "Create exams, manage collections, award badges and track learning results — all on one simple, powerful and secure platform."
+      "logo": "https://novaquiz.net/brand-assets/banner-og.png"
     },
     {
       "@type": "WebSite",
       "@id": "https://novaquiz.net/#website",
       "url": "https://novaquiz.net/",
       "name": "NovaQuiz",
-      "description": "Create exams, manage collections, award badges and track learning results — all on one simple, powerful and secure platform.",
       "inLanguage": "en",
       "publisher": {
         "@id": "https://novaquiz.net/#organization"
+      }
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://novaquiz.net/#webpage",
+      "url": "https://novaquiz.net/",
+      "name": "NovaQuiz — Smart Online Exam Platform",
+      "description": "Create exams, manage collections, award badges and track learning results — all on one simple, powerful and secure platform.",
+      "inLanguage": "en",
+      "isPartOf": {
+        "@id": "https://novaquiz.net/#website"
       }
     },
     {
@@ -107,6 +116,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet" />
+  <!-- Umami analytics -->
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="48416adf-94dc-46a2-843c-6a98cb044701"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -158,6 +169,14 @@
     }
     .lang-select:hover { border-color: var(--accent); color: var(--primary); }
     .lang-select:focus { outline: none; border-color: var(--accent); }
+
+    /* ─── FOOTER ─── */
+    footer { background: #202331; color: #64748b; text-align: center; padding: 3rem 1.5rem; font-size: .84rem; }
+    footer strong { color: white; }
+    .footer-links { display: flex; justify-content: center; align-items: center; gap: 1.5rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .footer-links a { color: #64748b; text-decoration: none; font-weight: 500; transition: color .15s; }
+    .footer-links a:hover { color: white; }
+    .footer-divider { color: #3d4055; }
 
     /* ─── HERO ─── */
     .hero {
@@ -397,29 +416,18 @@
     .btn-white:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,.3); }
     .btn-outline-white { padding: .8rem 1.9rem; border-radius: 10px; font-size: 1rem; font-weight: 700; background: transparent; color: white; border: 2px solid rgba(255,255,255,.4); text-decoration: none; transition: all .15s; }
     .btn-outline-white:hover { border-color: white; background: rgba(255,255,255,.1); }
-
-    /* ─── FOOTER ─── */
-    footer { background: #202331; color: #64748b; text-align: center; padding: 3rem 1.5rem; font-size: .84rem; }
-    footer strong { color: white; }
-    .footer-links { display: flex; justify-content: center; align-items: center; gap: 1.5rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
-    .footer-links a { color: #64748b; text-decoration: none; font-weight: 500; transition: color .15s; }
-    .footer-links a:hover { color: white; }
-    .footer-divider { color: #3d4055; }
   </style>
-  <!-- Umami analytics -->
-  <script defer src="https://cloud.umami.is/script.js" data-website-id="48416adf-94dc-46a2-843c-6a98cb044701"></script>
 </head>
 <body>
 
-<!-- NAV -->
 <nav>
   <a class="nav-brand" href="/">NovaQuiz</a>
   <div class="nav-links">
     <a href="/vi/exams" class="nav-hide" data-i18n="nav.exams">Exams</a>
-    <a href="#features" class="nav-hide" data-i18n="nav.features">Features</a>
-    <a href="#security" class="nav-hide" data-i18n="nav.security">Security</a>
-    <a href="#how" class="nav-hide" data-i18n="nav.how">How it works</a>
-    <a href="#faq" class="nav-hide" data-i18n="nav.faq">FAQ</a>
+    <a href="/#features" class="nav-hide" data-i18n="nav.features">Features</a>
+    <a href="/#security" class="nav-hide" data-i18n="nav.security">Security</a>
+    <a href="/#how" class="nav-hide" data-i18n="nav.how">How it works</a>
+    <a href="/#faq" class="nav-hide" data-i18n="nav.faq">FAQ</a>
     <select class="lang-select" onchange="nqSetLang(this.value)" aria-label="Language">
       <option value="en" selected>English</option>
       <option value="vi">Tiếng Việt</option>
@@ -853,16 +861,15 @@
   </div>
 </div>
 
-<!-- FOOTER -->
 <footer>
   <div class="footer-links">
     <a href="https://app.novaquiz.net/login" data-i18n="nav.cta">Get started</a>
     <span class="footer-divider">·</span>
     <a href="/vi/exams" data-i18n="nav.exams">Exams</a>
     <span class="footer-divider">·</span>
-    <a href="#features" data-i18n="nav.features">Features</a>
+    <a href="/#features" data-i18n="nav.features">Features</a>
     <span class="footer-divider">·</span>
-    <a href="#faq" data-i18n="nav.faq">FAQ</a>
+    <a href="/#faq" data-i18n="nav.faq">FAQ</a>
     <span class="footer-divider">·</span>
     <a href="/brand" data-i18n="nav.brand">Brand</a>
     <span class="footer-divider">·</span>

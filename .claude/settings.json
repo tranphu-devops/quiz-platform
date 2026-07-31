@@ -11,7 +11,7 @@
           },
           {
             "type": "command",
-            "command": "f=$(jq -r '.tool_input.file_path'); case \"$f\" in */landing/index.html|*/landing/vi.html|*/landing/ja.html|landing/index.html|landing/vi.html|landing/ja.html) jq -n '{hookSpecificOutput:{hookEventName:\"PreToolUse\",permissionDecision:\"deny\",permissionDecisionReason:\"landing/{index,vi,ja}.html là file sinh tự động từ landing/index.src.html — sửa tay sẽ bị ghi đè ở lần chạy generator kế tiếp. Sửa landing/index.src.html (markup tiếng Việt + data-i18n, dict I18N chứa cả 3 ngôn ngữ), rồi chạy: node scripts/build-landing-i18n.js\"}}' ;; esac",
+            "command": "f=$(jq -r '.tool_input.file_path'); case \"$f\" in *landing/partials/*|*landing/*.src.html) exit 0 ;; *landing/*.html|*landing/sitemap.xml) jq -n '{hookSpecificOutput:{hookEventName:\"PreToolUse\",permissionDecision:\"deny\",permissionDecisionReason:\"File này sinh tự động bởi scripts/build-landing-i18n.js — sửa tay sẽ bị ghi đè ở lần chạy generator kế tiếp. Sửa nguồn: landing/<page>.src.html (nội dung riêng của trang) hoặc landing/partials/ (header/footer/head/chrome.css/i18n.json dùng chung), rồi chạy: node scripts/build-landing-i18n.js\"}}' ;; esac",
             "statusMessage": "Checking generated landing files..."
           },
           {
@@ -31,7 +31,7 @@
           },
           {
             "type": "command",
-            "command": "cmd=$(jq -r '.tool_input.command'); case \"$cmd\" in *\"git commit\"*) top=$(git rev-parse --show-toplevel 2>/dev/null); if [ -n \"$top\" ] && git -C \"$top\" diff --cached --name-only 2>/dev/null | grep -q 'landing/index.src.html'; then if command -v node >/dev/null 2>&1 && node \"$top/scripts/build-landing-i18n.js\" >/dev/null 2>&1; then if ! git -C \"$top\" diff --quiet -- landing/index.html landing/vi.html landing/ja.html 2>/dev/null; then jq -n '{hookSpecificOutput:{hookEventName:\"PreToolUse\",permissionDecision:\"deny\",permissionDecisionReason:\"landing/index.src.html đã đổi nhưng landing/{index,vi,ja}.html chưa được sinh lại — generator vừa được chạy và đã cập nhật 3 file đó. Chạy: git add landing/index.html landing/vi.html landing/ja.html rồi commit lại.\"}}'; fi; fi; fi ;; esac",
+            "command": "cmd=$(jq -r '.tool_input.command'); case \"$cmd\" in *\"git commit\"*) top=$(git rev-parse --show-toplevel 2>/dev/null); if [ -n \"$top\" ] && git -C \"$top\" diff --cached --name-only 2>/dev/null | grep -qE 'landing/[^/]+\\.src\\.html|landing/partials/'; then if command -v node >/dev/null 2>&1 && node \"$top/scripts/build-landing-i18n.js\" >/dev/null 2>&1; then if ! git -C \"$top\" diff --quiet -- 'landing/*.html' ':(exclude)landing/*.src.html' ':(exclude)landing/partials/*' landing/sitemap.xml 2>/dev/null; then jq -n '{hookSpecificOutput:{hookEventName:\"PreToolUse\",permissionDecision:\"deny\",permissionDecisionReason:\"Nguồn landing (*.src.html hoặc partials/) đã đổi nhưng các file sinh ra chưa được cập nhật — generator vừa được chạy và đã ghi lại chúng. Chạy: git add landing/*.html landing/sitemap.xml rồi commit lại.\"}}'; fi; fi; fi ;; esac",
             "statusMessage": "Checking landing generator output is up to date..."
           }
         ]

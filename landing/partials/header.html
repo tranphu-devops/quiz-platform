@@ -1,0 +1,25 @@
+<!--
+  Shared nav for every landing page — injected at the "INCLUDE:header" marker
+  by scripts/build-landing-i18n.js. Markup is Vietnamese + data-i18n keys,
+  same convention as index.src.html; the strings live in partials/i18n.json.
+
+  Section links are absolute (%HOME_PATH%#features) so they work from /brand
+  and /contact too. On the home page itself the path is identical to the
+  current URL, so the browser treats it as a fragment jump, not a reload.
+-->
+<nav>
+  <a class="nav-brand" href="%HOME_PATH%">NovaQuiz</a>
+  <div class="nav-links">
+    <a href="%CATALOG_PATH%" class="nav-hide" data-i18n="nav.exams">Đề thi</a>
+    <a href="%HOME_PATH%#features" class="nav-hide" data-i18n="nav.features">Tính năng</a>
+    <a href="%HOME_PATH%#security" class="nav-hide" data-i18n="nav.security">Bảo mật</a>
+    <a href="%HOME_PATH%#how" class="nav-hide" data-i18n="nav.how">Cách dùng</a>
+    <a href="%HOME_PATH%#faq" class="nav-hide" data-i18n="nav.faq">FAQ</a>
+    <select class="lang-select" onchange="nqSetLang(this.value)" aria-label="Language">
+      <option value="en">English</option>
+      <option value="vi">Tiếng Việt</option>
+      <option value="ja">日本語</option>
+    </select>
+    <a href="%APP_LOGIN%" class="btn-nav" data-i18n="nav.cta">Bắt đầu khám phá</a>
+  </div>
+</nav>

@@ -373,14 +373,28 @@ The only server-rendered, crawlable part of the app. Everything else on `app.nov
 - Rotating Sentry DSN/org/project: update `hooks.client.js`, `hooks.server.js`, `vite.config.js` together.
 
 ### Landing page
-`landing/` — static HTML for `novaquiz.net`/`www.novaquiz.net`, matched by exact Nginx `location` blocks; a new landing page needs both the `.html` and its `location`. `landing/brand-assets/` served via `/brand-assets/`. The `default_server` block (local + `app.novaquiz.net`) skips all this, goes straight to the SPA.
+`landing/` — static HTML for `novaquiz.net`/`www.novaquiz.net`, matched by exact Nginx `location` blocks. `landing/brand-assets/` served via `/brand-assets/`. The `default_server` block (local + `app.novaquiz.net`) skips all this, goes straight to the SPA.
 
-- **Hand-written, self-contained** (inline style/script, no build step): `brand.html` (`/brand`), `contact.html` (`/contact`).
-- **Generated** — `index.src.html` is the source of truth; `node scripts/build-landing-i18n.js` pre-renders it into `index.html` (en, `/`), `vi.html` (`/vi`), `ja.html` (`/ja`). **Never hand-edit the three outputs** — edit `index.src.html` (markup carries Vietnamese + `data-i18n` keys; the `I18N` dict holds all three languages) and re-run the script. Outputs are committed because `./landing` is a read-only bind mount with no build step (`docker-compose.yml`), same arrangement as `scripts/generate-badges.js`.
+**Every page is generated** by `node scripts/build-landing-i18n.js` — one `<page>.src.html` in, three pre-rendered languages out:
 
-> Enforced tự động bởi hook `PreToolUse` (`.claude/settings.json`): `Edit|Write` chặn sửa `landing/{index,vi,ja}.html`; `Bash` chặn `git commit` khi `landing/index.src.html` được stage mà 3 output chưa sinh lại — hook tự chạy generator rồi yêu cầu `git add` lại.
+| source | en | vi | ja |
+|---|---|---|---|
+| `index.src.html` | `index.html` (`/`) | `vi.html` (`/vi`) | `ja.html` (`/ja`) |
+| `brand.src.html` | `brand.html` (`/brand`) | `brand.vi.html` (`/vi/brand`) | `brand.ja.html` (`/ja/brand`) |
+| `contact.src.html` | `contact.html` (`/contact`) | `contact.vi.html` (`/vi/contact`) | `contact.ja.html` (`/ja/contact`) |
 
-**Why pre-rendered per language, not the old runtime `applyLang()` swap:** one URL can only ever have one language indexed, and the markup language (`vi`) disagreed with what a crawler actually rendered (`en`, the old `DEFAULT_LANG`). Each output now ships its own `<html lang>`, title/description, `canonical`, hreflang set and JSON-LD (`Organization` + `WebSite` + `FAQPage`, translated), so all three are independently indexable with no JS.
+**Never hand-edit an output** (nor `sitemap.xml`, also generated). Edit the page source — markup carries Vietnamese + `data-i18n` keys, its `I18N` dict holds all three languages — or `landing/partials/`, then re-run the script. Outputs are committed because `./landing` is a read-only bind mount with no build step (`docker-compose.yml`), same arrangement as `scripts/generate-badges.js`.
+
+`landing/partials/` is what keeps the pages from drifting apart, injected at `INCLUDE:` markers: `head.html` (favicon/fonts/Umami), `chrome.css` (reset + brand tokens + nav + footer, injected at the top of each page's `<style>` so page CSS can override), `header.html`, `footer.html`, and `i18n.json` (shared nav/footer strings, merged **under** each page's own dict). Page-only assets stay in the page — e.g. `brand.src.html` loads JetBrains Mono itself.
+
+- Links in partials use `%HOME_PATH%` / `%BRAND_PATH%` / `%CONTACT_PATH%` / `%CATALOG_PATH%` / `%APP_LOGIN%` tokens resolved per language; the build throws on any `%TOKEN%` left unreplaced. Section links are absolute (`/vi#faq`) so they work from sub-pages — on the home page itself the path matches the current URL, so it stays a fragment jump, not a reload.
+- Strings a page still needs after render are declared with `<!-- RUNTIME-STRINGS: a, b -->` and emitted as `NQ_T` + `t()` for that language only (contact's form states). Pages without the directive ship no dictionary at all.
+- Adding a page = new `<page>.src.html` + an entry in `PAGES` + three `location` blocks in `nginx.conf`. `sitemap.xml` follows automatically.
+- The authoring comment at the top of a partial is stripped from the output — never write `-->` inside one (an HTML comment ends at its first occurrence, which would leak the prose into every page); the build fails loudly if that happens.
+
+> Enforced tự động bởi hook `PreToolUse` (`.claude/settings.json`): `Edit|Write` chặn sửa mọi `landing/*.html` sinh tự động + `sitemap.xml` (trừ `*.src.html` và `partials/`); `Bash` chặn `git commit` khi nguồn landing được stage mà output chưa sinh lại — hook tự chạy generator rồi yêu cầu `git add` lại.
+
+**Why pre-rendered per language, not the old runtime `applyLang()` swap:** one URL can only ever have one language indexed, and the markup language (`vi`) disagreed with what a crawler actually rendered (`en`, the old `DEFAULT_LANG`). Each output now ships its own `<html lang>`, title/description, `canonical`, hreflang set and JSON-LD (`Organization` + `WebSite` + `WebPage`, plus `FAQPage` where the dict has `faq.q1`, all translated), so all three are independently indexable with no JS. The same reasoning is why `/brand` and `/contact` were later split per language instead of swapping text at runtime; their switcher stays on the page, one language over.
 
 **Language negotiation** happens in Nginx, not JS (`nginx.conf` maps, above the `server` blocks). `/` redirects **302** to `/vi` or `/ja` based on Cloudflare's `CF-IPCountry`; anything else — including a missing header when Cloudflare's "IP Geolocation" toggle is off — falls through to English, which is the intended degradation. Two exemptions, both load-bearing:
 - **Crawlers never get redirected** (`$is_crawler` UA map). They fetch from a narrow set of mostly-US IPs, so geo-redirecting would pin every bot to one language and leave `/vi` and `/ja` unindexed — defeating the split. Google advises against redirecting on inferred locale for exactly this reason.
@@ -388,7 +402,7 @@ The only server-rendered, crawlable part of the app. Everything else on `app.nov
 
 `location = /` also sends `Cache-Control: private, max-age=0, must-revalidate` so no intermediary caches one visitor's variant for everyone; `/vi` and `/ja` are unconditional and stay cacheable.
 
-**SEO files:** `landing/robots.txt` (allow-all + sitemap ref; AI crawlers deliberately not blocked), `landing/sitemap.xml` (5 URLs, `xhtml:link` alternates mirroring the hreflang tags), `landing/llms.txt`. The app vhost serves its own **disallow-all** `apps/frontend/static/robots.txt` — every route there is login-gated and client-rendered, so crawling it only produces soft-404s. Adding a landing page means updating `sitemap.xml` too.
+**SEO files:** `landing/robots.txt` (allow-all + sitemap ref; AI crawlers deliberately not blocked), `landing/sitemap.xml` (generated: 9 URLs, `xhtml:link` alternates mirroring the hreflang tags, `lastmod` from each source's git commit date), `landing/llms.txt` (hand-maintained). The app vhost serves its own **disallow-all** `apps/frontend/static/robots.txt` — every route there is login-gated and client-rendered, so crawling it only produces soft-404s.
 
 Contact form posts JSON to `POST /api/notifications/contact` (`apps/notification-service/src/routes/contact.js`) — the one unauthenticated public route in that service, bypasses the subscription/queue system, sends directly via the Resend adapter to `CONTACT_EMAIL_TO`. Rate-limited 5/min (route-level, tighter than the service's global 300/min).
 

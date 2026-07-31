@@ -1,0 +1,16 @@
+<!--
+  Shared <head> tail for every landing page — injected at the "INCLUDE:head"
+  marker by scripts/build-landing-i18n.js.
+
+  Title/description/canonical/hreflang/OG/JSON-LD are NOT here: those are
+  per-page and per-language, generated at the "SEO:HEAD" marker.
+
+  A page needing an extra asset (e.g. brand.src.html and JetBrains Mono) adds
+  its own link after the marker rather than loading it for everyone.
+-->
+<link rel="icon" href="/brand-assets/favicon.svg" type="image/svg+xml" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet" />
+<!-- Umami analytics -->
+<script defer src="https://cloud.umami.is/script.js" data-website-id="48416adf-94dc-46a2-843c-6a98cb044701"></script>
