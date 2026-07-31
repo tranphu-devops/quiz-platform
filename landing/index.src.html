@@ -5,61 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- SEO:HEAD — title/description/canonical/hreflang/OG/JSON-LD are injected
        per language by scripts/build-landing-i18n.js. Do not hand-edit there. -->
-  <link rel="icon" href="/brand-assets/favicon.svg" type="image/svg+xml" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet" />
+  <!-- INCLUDE:head -->
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --primary:      #5625d1;
-      --primary-dark: #4318b0;
-      --accent:       #6d29d3;
-      --primary-lt:   #ede6ff;
-      --text:         #2b2a3f;
-      --muted:        #595d72;
-      --border:       #d0d2e1;
-      --white:        #ffffff;
-      --bg:           #f8f7ff;
-      --success:      #22c55e;
-      --warning:      #f59e0b;
-      --danger:       #ef4444;
-      --radius:       16px;
-    }
-
-    html { scroll-behavior: smooth; }
-    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
-
-    /* ─── NAV ─── */
-    nav {
-      position: sticky; top: 0; z-index: 100;
-      background: rgba(255,255,255,.95); backdrop-filter: blur(16px);
-      border-bottom: 1px solid var(--border);
-      padding: 0 1.75rem;
-      height: 64px; display: flex; align-items: center; justify-content: space-between;
-    }
-    .nav-brand { font-size: 1.2rem; font-weight: 800; background: linear-gradient(135deg,var(--primary),var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: -.03em; text-decoration: none; }
-    .nav-links { display: flex; align-items: center; gap: 0.25rem; }
-    .nav-links a { text-decoration: none; font-size: .875rem; font-weight: 500; padding: .4rem .75rem; border-radius: 8px; transition: color .15s, background .15s; }
-    .nav-links a:hover { color: var(--text); background: var(--bg); }
-    .btn-ghost { padding: .45rem .9rem; border-radius: 8px; border: 1.5px solid var(--border); background: white; color: var(--text); font-size: .875rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: all .15s; }
-    .btn-ghost:hover { border-color: var(--accent); color: var(--primary); }
-    .btn-nav { padding: .5rem 1.1rem; border-radius: 8px; border: none; background: linear-gradient(135deg,var(--primary),var(--accent)); color: white; font-size: .875rem; font-weight: 700; cursor: pointer; text-decoration: none; transition: opacity .15s, transform .15s; box-shadow: 0 2px 8px rgba(86,37,209,.3); }
-    .btn-nav:hover { opacity: .92; transform: translateY(-1px); }
-    @media (max-width: 640px) { .nav-hide { display: none; } }
-
-    /* ─── LANG SELECT ─── */
-    .lang-select {
-      border: 1.5px solid var(--border); background: white; color: var(--muted);
-      border-radius: 8px; padding: .4rem 1.9rem .4rem .7rem; font-size: .82rem; font-weight: 600;
-      font-family: inherit; cursor: pointer; transition: all .15s;
-      -webkit-appearance: none; -moz-appearance: none; appearance: none;
-      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23595d72' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-      background-repeat: no-repeat; background-position: right .6rem center;
-    }
-    .lang-select:hover { border-color: var(--accent); color: var(--primary); }
-    .lang-select:focus { outline: none; border-color: var(--accent); }
+    /* INCLUDE:chrome-css */
 
     /* ─── HERO ─── */
     .hero {
@@ -299,37 +247,11 @@
     .btn-white:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,.3); }
     .btn-outline-white { padding: .8rem 1.9rem; border-radius: 10px; font-size: 1rem; font-weight: 700; background: transparent; color: white; border: 2px solid rgba(255,255,255,.4); text-decoration: none; transition: all .15s; }
     .btn-outline-white:hover { border-color: white; background: rgba(255,255,255,.1); }
-
-    /* ─── FOOTER ─── */
-    footer { background: #202331; color: #64748b; text-align: center; padding: 3rem 1.5rem; font-size: .84rem; }
-    footer strong { color: white; }
-    .footer-links { display: flex; justify-content: center; align-items: center; gap: 1.5rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
-    .footer-links a { color: #64748b; text-decoration: none; font-weight: 500; transition: color .15s; }
-    .footer-links a:hover { color: white; }
-    .footer-divider { color: #3d4055; }
   </style>
-  <!-- Umami analytics -->
-  <script defer src="https://cloud.umami.is/script.js" data-website-id="48416adf-94dc-46a2-843c-6a98cb044701"></script>
 </head>
 <body>
 
-<!-- NAV -->
-<nav>
-  <a class="nav-brand" href="/">NovaQuiz</a>
-  <div class="nav-links">
-    <a href="%CATALOG_PATH%" class="nav-hide" data-i18n="nav.exams">Đề thi</a>
-    <a href="#features" class="nav-hide" data-i18n="nav.features">Tính năng</a>
-    <a href="#security" class="nav-hide" data-i18n="nav.security">Bảo mật</a>
-    <a href="#how" class="nav-hide" data-i18n="nav.how">Cách dùng</a>
-    <a href="#faq" class="nav-hide" data-i18n="nav.faq">FAQ</a>
-    <select class="lang-select" onchange="applyLang(this.value)" aria-label="Language">
-      <option value="en">English</option>
-      <option value="vi">Tiếng Việt</option>
-      <option value="ja">日本語</option>
-    </select>
-    <a href="https://app.novaquiz.net/login" class="btn-nav" data-i18n="nav.cta">Bắt đầu khám phá</a>
-  </div>
-</nav>
+<!-- INCLUDE:header -->
 
 <!-- HERO -->
 <div class="hero">
@@ -755,35 +677,13 @@
   </div>
 </div>
 
-<!-- FOOTER -->
-<footer>
-  <div class="footer-links">
-    <a href="https://app.novaquiz.net/login" data-i18n="nav.cta">Bắt đầu khám phá</a>
-    <span class="footer-divider">·</span>
-    <a href="%CATALOG_PATH%" data-i18n="nav.exams">Đề thi</a>
-    <span class="footer-divider">·</span>
-    <a href="#features" data-i18n="nav.features">Tính năng</a>
-    <span class="footer-divider">·</span>
-    <a href="#faq" data-i18n="nav.faq">FAQ</a>
-    <span class="footer-divider">·</span>
-    <a href="/brand" data-i18n="nav.brand">Thương hiệu</a>
-    <span class="footer-divider">·</span>
-    <a href="/contact" data-i18n="nav.contact">Liên hệ</a>
-  </div>
-  <p style="margin-bottom:.75rem">© 2026 <strong>NovaQuiz</strong> · <span data-i18n="footer.tagline">Nền tảng thi trực tuyến thông minh</span></p>
-  <p style="font-size:.8rem;opacity:.6">
-    <span data-i18n="footer.builtBy">Được xây dựng bởi</span> <strong style="color:#94a3b8">Trần Phú</strong>
-    &nbsp;·&nbsp; <a href="mailto:tranphu.dev@gmail.com" style="color:#94a3b8;text-decoration:none">tranphu.dev@gmail.com</a>
-    &nbsp;·&nbsp; <a href="https://novaquiz.net" style="color:#94a3b8;text-decoration:none">novaquiz.net</a>
-  </p>
-</footer>
+<!-- INCLUDE:footer -->
 
 <script>
   var I18N = {
     vi: {
       'meta.title': 'NovaQuiz — Nền tảng thi trực tuyến thông minh',
       'meta.description': 'Tạo đề thi, quản lý bộ đề, trao huy hiệu và theo dõi kết quả học tập — tất cả trên một nền tảng đơn giản, mạnh mẽ, bảo mật.',
-      'nav.exams': 'Đề thi', 'nav.features': 'Tính năng', 'nav.security': 'Bảo mật', 'nav.how': 'Cách dùng', 'nav.faq': 'FAQ', 'nav.brand': 'Thương hiệu', 'nav.contact': 'Liên hệ', 'nav.cta': 'Bắt đầu khám phá',
       'hero.eyebrow': '✦ Nền tảng thi trực tuyến thế hệ mới',
       'hero.title': 'Thi trực tuyến <em>thông minh</em>,<br/>bảo mật, công bằng',
       'hero.desc': 'Soạn đề wizard 4 bước, auto-save tiến trình, chống gian lận theo thời gian thực và trao huy hiệu tự động — tất cả trên một nền tảng.',
@@ -905,13 +805,10 @@
       'faq.a6': 'Có. Toàn bộ API response được mã hoá AES-256-GCM với ECDH P-256 key exchange — dữ liệu truyền giữa trình duyệt và server không thể đọc được nếu bị chặn. JWT auth, CASL authorization và rate limiting bảo vệ mọi endpoint.',
       'cta.title': 'Sẵn sàng tổ chức bài thi<br/>công bằng và thông minh?',
       'cta.desc': 'Miễn phí để khám phá. Không cần thẻ tín dụng. Chạy trong vài phút.',
-      'footer.tagline': 'Nền tảng thi trực tuyến thông minh',
-      'footer.builtBy': 'Được xây dựng bởi',
     },
     en: {
       'meta.title': 'NovaQuiz — Smart Online Exam Platform',
       'meta.description': 'Create exams, manage collections, award badges and track learning results — all on one simple, powerful and secure platform.',
-      'nav.exams': 'Exams', 'nav.features': 'Features', 'nav.security': 'Security', 'nav.how': 'How it works', 'nav.faq': 'FAQ', 'nav.brand': 'Brand', 'nav.contact': 'Contact', 'nav.cta': 'Get started',
       'hero.eyebrow': '✦ A new generation online testing platform',
       'hero.title': '<em>Smart</em> online exams,<br/>secure and fair',
       'hero.desc': 'A 4-step exam wizard, auto-saved progress, real-time anti-cheat, and automatic badge awards — all on one platform.',
@@ -1033,13 +930,10 @@
       'faq.a6': 'Yes. Every API response is encrypted with AES-256-GCM using ECDH P-256 key exchange — data traveling between the browser and server can\'t be read if intercepted. JWT auth, CASL authorization, and rate limiting protect every endpoint.',
       'cta.title': 'Ready to run exams<br/>that are fair and smart?',
       'cta.desc': 'Free to explore. No credit card required. Up and running in minutes.',
-      'footer.tagline': 'A smart online testing platform',
-      'footer.builtBy': 'Built by',
     },
     ja: {
       'meta.title': 'NovaQuiz — スマートなオンライン試験プラットフォーム',
       'meta.description': '試験の作成、問題集の管理、バッジの授与、学習成果の追跡 — シンプルで強力、そして安全なプラットフォームで。',
-      'nav.exams': '問題集', 'nav.features': '機能', 'nav.security': 'セキュリティ', 'nav.how': '使い方', 'nav.faq': 'FAQ', 'nav.brand': 'ブランド', 'nav.contact': 'お問い合わせ', 'nav.cta': '今すぐ始める',
       'hero.eyebrow': '✦ 新世代のオンライン試験プラットフォーム',
       'hero.title': '<em>スマート</em>なオンライン試験、<br/>安全で公平',
       'hero.desc': '4ステップの試験ウィザード、自動保存される進捗、リアルタイム不正防止、自動バッジ授与 — すべてを1つのプラットフォームで。',
@@ -1161,8 +1055,6 @@
       'faq.a6': 'はい。すべての API レスポンスは ECDH P-256 鍵交換を用いた AES-256-GCM で暗号化されています — ブラウザとサーバー間のデータは傍受されても読み取れません。JWT 認証、CASL 認可、レート制限がすべてのエンドポイントを保護します。',
       'cta.title': '公平でスマートな試験を<br/>実施する準備はできましたか？',
       'cta.desc': '無料でお試しいただけます。クレジットカード不要。数分で利用開始できます。',
-      'footer.tagline': 'スマートなオンライン試験プラットフォーム',
-      'footer.builtBy': '開発者',
     }
   };
 

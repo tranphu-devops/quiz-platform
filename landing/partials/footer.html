@@ -1,0 +1,26 @@
+<!--
+  Shared footer for every landing page — injected at the "INCLUDE:footer"
+  marker by scripts/build-landing-i18n.js. Link set is index.html's; the nav
+  brand mark is the way home, so there is no separate Home entry.
+-->
+<footer>
+  <div class="footer-links">
+    <a href="%APP_LOGIN%" data-i18n="nav.cta">Bắt đầu khám phá</a>
+    <span class="footer-divider">·</span>
+    <a href="%CATALOG_PATH%" data-i18n="nav.exams">Đề thi</a>
+    <span class="footer-divider">·</span>
+    <a href="%HOME_PATH%#features" data-i18n="nav.features">Tính năng</a>
+    <span class="footer-divider">·</span>
+    <a href="%HOME_PATH%#faq" data-i18n="nav.faq">FAQ</a>
+    <span class="footer-divider">·</span>
+    <a href="%BRAND_PATH%" data-i18n="nav.brand">Thương hiệu</a>
+    <span class="footer-divider">·</span>
+    <a href="%CONTACT_PATH%" data-i18n="nav.contact">Liên hệ</a>
+  </div>
+  <p style="margin-bottom:.75rem">© 2026 <strong>NovaQuiz</strong> · <span data-i18n="footer.tagline">Nền tảng thi trực tuyến thông minh</span></p>
+  <p style="font-size:.8rem;opacity:.6">
+    <span data-i18n="footer.builtBy">Được xây dựng bởi</span> <strong style="color:#94a3b8">Trần Phú</strong>
+    &nbsp;·&nbsp; <a href="mailto:tranphu.dev@gmail.com" style="color:#94a3b8;text-decoration:none">tranphu.dev@gmail.com</a>
+    &nbsp;·&nbsp; <a href="https://novaquiz.net" style="color:#94a3b8;text-decoration:none">novaquiz.net</a>
+  </p>
+</footer>

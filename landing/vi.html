@@ -31,18 +31,27 @@
       "@id": "https://novaquiz.net/#organization",
       "name": "NovaQuiz",
       "url": "https://novaquiz.net/",
-      "logo": "https://novaquiz.net/brand-assets/banner-og.png",
-      "description": "Tạo đề thi, quản lý bộ đề, trao huy hiệu và theo dõi kết quả học tập — tất cả trên một nền tảng đơn giản, mạnh mẽ, bảo mật."
+      "logo": "https://novaquiz.net/brand-assets/banner-og.png"
     },
     {
       "@type": "WebSite",
       "@id": "https://novaquiz.net/#website",
       "url": "https://novaquiz.net/",
       "name": "NovaQuiz",
-      "description": "Tạo đề thi, quản lý bộ đề, trao huy hiệu và theo dõi kết quả học tập — tất cả trên một nền tảng đơn giản, mạnh mẽ, bảo mật.",
       "inLanguage": "vi",
       "publisher": {
         "@id": "https://novaquiz.net/#organization"
+      }
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://novaquiz.net/vi#webpage",
+      "url": "https://novaquiz.net/vi",
+      "name": "NovaQuiz — Nền tảng thi trực tuyến thông minh",
+      "description": "Tạo đề thi, quản lý bộ đề, trao huy hiệu và theo dõi kết quả học tập — tất cả trên một nền tảng đơn giản, mạnh mẽ, bảo mật.",
+      "inLanguage": "vi",
+      "isPartOf": {
+        "@id": "https://novaquiz.net/#website"
       }
     },
     {
@@ -107,6 +116,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet" />
+  <!-- Umami analytics -->
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="48416adf-94dc-46a2-843c-6a98cb044701"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -158,6 +169,14 @@
     }
     .lang-select:hover { border-color: var(--accent); color: var(--primary); }
     .lang-select:focus { outline: none; border-color: var(--accent); }
+
+    /* ─── FOOTER ─── */
+    footer { background: #202331; color: #64748b; text-align: center; padding: 3rem 1.5rem; font-size: .84rem; }
+    footer strong { color: white; }
+    .footer-links { display: flex; justify-content: center; align-items: center; gap: 1.5rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .footer-links a { color: #64748b; text-decoration: none; font-weight: 500; transition: color .15s; }
+    .footer-links a:hover { color: white; }
+    .footer-divider { color: #3d4055; }
 
     /* ─── HERO ─── */
     .hero {
@@ -397,29 +416,18 @@
     .btn-white:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,.3); }
     .btn-outline-white { padding: .8rem 1.9rem; border-radius: 10px; font-size: 1rem; font-weight: 700; background: transparent; color: white; border: 2px solid rgba(255,255,255,.4); text-decoration: none; transition: all .15s; }
     .btn-outline-white:hover { border-color: white; background: rgba(255,255,255,.1); }
-
-    /* ─── FOOTER ─── */
-    footer { background: #202331; color: #64748b; text-align: center; padding: 3rem 1.5rem; font-size: .84rem; }
-    footer strong { color: white; }
-    .footer-links { display: flex; justify-content: center; align-items: center; gap: 1.5rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
-    .footer-links a { color: #64748b; text-decoration: none; font-weight: 500; transition: color .15s; }
-    .footer-links a:hover { color: white; }
-    .footer-divider { color: #3d4055; }
   </style>
-  <!-- Umami analytics -->
-  <script defer src="https://cloud.umami.is/script.js" data-website-id="48416adf-94dc-46a2-843c-6a98cb044701"></script>
 </head>
 <body>
 
-<!-- NAV -->
 <nav>
-  <a class="nav-brand" href="/">NovaQuiz</a>
+  <a class="nav-brand" href="/vi">NovaQuiz</a>
   <div class="nav-links">
     <a href="/vi/exams" class="nav-hide" data-i18n="nav.exams">Đề thi</a>
-    <a href="#features" class="nav-hide" data-i18n="nav.features">Tính năng</a>
-    <a href="#security" class="nav-hide" data-i18n="nav.security">Bảo mật</a>
-    <a href="#how" class="nav-hide" data-i18n="nav.how">Cách dùng</a>
-    <a href="#faq" class="nav-hide" data-i18n="nav.faq">FAQ</a>
+    <a href="/vi#features" class="nav-hide" data-i18n="nav.features">Tính năng</a>
+    <a href="/vi#security" class="nav-hide" data-i18n="nav.security">Bảo mật</a>
+    <a href="/vi#how" class="nav-hide" data-i18n="nav.how">Cách dùng</a>
+    <a href="/vi#faq" class="nav-hide" data-i18n="nav.faq">FAQ</a>
     <select class="lang-select" onchange="nqSetLang(this.value)" aria-label="Language">
       <option value="en">English</option>
       <option value="vi" selected>Tiếng Việt</option>
@@ -853,20 +861,19 @@
   </div>
 </div>
 
-<!-- FOOTER -->
 <footer>
   <div class="footer-links">
     <a href="https://app.novaquiz.net/login" data-i18n="nav.cta">Bắt đầu khám phá</a>
     <span class="footer-divider">·</span>
     <a href="/vi/exams" data-i18n="nav.exams">Đề thi</a>
     <span class="footer-divider">·</span>
-    <a href="#features" data-i18n="nav.features">Tính năng</a>
+    <a href="/vi#features" data-i18n="nav.features">Tính năng</a>
     <span class="footer-divider">·</span>
-    <a href="#faq" data-i18n="nav.faq">FAQ</a>
+    <a href="/vi#faq" data-i18n="nav.faq">FAQ</a>
     <span class="footer-divider">·</span>
-    <a href="/brand" data-i18n="nav.brand">Thương hiệu</a>
+    <a href="/vi/brand" data-i18n="nav.brand">Thương hiệu</a>
     <span class="footer-divider">·</span>
-    <a href="/contact" data-i18n="nav.contact">Liên hệ</a>
+    <a href="/vi/contact" data-i18n="nav.contact">Liên hệ</a>
   </div>
   <p style="margin-bottom:.75rem">© 2026 <strong>NovaQuiz</strong> · <span data-i18n="footer.tagline">Nền tảng thi trực tuyến thông minh</span></p>
   <p style="font-size:.8rem;opacity:.6">

@@ -1,0 +1,42 @@
+{
+  "_comment": "Strings used by partials/header.html and partials/footer.html. Merged under every page's own I18N dictionary by scripts/build-landing-i18n.js — a page dictionary may override any key here.",
+
+  "vi": {
+    "nav.exams": "Đề thi",
+    "nav.features": "Tính năng",
+    "nav.security": "Bảo mật",
+    "nav.how": "Cách dùng",
+    "nav.faq": "FAQ",
+    "nav.brand": "Thương hiệu",
+    "nav.contact": "Liên hệ",
+    "nav.cta": "Bắt đầu khám phá",
+    "footer.tagline": "Nền tảng thi trực tuyến thông minh",
+    "footer.builtBy": "Được xây dựng bởi"
+  },
+
+  "en": {
+    "nav.exams": "Exams",
+    "nav.features": "Features",
+    "nav.security": "Security",
+    "nav.how": "How it works",
+    "nav.faq": "FAQ",
+    "nav.brand": "Brand",
+    "nav.contact": "Contact",
+    "nav.cta": "Get started",
+    "footer.tagline": "A smart online testing platform",
+    "footer.builtBy": "Built by"
+  },
+
+  "ja": {
+    "nav.exams": "問題集",
+    "nav.features": "機能",
+    "nav.security": "セキュリティ",
+    "nav.how": "使い方",
+    "nav.faq": "FAQ",
+    "nav.brand": "ブランド",
+    "nav.contact": "お問い合わせ",
+    "nav.cta": "今すぐ始める",
+    "footer.tagline": "スマートなオンライン試験プラットフォーム",
+    "footer.builtBy": "開発者"
+  }
+}
