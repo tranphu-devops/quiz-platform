@@ -1,0 +1,28 @@
+/* ─── SHARED BASE ────────────────────────────────────────────────────────
+   Reset + brand tokens + body defaults, injected into every landing page's
+   <style> at the `INCLUDE:base-css` marker by scripts/build-landing-i18n.js.
+
+   Kept apart from chrome.css because the SvelteKit public pages reuse the
+   chrome (nav/footer) but already have their own reset and token set from
+   src/routes/+layout.svelte — injecting these there would fight it. */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --primary:      #5625d1;
+  --primary-dark: #4318b0;
+  --accent:       #6d29d3;
+  --primary-lt:   #ede6ff;
+  --text:         #2b2a3f;
+  --muted:        #595d72;
+  --border:       #d0d2e1;
+  --white:        #ffffff;
+  --bg:           #f8f7ff;
+  --success:      #22c55e;
+  --warning:      #f59e0b;
+  --danger:       #ef4444;
+  --radius:       16px;
+}
+
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }

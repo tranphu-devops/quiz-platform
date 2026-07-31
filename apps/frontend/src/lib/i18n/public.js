@@ -6,6 +6,12 @@
 // lang>. Here the language is a URL segment, so a plain lookup is both correct
 // and identical on both sides. It also avoids writing `quiz-lang`, which would
 // silently change the app's language for someone who only browsed the catalog.
+//
+// The nav/footer strings are not here: they come from CHROME_STRINGS, generated
+// from landing/partials/i18n.json, so the shared chrome reads the same wording
+// on the landing pages and on these. A key below overrides the shared one.
+
+import { CHROME_STRINGS } from './chrome-strings.js'
 
 const DICT = {
   vi: {
@@ -33,11 +39,8 @@ const DICT = {
     'exam.metaFallback': 'Đề thi trắc nghiệm online trên NovaQuiz — làm bài, chấm điểm tự động, xem giải thích.',
     'exam.multiple': 'Chọn nhiều đáp án',
     'exam.single': 'Chọn một đáp án',
+    // Local because it labels a breadcrumb trail, not a link in the chrome.
     'nav.home': 'Trang chủ',
-    'nav.exams': 'Đề thi',
-    'nav.brand': 'Thương hiệu',
-    'nav.contact': 'Liên hệ',
-    'footer.tagline': 'Nền tảng thi trực tuyến thông minh.',
     'pager.prev': 'Trang trước',
     'pager.next': 'Trang sau',
     'pager.page': 'Trang {n}'
@@ -49,9 +52,11 @@ const DICT = {
  * missing string is obvious rather than blank.
  */
 export function publicT(lang) {
-  const dict = DICT[lang] ?? DICT.vi
+  const merged = (l) => ({ ...CHROME_STRINGS[l], ...DICT[l] })
+  const fallback = merged('vi')
+  const dict = DICT[lang] ? merged(lang) : fallback
   return (key, params) => {
-    const raw = dict[key] ?? DICT.vi[key] ?? key
+    const raw = dict[key] ?? fallback[key] ?? key
     if (!params) return raw
     return raw.replace(/\{(\w+)\}/g, (_, k) => String(params[k] ?? ''))
   }
