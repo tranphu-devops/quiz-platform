@@ -2,7 +2,9 @@ import { pool } from '../db.js'
 import { verifyAuth } from '../middleware/auth.js'
 import { encryptKey, decryptKey, keyPrefix } from '../lib/keyCrypto.js'
 import { extractDocxText } from '../lib/docParse.js'
-import { buildDocumentBlock, generateExam, DEFAULT_MODEL, PDF_ENGINES, DEFAULT_PDF_ENGINE } from '../lib/llm.js'
+import { buildDocumentBlock, generateExam, DEFAULT_MODEL, PDF_ENGINES, DEFAULT_PDF_ENGINE, PRE_EXTRACTED_PDF_ENGINES } from '../lib/llm.js'
+import { scrapePdfToMarkdown, isFirecrawlConfigured } from '../lib/firecrawl.js'
+import { putTempDoc, deleteTempDoc, isDocHostConfigured } from '../lib/docHost.js'
 import { notify } from '../lib/notify.js'
 
 const EXAM_SERVICE_URL = process.env.EXAM_SERVICE_URL
@@ -34,6 +36,22 @@ async function getAdminSettings(keys) {
 // request on 429 using its Retry-After header instead of failing the whole
 // job partway through.
 const IMPORT_MAX_RETRIES = 4
+
+// The `firecrawl` PDF engine converts the document to markdown before the LLM
+// call instead of letting OpenRouter's file-parser plugin do it. Firecrawl
+// only accepts a URL, so the PDF is uploaded privately, scraped via a
+// short-lived signed URL, and deleted immediately — the object is never
+// public and the URL expires on its own if cleanup fails. Returns the
+// extracted markdown; the caller passes it as `extractedText`, which routes
+// buildDocumentBlock down the plain-text path.
+async function extractPdfViaFirecrawl(buffer, maxPages) {
+  const { url, key } = await putTempDoc(buffer)
+  try {
+    return await scrapePdfToMarkdown({ url, maxPages })
+  } finally {
+    await deleteTempDoc(key)
+  }
+}
 
 async function fetchWithRetry(url, options) {
   for (let attempt = 0; ; attempt++) {
@@ -276,9 +294,18 @@ export default async function generateRoutes(fastify) {
       'default_exam_cost'
     ])
     const defaultModel = settings.ai_generation_default_model || DEFAULT_MODEL
-    const pdfEngine = PDF_ENGINES.includes(settings.ai_generation_pdf_engine)
+    let pdfEngine = PDF_ENGINES.includes(settings.ai_generation_pdf_engine)
       ? settings.ai_generation_pdf_engine
       : DEFAULT_PDF_ENGINE
+    // `firecrawl` needs both its own API key and S3 credentials (it hosts the
+    // PDF behind a signed URL). Fall back rather than fail: credits are
+    // deducted further down, before any of this runs, so an admin
+    // misconfiguration would otherwise charge the teacher for a generation
+    // that could never succeed.
+    if (pdfEngine === 'firecrawl' && !(isFirecrawlConfigured() && isDocHostConfigured())) {
+      fastify.log.warn('pdf_engine=firecrawl selected but FIRECRAWL_API_KEY/AWS credentials are missing — falling back')
+      pdfEngine = DEFAULT_PDF_ENGINE
+    }
     const maxFileSizeMb = Number(settings.ai_generation_max_file_size_mb ?? 20)
     const maxQuestions = Number(settings.ai_generation_max_questions ?? 50)
     const questionCount = Math.max(1, Math.min(Number(params.question_count) || 15, maxQuestions))
@@ -362,11 +389,20 @@ export default async function generateRoutes(fastify) {
     const defaultExamCost = Math.max(0, Number(settings.default_exam_cost ?? 10))
     ;(async () => {
       try {
+        // DOCX always needs local extraction (no native content block); a PDF
+        // needs it only under a pre-extraction engine like `firecrawl`.
+        let extractedText
+        if (fileType === 'docx') {
+          extractedText = await extractDocxText(buffer)
+        } else if (fileType === 'pdf' && PRE_EXTRACTED_PDF_ENGINES.includes(pdfEngine)) {
+          extractedText = await extractPdfViaFirecrawl(buffer)
+        }
+
         const documentBlock = buildDocumentBlock({
           mimetype: data.mimetype,
           buffer,
           filename: data.filename,
-          extractedText: fileType === 'docx' ? await extractDocxText(buffer) : undefined
+          extractedText
         })
         const { exam } = await generateExam({ apiKey, model, documentBlock, questionCount, language, difficulty, pdfEngine })
         const examId = await importExam(authHeader, exam, defaultExamCost)

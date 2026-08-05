@@ -705,6 +705,7 @@ export const vi = {
     aiPdfEngine_cloudflare_ai: 'miễn phí, OpenRouter tự trích xuất text, chạy với mọi model',
     aiPdfEngine_mistral_ocr: 'OCR có phí, lựa chọn duy nhất đọc được PDF scan',
     aiPdfEngine_native: 'gửi thẳng PDF cho model, giữ bố cục/hình ảnh — cần model hỗ trợ đọc file',
+    aiPdfEngine_firecrawl: 'Firecrawl chuyển PDF sang markdown trước, giữ bảng/tiêu đề tốt hơn — cần FIRECRAWL_API_KEY và cấu hình AWS',
     platformKeyTitle: 'Platform OpenRouter API key',
     platformKeySubtitle: 'Key dùng chung cho mọi lượt tạo đề bằng "key nền tảng".',
     platformKeyNotSet: 'Chưa cấu hình platform key — đang dùng biến môi trường OPENROUTER_API_KEY (nếu có).',

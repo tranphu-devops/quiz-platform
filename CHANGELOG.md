@@ -7,6 +7,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] — 2026-08-05
 
 ### Added
+- **Thêm lựa chọn "firecrawl" cho cách đọc file PDF khi tạo đề bằng AI** — chọn ở tab "Tạo đề bằng AI" trong trang quản trị, cạnh 3 lựa chọn sẵn có. Firecrawl chuyển PDF sang văn bản trước khi gửi cho model, giữ bảng biểu và tiêu đề tốt hơn `cloudflare-ai`, và chạy được với mọi model (khác `native`). Cần khai báo `FIRECRAWL_API_KEY` cùng cấu hình `AWS_*`; thiếu một trong hai thì hệ thống tự quay về `cloudflare-ai` và ghi cảnh báo vào log — giáo viên không bị trừ credit cho một lượt chắc chắn hỏng.
+  - Tài liệu của giáo viên **không bị công khai**: file được tải lên ở chế độ riêng tư, Firecrawl đọc qua đường dẫn có chữ ký hết hạn sau 5 phút, và file được xoá ngay sau khi đọc xong. Firecrawl cũng được yêu cầu không lưu cache nội dung.
+
+### Added
 - **Đề thi chọn được nhiều ngôn ngữ** — form tạo/sửa đề có ô chọn ngôn ngữ (Tiếng Việt / English / 日本語), chọn được nhiều ngôn ngữ cùng lúc, mặc định Tiếng Việt như trước. Đề chỉ hiện với người đang dùng một trong các ngôn ngữ đã chọn. Khi chọn từ 2 ngôn ngữ trở lên có thêm ô "Ngôn ngữ chính" — ngôn ngữ chính quyết định trang công khai của đề (mỗi đề vẫn chỉ có đúng một địa chỉ công khai, không đổi so với trước).
 - **Ô chọn ngôn ngữ trên màn hình Đề thi**, giống trang chủ — đổi ngôn ngữ ở đây vừa đổi giao diện vừa lọc danh sách đề, kèm lựa chọn "Tất cả ngôn ngữ" cho ai muốn xem hết. Bộ lọc chủ đề (tag) cũng chỉ còn hiện tag của các đề đúng ngôn ngữ. Thẻ đề hiển thị nhãn ngôn ngữ khi đề có nhiều ngôn ngữ hoặc khi đang xem tất cả.
 - **Trang Thương hiệu và Liên hệ có bản tiếng Việt và tiếng Nhật riêng** — `/vi/brand`, `/ja/brand`, `/vi/contact`, `/ja/contact`. Trước đây hai trang này chỉ có một địa chỉ duy nhất và đổi ngôn ngữ bằng JavaScript, nên Google chỉ index được bản tiếng Anh. Chọn ngôn ngữ ở thanh điều hướng giờ giữ nguyên trang, chỉ đổi ngôn ngữ (trước đây mỗi trang một kiểu: trang chủ thì chuyển địa chỉ, Thương hiệu/Liên hệ thì đổi chữ tại chỗ).

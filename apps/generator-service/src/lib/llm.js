@@ -82,8 +82,20 @@ const EXAM_SCHEMA = {
 // on anything else the model receives the filename with no content and
 // politely reports an empty document instead of failing loudly.
 // `mistral-ocr` is the paid OCR path, needed for scanned/image-only PDFs.
-export const PDF_ENGINES = ['cloudflare-ai', 'mistral-ocr', 'native']
+//
+// `firecrawl` is the odd one out: it is NOT an OpenRouter file-parser engine.
+// Firecrawl is a separate API that only accepts a URL, so that path uploads
+// the PDF privately, hands Firecrawl a short-lived signed URL, and feeds the
+// returned markdown to the model as a `text` block — no `plugins` field is
+// sent at all (see routes/generate.js and lib/firecrawl.js). Keeping it in
+// this same allowlist is deliberate: from the admin's point of view it is
+// just another way to turn a PDF into something the model can read.
+export const PDF_ENGINES = ['cloudflare-ai', 'mistral-ocr', 'native', 'firecrawl']
 export const DEFAULT_PDF_ENGINE = 'cloudflare-ai'
+
+// Engines handled by us before the LLM call rather than by OpenRouter's
+// file-parser plugin.
+export const PRE_EXTRACTED_PDF_ENGINES = ['firecrawl']
 
 // Below this, a text document is treated as "nothing to work with".
 const MIN_DOCUMENT_CHARS = 30
@@ -102,7 +114,10 @@ function pdfFilename(filename) {
 // pre-extracted to plain text by lib/docParse.js — there is no native .docx
 // content block.
 export function buildDocumentBlock({ mimetype, buffer, extractedText, filename }) {
-  if (mimetype === 'application/pdf') {
+  // A PDF whose text was already extracted for us (the `firecrawl` engine)
+  // takes the text path below — the model must not also receive the raw file,
+  // and OpenRouter must not be asked to parse it a second time.
+  if (mimetype === 'application/pdf' && extractedText == null) {
     return {
       type: 'file',
       file: {
@@ -227,7 +242,7 @@ export async function generateExam({ apiKey, model, documentBlock, questionCount
     const isPdf = documentBlock.type === 'file'
     const reason = err.detail?.reason ?? 'invalid_exam'
     const message = reason === 'empty_exam' && isPdf
-      ? `Model không đọc được nội dung file PDF (engine "${pdfEngine}"). Nếu PDF là bản scan hãy đổi engine sang "mistral-ocr"; nếu model không hỗ trợ đọc file thì dùng engine "cloudflare-ai".`
+      ? `Model không đọc được nội dung file PDF (engine "${pdfEngine}"). Nếu PDF là bản scan hãy đổi engine sang "mistral-ocr" hoặc "firecrawl"; nếu model không hỗ trợ đọc file thì dùng engine "cloudflare-ai" hoặc "firecrawl".`
       : err.message
     throw llmError(message, {
       source: 'validation',
