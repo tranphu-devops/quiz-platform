@@ -51,12 +51,14 @@ const PAGES = [
   { src: 'contact.src.html', slug: 'contact', changefreq: 'monthly', priority: '0.5' }
 ]
 
-// Where each language's landing page links into the public exam catalog. Only
-// Vietnamese exams exist today, so all three point at /vi/exams; when an /en or
-// /ja catalog ships, change the value here and re-run. A token rather than a
+// Where each language's landing page links into the public exam catalog. The
+// catalog only exists in the languages exams are published in (PUBLIC_LANGS in
+// apps/frontend/src/lib/seo.js) — no Japanese exams yet, so /ja falls back to
+// the English catalog rather than to a prefix the router 404s. When a /ja
+// catalog ships, change the value here and re-run. A token rather than a
 // literal href keeps that switch to one line instead of a hunt through the
 // generated files.
-const CATALOG_PATH = { en: '/vi/exams', vi: '/vi/exams', ja: '/vi/exams' }
+const CATALOG_PATH = { en: '/en/exams', vi: '/vi/exams', ja: '/en/exams' }
 
 // en lives at the root, the other languages under a /<lang> prefix.
 const pagePath = (slug, code) =>
@@ -440,10 +442,12 @@ console.log(`  ✓ landing/sitemap.xml  (${PAGES.length * LANGS.length} URLs)`)
 //
 // Two deliberate differences, both forced by those pages shipping no JS at all
 // (`csr = false` in routes/[lang=lang]/+layout.js):
-//   • the language <select> is dropped. It needs nqSetLang() to set the nqlang
-//     cookie and navigate, and the catalog is Vietnamese-only anyway (ENABLED
-//     in src/params/lang.js; buildHreflang() returns [] for the same reason).
-//     It comes back with the second language.
+//   • the language <select> becomes plain links. A <select> needs nqSetLang()
+//     to navigate, and there is no JS to run it; <a hreflang> works with none
+//     and is what a crawler follows. The set comes from PUBLIC_LANGS via the
+//     `langs` prop, so it lists the languages the catalog is actually
+//     published in — which is a shorter list than the landing pages', where
+//     every language exists.
 //   • links arrive as props instead of %TOKEN%s: the same app answers on both
 //     novaquiz.net and app.novaquiz.net, so every link out must be absolute
 //     and language-aware ($lib/seo.js decides, not this file).
@@ -459,6 +463,19 @@ const TOKEN_ATTR = /(\s[a-zA-Z-]+)="([^"]*%[A-Z_]+%[^"]*)"/g
 const TOKEN = /%([A-Z_]+)%/g
 const LANG_SELECT_BLOCK = /\n?[ \t]*<select class="lang-select"[\s\S]*?<\/select>\n?/
 
+// The no-JS stand-in for the <select>. `aria-current="true"` rather than a
+// disabled control for the active language: it stays readable and announced,
+// and there is nothing to click through to anyway.
+const SVELTE_LANG_LINKS = `    <div class="lang-links">
+      {#each langs as l}
+        {#if l.active}
+          <span class="lang-link active" aria-current="true">{l.label}</span>
+        {:else}
+          <a class="lang-link" href={l.href} hreflang={l.code} rel="alternate">{l.label}</a>
+        {/if}
+      {/each}
+    </div>`
+
 const svelteExpr = name => {
   const expr = SVELTE_EXPR[name]
   if (!expr) throw new Error(`partials: %${name}% has no Svelte binding in SVELTE_EXPR`)
@@ -467,7 +484,9 @@ const svelteExpr = name => {
 
 function toSvelte(html, what) {
   const out = html
-    .replace(LANG_SELECT_BLOCK, '\n    <!-- language switcher: see scripts/build-landing-i18n.js -->\n')
+    // A function replacement, so $-sequences in the markup are never read as
+    // replacement patterns.
+    .replace(LANG_SELECT_BLOCK, () => `\n${SVELTE_LANG_LINKS}\n`)
     .replace(TOKEN_ATTR, (_, attr, value) => {
       const whole = value.match(/^%([A-Z_]+)%$/)
       if (whole) return `${attr}={${svelteExpr(whole[1])}}`
@@ -511,8 +530,9 @@ const chromeComponent = `<!--
 -->
 <script>
   // Absolute, language-aware URLs from $lib/seo.js — see the generator for why
-  // they are props rather than the %TOKEN%s the static pages use.
-  let { homePath, catalogPath, brandPath, contactPath, t, children } = $props()
+  // they are props rather than the %TOKEN%s the static pages use. \`langs\` is
+  // langSwitchLinks(): [{ code, label, href, active }].
+  let { homePath, catalogPath, brandPath, contactPath, langs = [], t, children } = $props()
 
   const appLogin = '${APP_LOGIN}'
 </script>
@@ -533,6 +553,15 @@ ${toSvelte(FOOTER_HTML, 'footer.html')}
   .pub { min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); color: var(--text); }
   .pub-main { flex: 1; width: 100%; max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 3rem; }
   @media (max-width: 768px) { .pub-main { padding: 1.5rem 1rem 2.5rem; } }
+
+  /* Language switcher. Lives here and not in partials/chrome.css because the
+     markup it styles exists only in this component — the static pages use the
+     <select> those rules were written for. */
+  .lang-links { display: flex; align-items: center; gap: .15rem; margin: 0 .25rem; }
+  .lang-link { font-size: .82rem; font-weight: 600; color: var(--muted); text-decoration: none; padding: .35rem .55rem; border-radius: 8px; white-space: nowrap; }
+  a.lang-link:hover { color: var(--primary); background: var(--bg); }
+  .lang-link.active { color: var(--primary); background: var(--primary-light); }
+  @media (max-width: 480px) { .lang-link { padding: .3rem .35rem; font-size: .78rem; } }
 
 ${dropRules(CHROME_CSS, /\.lang-select/).trim().split('\n').map(l => (l ? '  ' + l : l)).join('\n')}
 </style>

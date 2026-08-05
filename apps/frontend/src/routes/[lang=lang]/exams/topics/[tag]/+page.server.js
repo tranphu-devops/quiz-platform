@@ -1,6 +1,6 @@
 import { publicGetOr404, clientIpOf } from '$lib/server/examsApi'
 import { publicT } from '$lib/i18n/public'
-import { topicUrl, catalogUrl, canonical, collectionJsonLd, metaDescription } from '$lib/seo'
+import { topicUrl, catalogUrl, canonical, collectionJsonLd, metaDescription, landingHome } from '$lib/seo'
 
 export async function load(event) {
   const { params, url, setHeaders } = event
@@ -42,7 +42,7 @@ export async function load(event) {
         items: data.items,
         about: label,
         crumbs: [
-          { name: t('nav.home'), path: `/${lang}` },
+          { name: t('nav.home'), path: landingHome(lang) },
           { name: t('nav.exams'), path: catalogUrl(lang) },
           { name: label, path }
         ]

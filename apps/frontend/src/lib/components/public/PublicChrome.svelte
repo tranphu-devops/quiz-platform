@@ -5,8 +5,9 @@
 -->
 <script>
   // Absolute, language-aware URLs from $lib/seo.js — see the generator for why
-  // they are props rather than the %TOKEN%s the static pages use.
-  let { homePath, catalogPath, brandPath, contactPath, t, children } = $props()
+  // they are props rather than the %TOKEN%s the static pages use. `langs` is
+  // langSwitchLinks(): [{ code, label, href, active }].
+  let { homePath, catalogPath, brandPath, contactPath, langs = [], t, children } = $props()
 
   const appLogin = 'https://app.novaquiz.net/login'
 </script>
@@ -20,7 +21,15 @@
     <a href="{homePath}#security" class="nav-hide">{t('nav.security')}</a>
     <a href="{homePath}#how" class="nav-hide">{t('nav.how')}</a>
     <a href="{homePath}#faq" class="nav-hide">{t('nav.faq')}</a>
-    <!-- language switcher: see scripts/build-landing-i18n.js -->
+    <div class="lang-links">
+      {#each langs as l}
+        {#if l.active}
+          <span class="lang-link active" aria-current="true">{l.label}</span>
+        {:else}
+          <a class="lang-link" href={l.href} hreflang={l.code} rel="alternate">{l.label}</a>
+        {/if}
+      {/each}
+    </div>
     <a href={appLogin} class="btn-nav">{t('nav.cta')}</a>
   </div>
 </nav>
@@ -58,6 +67,15 @@
   .pub { min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); color: var(--text); }
   .pub-main { flex: 1; width: 100%; max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 3rem; }
   @media (max-width: 768px) { .pub-main { padding: 1.5rem 1rem 2.5rem; } }
+
+  /* Language switcher. Lives here and not in partials/chrome.css because the
+     markup it styles exists only in this component — the static pages use the
+     <select> those rules were written for. */
+  .lang-links { display: flex; align-items: center; gap: .15rem; margin: 0 .25rem; }
+  .lang-link { font-size: .82rem; font-weight: 600; color: var(--muted); text-decoration: none; padding: .35rem .55rem; border-radius: 8px; white-space: nowrap; }
+  a.lang-link:hover { color: var(--primary); background: var(--bg); }
+  .lang-link.active { color: var(--primary); background: var(--primary-light); }
+  @media (max-width: 480px) { .lang-link { padding: .3rem .35rem; font-size: .78rem; } }
 
   nav {
     position: sticky; top: 0; z-index: 100;

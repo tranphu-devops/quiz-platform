@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit'
 import { publicGet } from '$lib/server/examsApi'
-import { canonical, catalogUrl, examUrl, topicUrl } from '$lib/seo'
+import { canonical, catalogUrl, examUrl, topicUrl, PUBLIC_LANGS } from '$lib/seo'
 
 // Served from the frontend rather than landing/: /sitemap.xml is an exact-match
 // nginx location on the static landing root and stays the hand-maintained list
@@ -8,7 +8,9 @@ import { canonical, catalogUrl, examUrl, topicUrl } from '$lib/seo'
 // catch-all to SvelteKit — no nginx change needed. Both are advertised from
 // landing/robots.txt, which may list several Sitemap: lines.
 
-const LANGS = ['vi']
+// Whatever /{lang}/exams actually serves — listing a URL the router 404s is
+// the fastest way to lose trust in a sitemap.
+const LANGS = PUBLIC_LANGS
 
 const esc = (s) =>
   String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

@@ -1,6 +1,9 @@
+import { redirect } from '@sveltejs/kit'
 import { publicGetOr404, clientIpOf } from '$lib/server/examsApi'
 import { publicT } from '$lib/i18n/public'
-import { examUrl, catalogUrl, topicUrl, canonical, examJsonLd, metaDescription } from '$lib/seo'
+import {
+  examUrl, catalogUrl, topicUrl, canonical, examJsonLd, metaDescription, landingHome, PUBLIC_LANGS
+} from '$lib/seo'
 
 export async function load(event) {
   const { params, setHeaders } = event
@@ -10,6 +13,17 @@ export async function load(event) {
     `/public/exams/${encodeURIComponent(slug)}`,
     { clientIp: clientIpOf(event) }
   )
+
+  // The slug resolves without a language, so every enabled prefix would serve
+  // the same exam at its own URL — the duplicate content the canonical tag is
+  // there to prevent, and a page whose <html lang> lies about its content. An
+  // exam has exactly one language (`language` = languages[1], migration 0024),
+  // so the other prefixes redirect to the URL that owns it. An exam in a
+  // language we do not publish has no such URL: send those to the catalog
+  // instead of to a prefix that 404s.
+  if (exam.language !== lang) {
+    redirect(308, PUBLIC_LANGS.includes(exam.language) ? examUrl(exam.language, slug) : catalogUrl(lang))
+  }
 
   setHeaders({ 'cache-control': 'public, max-age=0, s-maxage=600' })
 
@@ -35,7 +49,7 @@ export async function load(event) {
         exam,
         path,
         crumbs: [
-          { name: t('nav.home'), path: `/${lang}` },
+          { name: t('nav.home'), path: landingHome(lang) },
           { name: t('nav.exams'), path: catalogUrl(lang) },
           ...(primaryTag ? [{ name: primaryTag.label, path: topicUrl(lang, primaryTag.slug) }] : []),
           { name: exam.title, path }

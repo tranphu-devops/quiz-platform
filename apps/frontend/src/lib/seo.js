@@ -7,12 +7,38 @@
 export const SITE_ORIGIN = 'https://novaquiz.net'
 export const APP_ORIGIN = 'https://app.novaquiz.net'
 
+/**
+ * Languages the public catalog is published in, in the order the switcher
+ * shows them. src/params/lang.js reads this, so adding a code here opens
+ * /{code}/exams straight away — only add one that has published exams behind
+ * it, or the new prefix serves an empty page.
+ */
+export const PUBLIC_LANGS = ['vi', 'en']
+
+/** Endonyms: a language picker is read by people who cannot read the current language. */
+export const LANG_LABELS = { vi: 'Tiếng Việt', en: 'English', ja: '日本語' }
+
+/**
+ * x-default is English, as on the landing pages. It answers "which version for
+ * a visitor whose language we do not publish", not "which version matters
+ * most", so it does not follow PUBLIC_LANGS order.
+ */
+const X_DEFAULT_LANG = 'en'
+
 // Reuses the @ids minted by scripts/build-landing-i18n.js so the landing pages
 // and these pages describe one entity graph rather than two unrelated ones.
 const ORG_ID = `${SITE_ORIGIN}/#organization`
 const WEBSITE_ID = `${SITE_ORIGIN}/#website`
 
 export const canonical = (path) => `${SITE_ORIGIN}${path}`
+
+/**
+ * The landing home for a language. English sits at the root of novaquiz.net and
+ * every other language under its own prefix — pagePath() in
+ * scripts/build-landing-i18n.js generates them that way, and a breadcrumb
+ * pointing at /en would name a URL that does not exist.
+ */
+export const landingHome = (lang) => (lang === 'en' ? '/' : `/${lang}`)
 
 export const examUrl = (lang, slug) => `/${lang}/exams/${slug}`
 export const topicUrl = (lang, slug) => `/${lang}/exams/topics/${slug}`
@@ -37,13 +63,33 @@ export function metaDescription(text, fallback, maxLen = 155) {
 /**
  * hreflang alternates. With one language there is nothing to relate, and a
  * self-only set is noise, so this returns [] until a second language ships.
+ *
+ * Only for pages that exist in every language of `langs` — the catalog does,
+ * an exam detail page does not (an exam has one language, and its "alternate"
+ * is a different exam).
  */
 export function buildHreflang(langs, pathFor) {
   if (!langs || langs.length < 2) return []
+  const xDefault = langs.includes(X_DEFAULT_LANG) ? X_DEFAULT_LANG : langs[0]
   return [
     ...langs.map((l) => ({ hreflang: l, href: canonical(pathFor(l)) })),
-    { hreflang: 'x-default', href: canonical(pathFor(langs[0])) }
+    { hreflang: 'x-default', href: canonical(pathFor(xDefault)) }
   ]
+}
+
+/**
+ * The language switcher shown in the public chrome. Every entry points at that
+ * language's catalog rather than at a translation of the current page: a topic
+ * hub or an exam page exists in one language only, so "the same page, one
+ * language over" would 404 more often than not.
+ */
+export function langSwitchLinks(current) {
+  return PUBLIC_LANGS.map((code) => ({
+    code,
+    label: LANG_LABELS[code] ?? code,
+    href: catalogUrl(code),
+    active: code === current
+  }))
 }
 
 function breadcrumb(items) {
