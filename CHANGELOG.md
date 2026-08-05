@@ -4,9 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [Unreleased] — 2026-07-30
+## [Unreleased] — 2026-08-05
 
 ### Added
+- **Đề thi chọn được nhiều ngôn ngữ** — form tạo/sửa đề có ô chọn ngôn ngữ (Tiếng Việt / English / 日本語), chọn được nhiều ngôn ngữ cùng lúc, mặc định Tiếng Việt như trước. Đề chỉ hiện với người đang dùng một trong các ngôn ngữ đã chọn. Khi chọn từ 2 ngôn ngữ trở lên có thêm ô "Ngôn ngữ chính" — ngôn ngữ chính quyết định trang công khai của đề (mỗi đề vẫn chỉ có đúng một địa chỉ công khai, không đổi so với trước).
+- **Ô chọn ngôn ngữ trên màn hình Đề thi**, giống trang chủ — đổi ngôn ngữ ở đây vừa đổi giao diện vừa lọc danh sách đề, kèm lựa chọn "Tất cả ngôn ngữ" cho ai muốn xem hết. Bộ lọc chủ đề (tag) cũng chỉ còn hiện tag của các đề đúng ngôn ngữ. Thẻ đề hiển thị nhãn ngôn ngữ khi đề có nhiều ngôn ngữ hoặc khi đang xem tất cả.
 - **Trang Thương hiệu và Liên hệ có bản tiếng Việt và tiếng Nhật riêng** — `/vi/brand`, `/ja/brand`, `/vi/contact`, `/ja/contact`. Trước đây hai trang này chỉ có một địa chỉ duy nhất và đổi ngôn ngữ bằng JavaScript, nên Google chỉ index được bản tiếng Anh. Chọn ngôn ngữ ở thanh điều hướng giờ giữ nguyên trang, chỉ đổi ngôn ngữ (trước đây mỗi trang một kiểu: trang chủ thì chuyển địa chỉ, Thương hiệu/Liên hệ thì đổi chữ tại chỗ).
 
 ### Changed

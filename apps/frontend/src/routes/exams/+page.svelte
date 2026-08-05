@@ -5,7 +5,8 @@
   import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
   import PageHeader from '$lib/components/ui/PageHeader.svelte'
-  import { t } from '$lib/i18n'
+  import { browser } from '$app/environment'
+  import { t, locale, setLocale, locales } from '$lib/i18n'
 
   let now = $state(Date.now())
   onMount(() => {
@@ -40,15 +41,54 @@
   let selectedTag = $state('')        // '' = tất cả
   let sortBy = $state('newest')       // 'newest' | 'popular'
 
-  // Unique tags across all exams, ordered by frequency (most common first)
+  // Language filter. The select doubles as the UI language switcher — a user
+  // picks their language once and both the interface and the catalog follow it
+  // — so the filter tracks $locale instead of holding its own copy. The one
+  // thing it does own is the "all languages" opt-out, which has to survive a
+  // locale change and a reload; the chosen language itself is already
+  // persisted by the i18n store.
+  const ALL_LANGS = 'all'
+  const SHOW_ALL_KEY = 'quiz-exam-lang-all'
+  let showAllLangs = $state(browser && localStorage.getItem(SHOW_ALL_KEY) === '1')
+  const langFilter = $derived(showAllLangs ? ALL_LANGS : $locale)
+
+  function changeLang(value) {
+    showAllLangs = value === ALL_LANGS
+    if (browser) localStorage.setItem(SHOW_ALL_KEY, showAllLangs ? '1' : '0')
+    if (!showAllLangs) setLocale(value)
+  }
+
+  // Exams predating multi-language support fall back to their single
+  // `language`, and to Vietnamese if even that is missing (matching the DB
+  // default), so no exam is ever invisible under every filter.
+  function langsOf(exam) {
+    if (exam.languages?.length) return exam.languages
+    return [exam.language ?? 'vi']
+  }
+
+  function matchesLang(exam) {
+    return langFilter === ALL_LANGS || langsOf(exam).includes(langFilter)
+  }
+
+  const langFiltered = $derived(exams.filter(matchesLang))
+
+  // Unique tags, ordered by frequency (most common first). Scoped to the
+  // current language so the chip row never offers a tag that would come back
+  // empty.
   const allTags = $derived.by(() => {
     const counts = new Map()
-    for (const e of exams)
+    for (const e of langFiltered)
       for (const tag of (e.tags ?? []))
         counts.set(tag, (counts.get(tag) ?? 0) + 1)
     return [...counts.entries()]
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
       .map(([tag]) => tag)
+  })
+
+  // Switching language can retire the selected tag; drop it rather than
+  // showing an empty grid behind an active chip that is no longer rendered.
+  $effect(() => {
+    if (selectedTag && !allTags.includes(selectedTag)) selectedTag = ''
   })
 
   // Popularity weight: likes > comments > lượt thi
@@ -58,8 +98,8 @@
 
   const displayedExams = $derived.by(() => {
     const list = selectedTag
-      ? exams.filter(e => e.tags?.includes(selectedTag))
-      : [...exams]
+      ? langFiltered.filter(e => e.tags?.includes(selectedTag))
+      : [...langFiltered]
     return list.sort((a, b) =>
       sortBy === 'popular'
         ? popularity(b) - popularity(a)
@@ -286,6 +326,10 @@
     border-radius: 99px; padding: 0.1rem 0.55rem;
     font-size: 0.7rem; font-weight: 600;
   }
+  .tag.lang {
+    background: var(--bg); color: var(--muted);
+    border: 1px solid var(--border);
+  }
 
   .card-footer {
     padding: 0.75rem 1.1rem; border-top: 1px solid var(--border);
@@ -382,6 +426,20 @@
         <div class="tag-filter"></div>
       {/if}
       <div class="sort-wrap">
+        <span class="sort-label">🌐</span>
+        <select
+          class="sort-select"
+          value={langFilter}
+          onchange={(e) => changeLang(e.currentTarget.value)}
+          aria-label={$t('exams.languageFilter')}
+        >
+          {#each locales as code}
+            <option value={code}>{$t(`langSwitcher.${code}`)}</option>
+          {/each}
+          <option value="all">{$t('exams.allLanguages')}</option>
+        </select>
+      </div>
+      <div class="sort-wrap">
         <span class="sort-label">{$t('exams.sortBy')}:</span>
         <select class="sort-select" bind:value={sortBy}>
           <option value="newest">{$t('exams.sortNewest')}</option>
@@ -389,6 +447,17 @@
         </select>
       </div>
     </div>
+
+    {#if displayedExams.length === 0}
+      <div class="empty">
+        <div class="empty-icon">🌐</div>
+        <h3>{$t('exams.emptyForLanguage')}</h3>
+        <p>{$t('exams.emptyForLanguageHint')}</p>
+        <button class="btn btn-primary" style="margin-top:1rem" onclick={() => changeLang('all')}>
+          {$t('exams.allLanguages')}
+        </button>
+      </div>
+    {/if}
 
     <div class="grid">
       {#each displayedExams as exam}
@@ -439,9 +508,17 @@
                 {/if}
               </div>
             {/if}
-            {#if exam.tags?.length}
+            {#if exam.tags?.length || langFilter === 'all' || langsOf(exam).length > 1}
               <div class="tags">
-                {#each exam.tags.slice(0, 3) as tag}
+                <!-- Only worth the space when it tells the user something the
+                     filter does not already imply: a multi-language exam, or
+                     any exam while the filter is off. -->
+                {#if langFilter === 'all' || langsOf(exam).length > 1}
+                  {#each langsOf(exam) as code}
+                    <span class="tag lang">{$t(`langSwitcher.${code}`)}</span>
+                  {/each}
+                {/if}
+                {#each (exam.tags ?? []).slice(0, 3) as tag}
                   <span class="tag">{tag}</span>
                 {/each}
               </div>

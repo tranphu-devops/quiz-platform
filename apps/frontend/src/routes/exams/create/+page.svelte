@@ -7,6 +7,7 @@
   import RichTextEditor from '$lib/components/RichTextEditor.svelte'
   import { sanitizeHtml, isHtmlEmpty } from '$lib/sanitizeHtml'
   import ImageUpload from '$lib/components/ImageUpload.svelte'
+  import LanguagePicker from '$lib/components/ui/LanguagePicker.svelte'
   import { t, locale, localeCode } from '$lib/i18n'
 
   // ── Step state ──────────────────────────────────────────────────────────────
@@ -20,6 +21,9 @@
   let passing_score = $state('')
   let credit_cost = $state(10)
   let tags = $state([])
+  // Element 0 is the primary language (owns the public exam page). Defaults to
+  // Vietnamese, matching the DB default, so an untouched form behaves as before.
+  let languages = $state(['vi'])
   let show_explanation = $state(false)
   let allow_retake = $state(false)
   let cooldown_minutes = $state(0)
@@ -245,7 +249,7 @@
         time_limit: Number(time_limit),
         passing_score: passing_score !== '' ? Number(passing_score) : null,
         credit_cost: Number(credit_cost),
-        tags, show_explanation, allow_retake,
+        tags, languages, show_explanation, allow_retake,
         cooldown_minutes: Number(cooldown_minutes) || 0,
         max_attempts: max_attempts !== '' ? Number(max_attempts) : null,
         is_published, scheduled_at
@@ -520,6 +524,12 @@
       <input id="max_attempts" type="number" bind:value={max_attempts} min="1" step="1" style="width:100px" placeholder={$t('examForm.maxAttemptsPlaceholder')} />
       <p class="hint">{$t('examForm.maxAttemptsHint')}</p>
     </div>
+  </div>
+
+  <div class="form-row">
+    <label>{$t('examForm.languagesLabel')}</label>
+    <LanguagePicker bind:value={languages} />
+    <p class="hint">{$t('examForm.languagesHint')}</p>
   </div>
 
   <div class="form-row">
@@ -807,6 +817,10 @@
     <div class="review-item">
       <div class="review-label">{$t('examForm.explanationSectionLabel')}</div>
       <div class="review-val">{show_explanation ? $t('examDetail.shown') : $t('examDetail.hidden')}</div>
+    </div>
+    <div class="review-item">
+      <div class="review-label">{$t('examForm.languagesLabel')}</div>
+      <div class="review-val">🌐 {languages.map(c => $t(`langSwitcher.${c}`)).join(', ')}</div>
     </div>
     <div class="review-item">
       <div class="review-label">{$t('examForm.publishTitle')}</div>
