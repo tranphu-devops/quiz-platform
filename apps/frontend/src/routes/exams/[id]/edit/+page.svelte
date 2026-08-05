@@ -8,6 +8,7 @@
   import RichTextEditor from '$lib/components/RichTextEditor.svelte'
   import { sanitizeHtml, isHtmlEmpty } from '$lib/sanitizeHtml'
   import ImageUpload from '$lib/components/ImageUpload.svelte'
+  import LanguagePicker from '$lib/components/ui/LanguagePicker.svelte'
   import { t, locale, localeCode } from '$lib/i18n'
 
   // ── Loading ──────────────────────────────────────────────────────────────────
@@ -26,6 +27,8 @@
   let passing_score = $state('')
   let credit_cost = $state(10)
   let tags = $state([])
+  // Element 0 is the primary language (owns the public exam page).
+  let languages = $state(['vi'])
   let show_explanation = $state(false)
   let allow_retake = $state(false)
   let cooldown_minutes = $state(0)
@@ -83,6 +86,9 @@
       passing_score = exam.passing_score != null ? exam.passing_score : ''
       credit_cost = exam.credit_cost ?? 10
       tags = exam.tags ?? []
+      // Exams created before multi-language support fall back to their single
+      // `language`, and to Vietnamese if even that is missing.
+      languages = exam.languages?.length ? exam.languages : [exam.language ?? 'vi']
       show_explanation = exam.show_explanation ?? false
       allow_retake = exam.allow_retake ?? false
       cooldown_minutes = exam.cooldown_minutes ?? 0
@@ -275,7 +281,7 @@
         time_limit: Number(time_limit),
         passing_score: passing_score !== '' ? Number(passing_score) : null,
         credit_cost: Number(credit_cost),
-        tags, show_explanation, allow_retake,
+        tags, languages, show_explanation, allow_retake,
         is_published: is_pub,
         cooldown_minutes: Number(cooldown_minutes) || 0,
         max_attempts: max_attempts !== '' ? Number(max_attempts) : null,
@@ -595,6 +601,12 @@
       <input id="max_attempts" type="number" bind:value={max_attempts} min="1" step="1" style="width:100px" placeholder={$t('examForm.maxAttemptsPlaceholder')} />
       <p class="hint">{$t('examForm.maxAttemptsHint')}</p>
     </div>
+  </div>
+
+  <div class="form-row">
+    <label>{$t('examForm.languagesLabel')}</label>
+    <LanguagePicker bind:value={languages} />
+    <p class="hint">{$t('examForm.languagesHint')}</p>
   </div>
 
   <div class="form-row">

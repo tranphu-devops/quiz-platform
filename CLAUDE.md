@@ -296,7 +296,7 @@ Defined by ordered migrations in `infra/postgres/migrations/` (idempotent, auto-
 Summary:
 - `quiz_users.profiles` — `id, full_name, avatar_url, role, credits, updated_at` + `bio, birth_year, gender, interests, facebook_url, zalo, tiktok_url, youtube_url, instagram_url, linkedin_url, website_url`
 - `quiz_users.admin_settings` — `key, value` (upload/credit/AI-generation config)
-- `quiz_exams.exams` — `cover_image_url, tags TEXT[], show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts (null=unlimited), scheduled_at, passing_score, deleted_at` (soft-delete), `slug` (unique, immutable, `quiz_exams.slugify()` + `BEFORE INSERT OR UPDATE` trigger — the repo's only DB trigger, needed because seed SQL writes exams too), `language` (`vi|en|ja`), `updated_at` (drives sitemap `<lastmod>`)
+- `quiz_exams.exams` — `cover_image_url, tags TEXT[], show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts (null=unlimited), scheduled_at, passing_score, deleted_at` (soft-delete), `slug` (unique, immutable, `quiz_exams.slugify()` + `BEFORE INSERT OR UPDATE` trigger — the repo's only DB trigger, needed because seed SQL writes exams too), `languages TEXT[]` + `language` (`vi|en|ja`), `updated_at` (drives sitemap `<lastmod>`)
 - `quiz_exams.questions` — `image_url, question_type (single|multiple), correct_answer (comma-sep keys), deleted_at`
 - `quiz_exams.collections` — `id, title, description, created_by, badge_image_url, is_published, deleted_at`
 - `quiz_exams.collection_exams` — `(collection_id, exam_id, position)`
@@ -436,6 +436,7 @@ Contact form posts JSON to `POST /api/notifications/contact` (`apps/notification
 - **Scheduled publish:** `exams.scheduled_at` future + `is_published=true` → visible but locked (live countdown, `POST /submissions/start` blocked with 423). Create/edit forms: draft/now/scheduled selector. `PUT /exams/:id` uses `(has_scheduled_at, scheduled_at_val)` pair so `null` can clear it.
 - **Interactions gating:** comments — any authenticated user; likes — students only (403 otherwise); reports — only after a completed submission. Comment moderation: author+admin only. Report responses: owner+admin, flip to `resolved`.
 - **Exam notes are not persisted:** take-page note is in-memory `$state` only — don't add a notes table/endpoint.
+- **Exam languages are a pair:** `exams.languages` is every language the exam is offered in (drives the in-app catalog filter); `exams.language` is the primary one and owns the single public `/{lang}/exams/{slug}` URL. A CHECK enforces `language = languages[1]`, so **write both or neither** — an `INSERT`/`UPDATE` touching only one 500s. `resolveLanguages()` in `routes/exams.js` is the one place that resolves them, and it accepts either field from a caller (Teacher API clients that only know `language` keep working).
 - **Soft-delete (exams/questions/collections):** DELETE sets `deleted_at=NOW()`; all SELECTs must filter `AND deleted_at IS NULL`. Deleting an exam cascades to its questions. No restore UI — recovery is manual DB.
 - **`POST /exams` requires explicit `credit_cost`:** column is `NOT NULL DEFAULT 10` but the route inserts whatever's given (including `null`) — omitted/`null` always 500s. Programmatic callers (e.g. generator-service) must resolve `admin_settings.default_exam_cost` themselves.
 

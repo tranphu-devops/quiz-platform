@@ -7,6 +7,39 @@ import { stripAnswer } from '../lib/publicShape.js'
 
 const LANGUAGES = ['vi', 'en', 'ja']
 
+// An exam is offered in one or more `languages`; `language` (0023) is the
+// primary one, which owns its public /{lang}/exams/{slug} URL. The DB CHECK
+// requires `language = languages[1]`, so the two are always resolved together
+// — including for Teacher API callers that only know about `language`.
+//
+// Returns `{}` when neither field was sent (PUT: leave both alone), or
+// `{ error }` for a caller mistake.
+function resolveLanguages({ languages, language }) {
+  let list
+  if (languages !== undefined) {
+    if (!Array.isArray(languages)) {
+      return { error: 'languages must be an array' }
+    }
+    // Order is meaningful — the first entry becomes the primary — so dedup
+    // without sorting. A `language` sent alongside names the primary rather
+    // than contradicting the array.
+    list = [...new Set(languages)]
+    if (language !== undefined) list = [language, ...list.filter(l => l !== language)]
+  } else if (language !== undefined) {
+    list = [language]
+  } else {
+    return {}
+  }
+
+  if (list.length === 0) {
+    return { error: 'languages must contain at least one language' }
+  }
+  if (list.some(l => !LANGUAGES.includes(l))) {
+    return { error: `languages must be a subset of ${LANGUAGES.join(', ')}` }
+  }
+  return { languages: list, language: list[0] }
+}
+
 // Cache keys for GET /exams list variants that could include a given exam
 const examListKeys = createdBy => [
   'exams:list:public',
@@ -72,20 +105,25 @@ export default async function examRoutes(fastify) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
 
-    const { title, description, cover_image_url = null, time_limit = 30, passing_score = null, tags = [], show_explanation = false, allow_retake = false, credit_cost = null, cooldown_minutes = 0, max_attempts = null, scheduled_at = null, language = 'vi' } = req.body ?? {}
+    const { title, description, cover_image_url = null, time_limit = 30, passing_score = null, tags = [], show_explanation = false, allow_retake = false, credit_cost = null, cooldown_minutes = 0, max_attempts = null, scheduled_at = null } = req.body ?? {}
     if (!title) {
       return reply.status(400).send({ error: 'Title required', statusCode: 400 })
     }
-    if (!LANGUAGES.includes(language)) {
-      return reply.status(400).send({ error: `language must be one of ${LANGUAGES.join(', ')}`, statusCode: 400 })
+
+    const langs = resolveLanguages(req.body ?? {})
+    if (langs.error) {
+      return reply.status(400).send({ error: langs.error, statusCode: 400 })
     }
+    // Omitting both fields keeps the pre-multi-language default: Vietnamese.
+    const languages = langs.languages ?? ['vi']
+    const language = langs.language ?? 'vi'
 
     try {
       // Sanitized on the way in, so every reader — the app, the Teacher API,
       // and the server-rendered public pages — gets the same trusted HTML.
       const result = await pool.query(
-        'INSERT INTO exams (title, description, cover_image_url, time_limit, passing_score, created_by, tags, show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts, scheduled_at, language) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *',
-        [title, sanitizeDescription(description), cover_image_url, time_limit, passing_score, req.user.id, tags, show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts, scheduled_at || null, language]
+        'INSERT INTO exams (title, description, cover_image_url, time_limit, passing_score, created_by, tags, show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts, scheduled_at, language, languages) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *',
+        [title, sanitizeDescription(description), cover_image_url, time_limit, passing_score, req.user.id, tags, show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts, scheduled_at || null, language, languages]
       )
       invalidate(...examListKeys(req.user.id))
       return reply.status(201).send(result.rows[0])
@@ -110,7 +148,7 @@ export default async function examRoutes(fastify) {
       const studentBase = `
         SELECT e.id, e.title, e.description, e.cover_image_url, e.time_limit,
           e.passing_score, e.tags, e.credit_cost, e.created_at, e.scheduled_at,
-          e.created_by,
+          e.created_by, e.languages,
           COALESCE(p.full_name, au.email, 'Unknown') AS creator_name,
           p.avatar_url AS creator_avatar,
           COUNT(DISTINCT CASE WHEN (sp.role IS NULL OR sp.role != 'banned') THEN s.id END)::int AS submission_count,
@@ -232,7 +270,7 @@ export default async function examRoutes(fastify) {
   fastify.put('/exams/:id', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id } = req.params
     const body = req.body ?? {}
-    const { title, description, cover_image_url, time_limit, passing_score, is_published, tags, show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts, language } = body
+    const { title, description, cover_image_url, time_limit, passing_score, is_published, tags, show_explanation, allow_retake, credit_cost, cooldown_minutes, max_attempts } = body
     const has_scheduled_at = 'scheduled_at' in body
     const scheduled_at_val = has_scheduled_at ? (body.scheduled_at || null) : undefined
 
@@ -253,8 +291,9 @@ export default async function examRoutes(fastify) {
       if ('slug' in body) {
         return reply.status(400).send({ error: 'slug is immutable', statusCode: 400 })
       }
-      if (language !== undefined && !LANGUAGES.includes(language)) {
-        return reply.status(400).send({ error: `language must be one of ${LANGUAGES.join(', ')}`, statusCode: 400 })
+      const langs = resolveLanguages(body)
+      if (langs.error) {
+        return reply.status(400).send({ error: langs.error, statusCode: 400 })
       }
 
       const result = await pool.query(
@@ -272,9 +311,13 @@ export default async function examRoutes(fastify) {
           cooldown_minutes = COALESCE($12, cooldown_minutes),
           max_attempts = CASE WHEN $13::int IS NOT NULL THEN $13::int ELSE max_attempts END,
           scheduled_at = CASE WHEN $14 THEN $15::timestamptz ELSE scheduled_at END,
-          language = COALESCE($16, language)
+          -- Always written as a pair: the CHECK on this table requires
+          -- language = languages[1], and resolveLanguages() returns both or
+          -- neither, so these two COALESCEs can never disagree.
+          language = COALESCE($16, language),
+          languages = COALESCE($17::text[], languages)
          WHERE id = $9 AND deleted_at IS NULL RETURNING *`,
-        [title, description === undefined ? null : sanitizeDescription(description), cover_image_url ?? null, time_limit, passing_score ?? null, is_published, tags ?? null, show_explanation ?? null, id, allow_retake ?? null, credit_cost ?? null, cooldown_minutes ?? null, max_attempts ?? null, has_scheduled_at, scheduled_at_val, language ?? null]
+        [title, description === undefined ? null : sanitizeDescription(description), cover_image_url ?? null, time_limit, passing_score ?? null, is_published, tags ?? null, show_explanation ?? null, id, allow_retake ?? null, credit_cost ?? null, cooldown_minutes ?? null, max_attempts ?? null, has_scheduled_at, scheduled_at_val, langs.language ?? null, langs.languages ?? null]
       )
       invalidate(...examListKeys(exam.created_by), ...examDetailKeys(id, exam.slug))
       return result.rows[0]

@@ -13,7 +13,8 @@
     "description": "<p>${$t('apiDocs.sampleExamDesc')}</p>",
     "time_limit": 30,
     "passing_score": 70,
-    "tags": ["aws", "demo"]
+    "tags": ["aws", "demo"],
+    "languages": ["vi", "en"]
   }'`)
 
   const curlAddQuestion = $derived(`curl -X POST ${base}/api/exams/exams/<EXAM_ID>/questions \\
