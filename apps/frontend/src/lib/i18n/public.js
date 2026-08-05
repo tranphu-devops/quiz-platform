@@ -44,6 +44,36 @@ const DICT = {
     'pager.prev': 'Trang trước',
     'pager.next': 'Trang sau',
     'pager.page': 'Trang {n}'
+  },
+  en: {
+    'catalog.title': 'Online practice exams',
+    'catalog.subtitle': 'A free library of practice tests — take one, get graded instantly and see the explanations the moment you submit.',
+    'catalog.metaDescription': 'Free online practice exams on NovaQuiz: take a test in your browser, get graded automatically, and see the answers and explanations as soon as you submit.',
+    'catalog.empty': 'No exams published yet.',
+    'catalog.topics': 'Topics',
+    'catalog.allExams': 'All exams',
+    'topic.metaDescription': '{count} {label} practice exams on NovaQuiz — free to take online, graded automatically.',
+    'topic.heading': '{label} exams',
+    'topic.count': '{count} exams',
+    'topic.otherTopics': 'Other topics',
+    'exam.questions': '{count} questions',
+    'exam.minutes': '{count} min',
+    'exam.passingScore': 'Pass mark {score}%',
+    'exam.attempts': '{count} attempts',
+    'exam.author': 'Author',
+    'exam.sample': 'Sample question',
+    'exam.sampleNote': 'The answer and its explanation appear once you submit.',
+    'exam.cta': 'Take this exam on NovaQuiz',
+    'exam.ctaNote': 'Sign-in required. Free to join, no password needed.',
+    'exam.scheduled': 'Opens {date}',
+    'exam.related': 'Related exams',
+    'exam.metaFallback': 'An online practice exam on NovaQuiz — take it, get graded automatically, read the explanations.',
+    'exam.multiple': 'Select several answers',
+    'exam.single': 'Select one answer',
+    'nav.home': 'Home',
+    'pager.prev': 'Previous',
+    'pager.next': 'Next',
+    'pager.page': 'Page {n}'
   }
 }
 

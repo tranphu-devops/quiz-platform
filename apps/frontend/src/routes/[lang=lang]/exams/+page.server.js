@@ -1,6 +1,8 @@
 import { publicGetOr404, clientIpOf } from '$lib/server/examsApi'
 import { publicT } from '$lib/i18n/public'
-import { catalogUrl, canonical, collectionJsonLd, metaDescription } from '$lib/seo'
+import {
+  catalogUrl, canonical, collectionJsonLd, metaDescription, buildHreflang, landingHome, PUBLIC_LANGS
+} from '$lib/seo'
 
 export async function load(event) {
   const { params, url, setHeaders } = event
@@ -30,6 +32,9 @@ export async function load(event) {
       // the deeper pages are duplicates and stop it following through to the
       // exams only listed there.
       canonical: canonical(page > 1 ? `${path}?page=${page}` : path),
+      // Only page 1: the catalogs are independent listings, so /en/exams?page=2
+      // is in no sense the alternate of /vi/exams?page=2.
+      hreflang: page > 1 ? [] : buildHreflang(PUBLIC_LANGS, catalogUrl),
       jsonLd: collectionJsonLd({
         lang,
         name: t('catalog.title'),
@@ -37,7 +42,7 @@ export async function load(event) {
         path,
         items: data.items,
         crumbs: [
-          { name: t('nav.home'), path: `/${lang}` },
+          { name: t('nav.home'), path: landingHome(lang) },
           { name: t('nav.exams'), path }
         ]
       })

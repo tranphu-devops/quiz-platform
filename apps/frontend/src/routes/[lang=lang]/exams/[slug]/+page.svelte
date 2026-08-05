@@ -21,8 +21,14 @@
     exam.scheduled_at && new Date(exam.scheduled_at) > new Date() ? exam.scheduled_at : null
   )
 
+  // Formatted in the page's own language, not the server's — these pages render
+  // once per request in whichever language the URL asks for.
+  const LOCALE = { vi: 'vi-VN', en: 'en-US', ja: 'ja-JP' }
   const fmtDate = (iso) =>
-    new Date(iso).toLocaleString('vi-VN', { dateStyle: 'long', timeStyle: 'short' })
+    new Date(iso).toLocaleString(LOCALE[data.lang] ?? 'vi-VN', {
+      dateStyle: 'long',
+      timeStyle: 'short'
+    })
 
   // options is JSONB: [{ key, text }] authored order.
   const options = $derived(Array.isArray(q?.options) ? q.options : [])

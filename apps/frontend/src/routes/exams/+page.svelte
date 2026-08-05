@@ -5,8 +5,7 @@
   import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
   import PageHeader from '$lib/components/ui/PageHeader.svelte'
-  import { browser } from '$app/environment'
-  import { t, locale, setLocale, locales } from '$lib/i18n'
+  import { t, locale } from '$lib/i18n'
 
   let now = $state(Date.now())
   onMount(() => {
@@ -41,22 +40,12 @@
   let selectedTag = $state('')        // '' = tất cả
   let sortBy = $state('newest')       // 'newest' | 'popular'
 
-  // Language filter. The select doubles as the UI language switcher — a user
-  // picks their language once and both the interface and the catalog follow it
-  // — so the filter tracks $locale instead of holding its own copy. The one
-  // thing it does own is the "all languages" opt-out, which has to survive a
-  // locale change and a reload; the chosen language itself is already
-  // persisted by the i18n store.
-  const ALL_LANGS = 'all'
-  const SHOW_ALL_KEY = 'quiz-exam-lang-all'
-  let showAllLangs = $state(browser && localStorage.getItem(SHOW_ALL_KEY) === '1')
-  const langFilter = $derived(showAllLangs ? ALL_LANGS : $locale)
-
-  function changeLang(value) {
-    showAllLangs = value === ALL_LANGS
-    if (browser) localStorage.setItem(SHOW_ALL_KEY, showAllLangs ? '1' : '0')
-    if (!showAllLangs) setLocale(value)
-  }
+  // Language filter. There is exactly one language control in the app — the
+  // switcher in the sidebar — and the catalog follows it: no second select
+  // here, and no "all languages" opt-out, so the interface and the list a user
+  // sees can never disagree. Persistence comes free, $locale is already stored
+  // by the i18n store.
+  const langFilter = $derived($locale)
 
   // Exams predating multi-language support fall back to their single
   // `language`, and to Vietnamese if even that is missing (matching the DB
@@ -67,7 +56,7 @@
   }
 
   function matchesLang(exam) {
-    return langFilter === ALL_LANGS || langsOf(exam).includes(langFilter)
+    return langsOf(exam).includes(langFilter)
   }
 
   const langFiltered = $derived(exams.filter(matchesLang))
@@ -426,20 +415,6 @@
         <div class="tag-filter"></div>
       {/if}
       <div class="sort-wrap">
-        <span class="sort-label">🌐</span>
-        <select
-          class="sort-select"
-          value={langFilter}
-          onchange={(e) => changeLang(e.currentTarget.value)}
-          aria-label={$t('exams.languageFilter')}
-        >
-          {#each locales as code}
-            <option value={code}>{$t(`langSwitcher.${code}`)}</option>
-          {/each}
-          <option value="all">{$t('exams.allLanguages')}</option>
-        </select>
-      </div>
-      <div class="sort-wrap">
         <span class="sort-label">{$t('exams.sortBy')}:</span>
         <select class="sort-select" bind:value={sortBy}>
           <option value="newest">{$t('exams.sortNewest')}</option>
@@ -453,9 +428,6 @@
         <div class="empty-icon">🌐</div>
         <h3>{$t('exams.emptyForLanguage')}</h3>
         <p>{$t('exams.emptyForLanguageHint')}</p>
-        <button class="btn btn-primary" style="margin-top:1rem" onclick={() => changeLang('all')}>
-          {$t('exams.allLanguages')}
-        </button>
       </div>
     {/if}
 
@@ -508,12 +480,12 @@
                 {/if}
               </div>
             {/if}
-            {#if exam.tags?.length || langFilter === 'all' || langsOf(exam).length > 1}
+            {#if exam.tags?.length || langsOf(exam).length > 1}
               <div class="tags">
                 <!-- Only worth the space when it tells the user something the
-                     filter does not already imply: a multi-language exam, or
-                     any exam while the filter is off. -->
-                {#if langFilter === 'all' || langsOf(exam).length > 1}
+                     sidebar language does not already imply: an exam offered in
+                     more than one language. -->
+                {#if langsOf(exam).length > 1}
                   {#each langsOf(exam) as code}
                     <span class="tag lang">{$t(`langSwitcher.${code}`)}</span>
                   {/each}
