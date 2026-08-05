@@ -698,6 +698,7 @@ export const en = {
     aiPdfEngine_cloudflare_ai: 'free, OpenRouter extracts the text, works with any model',
     aiPdfEngine_mistral_ocr: 'paid OCR, the only option that reads scanned PDFs',
     aiPdfEngine_native: 'raw PDF sent to the model, keeps layout/images — needs a model with file support',
+    aiPdfEngine_firecrawl: 'Firecrawl converts the PDF to markdown first, preserves tables/headings best — needs FIRECRAWL_API_KEY and AWS config',
     platformKeyTitle: 'Platform OpenRouter API key',
     platformKeySubtitle: 'Shared key used for every "platform key" generation.',
     platformKeyNotSet: 'No platform key configured — falling back to the OPENROUTER_API_KEY env var (if set).',

@@ -66,7 +66,7 @@
     ai_generation_default_model: 'deepseek/deepseek-v4-flash',
     ai_generation_pdf_engine: 'cloudflare-ai'
   })
-  const PDF_ENGINES = ['cloudflare-ai', 'mistral-ocr', 'native']
+  const PDF_ENGINES = ['cloudflare-ai', 'mistral-ocr', 'native', 'firecrawl']
   let aiSaving = $state(false)
   let aiSuccess = $state(false)
 

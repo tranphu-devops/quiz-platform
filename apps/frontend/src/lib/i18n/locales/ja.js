@@ -698,6 +698,7 @@ export const ja = {
     aiPdfEngine_cloudflare_ai: '無料。OpenRouterがテキストを抽出し、どのモデルでも動作',
     aiPdfEngine_mistral_ocr: '有料OCR。スキャンPDFを読めるのはこれだけ',
     aiPdfEngine_native: 'PDFをそのままモデルへ送信。レイアウト・画像を保持（ファイル対応モデルが必要）',
+    aiPdfEngine_firecrawl: 'FirecrawlがPDFを先にmarkdownへ変換。表や見出しの保持が最も良い（FIRECRAWL_API_KEYとAWS設定が必要）',
     platformKeyTitle: 'プラットフォーム共通 OpenRouter APIキー',
     platformKeySubtitle: '「プラットフォームキー」を使う全ての生成で共有されるキーです。',
     platformKeyNotSet: 'プラットフォームキー未設定 — 環境変数 OPENROUTER_API_KEY（設定されていれば）にフォールバックします。',
