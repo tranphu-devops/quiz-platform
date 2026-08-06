@@ -200,6 +200,7 @@ POST /api/users/upload   (multipart/form-data)
 - `src/lib/s3.js` — `uploadToS3()`/`deleteFromS3()`. Lightsail Object Storage is S3-compatible (`AWS_ENDPOINT` + `forcePathStyle: true` for non-standard endpoints).
 - `old_url` provided → old S3 object deleted first; key extracted by finding `uploads/` in the URL.
 - Validation (max size, MIME types) read from `quiz_users.admin_settings` at upload time, not hardcoded. Nginx `client_max_body_size: 10m`.
+- `src/lib/imageNormalize.js` — `normalizeToJpeg()` (sharp): for `type=exam-cover|question` only (not `avatar`, which stays square/circular), re-encodes any uploaded format/size to a fixed 1024×560 JPEG, stepping quality down until under 500KB, before it ever reaches S3.
 
 ### Frontend (SvelteKit 5 + Node adapter, SSR disabled — except the public tree)
 Client-rendered SPA (`export const ssr = false` in `src/routes/+layout.js`). Auth persists in localStorage via GoTrueClient. The one exception is `src/routes/[lang=lang]/` — see **Public SEO pages** below.
