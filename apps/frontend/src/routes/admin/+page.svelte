@@ -53,6 +53,10 @@
   let settingsSuccess = $state(false)
   let settingsError = $state('')
 
+  let normalizeCoverRunning = $state(false)
+  let normalizeCoverResult = $state(null)
+  let normalizeCoverError = $state('')
+
   // ── Credits tab ────────────────────────────────────────────────────────────
   let creditSettings = $state({ default_credits: '20', teacher_upgrade_cost: '100', default_exam_cost: '10', referral_reward_credits: '20', referral_signup_bonus_credits: '10' })
   let creditSaving = $state(false)
@@ -189,6 +193,16 @@
       if (!res.ok) { const d = await res.json(); settingsError = d.error ?? $t('admin.saveSettingsError'); return }
       settingsSuccess = true
     } catch { settingsError = $t('imageUpload.connectionError') } finally { settingsSaving = false }
+  }
+
+  async function normalizeCoverImages() {
+    normalizeCoverError = ''; normalizeCoverResult = null; normalizeCoverRunning = true
+    try {
+      const res = await userApi.adminNormalizeCoverImages()
+      const d = await res.json()
+      if (!res.ok) { normalizeCoverError = d.error ?? $t('admin.normalizeCoverError'); return }
+      normalizeCoverResult = d
+    } catch { normalizeCoverError = $t('admin.normalizeCoverError') } finally { normalizeCoverRunning = false }
   }
 
   async function saveCreditSettings() {
@@ -602,6 +616,33 @@
               </div>
             </div>
           {/if}
+        </Card>
+
+        <Card title={$t('admin.normalizeCoverTitle')} subtitle={$t('admin.normalizeCoverSubtitle')}>
+          {#if normalizeCoverError}<p class="ix-error">{normalizeCoverError}</p>{/if}
+          {#if normalizeCoverResult}
+            <p class="ix-success">
+              {$t('admin.normalizeCoverResult', {
+                normalized: normalizeCoverResult.normalized,
+                skipped: normalizeCoverResult.skipped,
+                failedCount: normalizeCoverResult.failed.length,
+                total: normalizeCoverResult.total
+              })}
+            </p>
+            {#if normalizeCoverResult.failed.length > 0}
+              <p><strong>{$t('admin.normalizeCoverFailedListTitle')}</strong></p>
+              <ul>
+                {#each normalizeCoverResult.failed as f}
+                  <li>#{f.id} {f.title} — {f.error}</li>
+                {/each}
+              </ul>
+            {/if}
+          {/if}
+          <div>
+            <Button onclick={normalizeCoverImages} loading={normalizeCoverRunning} disabled={normalizeCoverRunning}>
+              {normalizeCoverRunning ? $t('admin.normalizeCoverRunning') : $t('admin.normalizeCoverButton')}
+            </Button>
+          </div>
         </Card>
       </div>
     {/if}
