@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
   import { t, locale, localeCode } from '$lib/i18n'
+  import Avatar from '$lib/components/ui/Avatar.svelte'
 
   let loading = $state(true)
   let error = $state('')
@@ -417,8 +418,13 @@
             {#if exam.passing_score != null}<span style="font-size:0.77rem;color:var(--muted)"> · ≥{exam.passing_score}%</span>{/if}
           </td>
           <td style="font-size:0.85rem">
-            <span style="font-weight:600">{author?.full_name ?? ''}</span>
-            <span style="display:block;color:var(--muted);font-size:0.78rem">{author?.email ?? exam.created_by.slice(0,8)+'…'}</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <Avatar src={author?.avatar_url} name={author?.full_name || author?.email} size={26} />
+              <div>
+                <span style="font-weight:600">{author?.full_name ?? ''}</span>
+                <span style="display:block;color:var(--muted);font-size:0.78rem">{author?.email ?? exam.created_by.slice(0,8)+'…'}</span>
+              </div>
+            </div>
           </td>
           <td>{s.count}</td>
           <td>
