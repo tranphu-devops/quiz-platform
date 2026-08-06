@@ -1,8 +1,12 @@
 import { pool } from '../db.js'
 import { verifyAuth } from '../middleware/auth.js'
 import { uploadToS3, deleteFromS3 } from '../lib/s3.js'
+import { normalizeToJpeg } from '../lib/imageNormalize.js'
 
 const VALID_TYPES = ['avatar', 'exam-cover', 'question']
+// Exam-related images come from many devices/apps in wildly different formats and sizes;
+// normalize them to one fixed size/format so they render consistently across the app.
+const NORMALIZE_TYPES = ['exam-cover', 'question']
 
 export default async function uploadRoutes(fastify) {
   fastify.addHook('preHandler', verifyAuth)
@@ -26,7 +30,7 @@ export default async function uploadRoutes(fastify) {
     const allowedTypes = (settings.upload_allowed_types ?? 'image/jpeg,image/png,image/webp,image/gif').split(',').map(s => s.trim())
 
     // Normalize image/jpg → image/jpeg (some clients send non-standard MIME type)
-    const mimetype = data.mimetype === 'image/jpg' ? 'image/jpeg' : data.mimetype
+    let mimetype = data.mimetype === 'image/jpg' ? 'image/jpeg' : data.mimetype
 
     if (!allowedTypes.includes(mimetype)) {
       return reply.status(400).send({
@@ -38,13 +42,24 @@ export default async function uploadRoutes(fastify) {
     // Buffer the file to check size
     const chunks = []
     for await (const chunk of data.file) chunks.push(chunk)
-    const buffer = Buffer.concat(chunks)
+    let buffer = Buffer.concat(chunks)
 
     if (buffer.length > maxSizeMb * 1024 * 1024) {
       return reply.status(400).send({
         error: `File quá lớn. Tối đa ${maxSizeMb}MB`,
         statusCode: 400
       })
+    }
+
+    if (NORMALIZE_TYPES.includes(uploadType)) {
+      try {
+        const normalized = await normalizeToJpeg(buffer)
+        buffer = normalized.buffer
+        mimetype = normalized.mimetype
+      } catch (err) {
+        fastify.log.error(err)
+        return reply.status(400).send({ error: 'Ảnh không hợp lệ hoặc bị lỗi', statusCode: 400 })
+      }
     }
 
     try {
