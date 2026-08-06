@@ -7,6 +7,7 @@
   import Card from '$lib/components/ui/Card.svelte'
   import Button from '$lib/components/ui/Button.svelte'
   import Input from '$lib/components/ui/Input.svelte'
+  import Avatar from '$lib/components/ui/Avatar.svelte'
   import SystemServicesPanel from '$lib/components/SystemServicesPanel.svelte'
   import SystemDatabasePanel from '$lib/components/SystemDatabasePanel.svelte'
   import SystemLogsPanel from '$lib/components/SystemLogsPanel.svelte'
@@ -398,7 +399,12 @@
                   {@const rc = roleColor(u.role)}
                   <tr>
                     <td class="td-email">{u.email}</td>
-                    <td class="td-name">{u.full_name ?? '—'}</td>
+                    <td class="td-name">
+                      <div class="td-name-cell">
+                        <Avatar src={u.avatar_url} name={u.full_name || u.email} size={28} />
+                        {u.full_name ?? '—'}
+                      </div>
+                    </td>
                     <td>
                       <span class="role-pill" style="background:{rc.bg};color:{rc.text}">{$t(`roles.${u.role}`)}</span>
                     </td>
@@ -1069,6 +1075,7 @@
 
   .td-email { font-size: 13px; color: var(--ix-text-secondary); }
   .td-name  { font-weight: 500; }
+  .td-name-cell { display: flex; align-items: center; gap: 8px; }
   .td-date  { font-size: 13px; color: var(--ix-text-muted); white-space: nowrap; }
   .td-num   { font-weight: 600; color: var(--ix-text-primary); }
 

@@ -3,6 +3,7 @@
   import { catalogUrl, topicUrl, examUrl, takeExamUrl } from '$lib/seo'
   import SeoHead from '$lib/components/public/SeoHead.svelte'
   import Breadcrumbs from '$lib/components/public/Breadcrumbs.svelte'
+  import Avatar from '$lib/components/ui/Avatar.svelte'
 
   let { data } = $props()
   const t = $derived(publicT(data.lang))
@@ -60,7 +61,10 @@
       {/if}
     </p>
 
-    <p class="author">{t('exam.author')}: {exam.creator_name}</p>
+    <p class="author">
+      <Avatar src={exam.creator_avatar} name={exam.creator_name} size={22} />
+      {t('exam.author')}: {exam.creator_name}
+    </p>
 
     {#if exam.tags?.length}
       <p class="tags">
@@ -148,7 +152,7 @@
     opacity: 0.75;
   }
 
-  .author { margin: 0 0 0.85rem; font-size: 0.92rem; opacity: 0.75; }
+  .author { margin: 0 0 0.85rem; font-size: 0.92rem; opacity: 0.75; display: flex; align-items: center; gap: 0.4rem; }
 
   .tags { margin: 0; display: flex; flex-wrap: wrap; gap: 0.4rem; }
 

@@ -5,6 +5,7 @@
   import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
   import PageHeader from '$lib/components/ui/PageHeader.svelte'
+  import Avatar from '$lib/components/ui/Avatar.svelte'
   import { t, locale } from '$lib/i18n'
 
   let now = $state(Date.now())
@@ -470,7 +471,7 @@
             <div class="card-meta">{fmtMeta(exam)}</div>
             {#if exam.creator_name}
               <div class="card-creator">
-                👤
+                <Avatar src={exam.creator_avatar} name={exam.creator_name} size={18} />
                 {#if exam.created_by}
                   <a href="/users/{exam.created_by}" class="creator-link" onclick={(e) => e.stopPropagation()}>
                     {exam.creator_name}

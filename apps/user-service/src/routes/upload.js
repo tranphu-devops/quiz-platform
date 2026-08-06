@@ -1,12 +1,17 @@
 import { pool } from '../db.js'
 import { verifyAuth } from '../middleware/auth.js'
 import { uploadToS3, deleteFromS3 } from '../lib/s3.js'
-import { normalizeToJpeg } from '../lib/imageNormalize.js'
+import { normalizeToJpeg, normalizeAvatarToJpeg } from '../lib/imageNormalize.js'
 
 const VALID_TYPES = ['avatar', 'exam-cover', 'question']
-// Exam-related images come from many devices/apps in wildly different formats and sizes;
-// normalize them to one fixed size/format so they render consistently across the app.
-const NORMALIZE_TYPES = ['exam-cover', 'question']
+// Uploaded images come from many devices/apps in wildly different formats and sizes;
+// normalize them to one fixed size/format so they render consistently and don't
+// bloat storage with full-resolution photos displayed at a fraction of their size.
+const NORMALIZE_FN = {
+  'exam-cover': normalizeToJpeg,
+  question: normalizeToJpeg,
+  avatar: normalizeAvatarToJpeg
+}
 
 export default async function uploadRoutes(fastify) {
   fastify.addHook('preHandler', verifyAuth)
@@ -51,9 +56,10 @@ export default async function uploadRoutes(fastify) {
       })
     }
 
-    if (NORMALIZE_TYPES.includes(uploadType)) {
+    const normalizeFn = NORMALIZE_FN[uploadType]
+    if (normalizeFn) {
       try {
-        const normalized = await normalizeToJpeg(buffer)
+        const normalized = await normalizeFn(buffer)
         buffer = normalized.buffer
         mimetype = normalized.mimetype
       } catch (err) {

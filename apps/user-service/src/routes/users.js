@@ -436,7 +436,7 @@ export default async function userRoutes(fastify) {
       SELECT u.id, u.email,
              u.raw_user_meta_data->>'role' AS role,
              u.raw_user_meta_data->>'full_name' AS full_name,
-             p.credits,
+             p.avatar_url, p.credits,
              u.created_at, u.last_sign_in_at, u.confirmed_at IS NOT NULL AS confirmed
       FROM auth.users u
       LEFT JOIN profiles p ON p.id = u.id
