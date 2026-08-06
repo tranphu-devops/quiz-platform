@@ -6,6 +6,7 @@ import userRoutes from './routes/users.js'
 import uploadRoutes from './routes/upload.js'
 import apiKeyRoutes from './routes/api-keys.js'
 import adminSystemRoutes from './routes/admin-system.js'
+import adminImageRoutes from './routes/admin-images.js'
 import adminStorageRoutes from './routes/admin-storage.js'
 import { encryptOnSend } from './lib/encryptResponse.js'
 import { pool } from './db.js'
@@ -47,6 +48,7 @@ fastify.register(apiKeyRoutes, { prefix: '/' })
 fastify.register(userRoutes, { prefix: '/' })
 fastify.register(uploadRoutes, { prefix: '/' })
 fastify.register(adminSystemRoutes, { prefix: '/' })
+fastify.register(adminImageRoutes, { prefix: '/' })
 fastify.register(adminStorageRoutes, { prefix: '/' })
 
 try {

@@ -159,6 +159,11 @@ export const userApi = {
       method: 'PUT',
       headers: authHeaders(),
       body: JSON.stringify(data)
+    }),
+  adminNormalizeCoverImages: () =>
+    apiFetch(`${USER_URL}/admin/normalize-cover-images`, {
+      method: 'POST',
+      headers: authHeaders()
     })
 }
 

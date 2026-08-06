@@ -99,6 +99,54 @@ export default async function examRoutes(fastify) {
     }
   })
 
+  // Internal endpoint: list exams with a cover image, for the admin cover-image
+  // normalization backfill (user-service owns S3/sharp, exam-service owns the row)
+  fastify.get('/exams/internal/covers', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const internalKey = req.headers['x-internal-key']
+    if (!internalKey || internalKey !== process.env.INTERNAL_API_KEY) {
+      return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+    }
+
+    try {
+      const { rows } = await pool.query(
+        `SELECT id, title, cover_image_url FROM exams WHERE cover_image_url IS NOT NULL AND deleted_at IS NULL ORDER BY id`
+      )
+      return { exams: rows }
+    } catch (err) {
+      fastify.log.error(err)
+      return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
+    }
+  })
+
+  // Internal endpoint: write back a normalized cover_image_url from the backfill above
+  fastify.patch('/exams/internal/:id/cover-image', { config: { rateLimit: { max: 200, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const internalKey = req.headers['x-internal-key']
+    if (!internalKey || internalKey !== process.env.INTERNAL_API_KEY) {
+      return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+    }
+
+    const { id } = req.params
+    const { cover_image_url } = req.body ?? {}
+    if (!cover_image_url) {
+      return reply.status(400).send({ error: 'cover_image_url required', statusCode: 400 })
+    }
+
+    try {
+      const result = await pool.query(
+        'UPDATE exams SET cover_image_url = $1 WHERE id = $2 AND deleted_at IS NULL RETURNING id, created_by, slug',
+        [cover_image_url, id]
+      )
+      if (result.rows.length === 0) {
+        return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
+      }
+      invalidate(...examListKeys(result.rows[0].created_by), ...examDetailKeys(id, result.rows[0].slug))
+      return { ok: true }
+    } catch (err) {
+      fastify.log.error(err)
+      return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
+    }
+  })
+
   // POST /exams
   fastify.post('/exams', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     if (req.ability.cannot('create', 'Exam')) {
