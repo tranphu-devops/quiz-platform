@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, PutObjectCommand, DeleteObjectCommand, DeleteObjectsCommand, ListObjectsV2Command } from '@aws-sdk/client-s3'
 import { randomUUID } from 'crypto'
 
 function createS3Client() {
@@ -23,18 +23,76 @@ const MIME_TO_EXT = {
   'image/gif': 'gif'
 }
 
+// Key always starts with "uploads/" — extract it from anywhere in the URL
+export function keyFromUrl(url) {
+  if (!url) return null
+  const idx = url.indexOf('uploads/')
+  if (idx === -1) return null
+  return url.slice(idx)
+}
+
+export function publicUrlForKey(key) {
+  const bucket = process.env.AWS_BUCKET
+  const publicBase = process.env.AWS_PUBLIC_URL
+    || (process.env.AWS_ENDPOINT
+      ? `${process.env.AWS_ENDPOINT}/${bucket}`
+      : `https://${bucket}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com`)
+  return `${publicBase}/${key}`
+}
+
 export async function deleteFromS3(oldUrl) {
-  if (!oldUrl) return
+  const key = keyFromUrl(oldUrl)
+  if (!key) return
   const bucket = process.env.AWS_BUCKET
   if (!bucket) return
-  // Key always starts with "uploads/" — extract it from anywhere in the URL
-  const idx = oldUrl.indexOf('uploads/')
-  if (idx === -1) return
-  const key = oldUrl.slice(idx)
   try {
     const client = createS3Client()
     await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }))
   } catch {}
+}
+
+// Lists every object under uploads/ (paginated), across the whole bucket.
+export async function listUploadedObjects() {
+  const bucket = process.env.AWS_BUCKET
+  if (!bucket) throw new Error('AWS_BUCKET not configured')
+
+  const client = createS3Client()
+  const objects = []
+  let ContinuationToken
+  do {
+    const res = await client.send(new ListObjectsV2Command({
+      Bucket: bucket,
+      Prefix: 'uploads/',
+      ContinuationToken
+    }))
+    for (const obj of res.Contents ?? []) {
+      if (obj.Key.endsWith('/')) continue // skip folder markers
+      objects.push({ key: obj.Key, size: obj.Size, lastModified: obj.LastModified })
+    }
+    ContinuationToken = res.IsTruncated ? res.NextContinuationToken : undefined
+  } while (ContinuationToken)
+
+  return objects
+}
+
+// Batch-deletes S3 objects by key (max 1000 per API call, per S3 limits).
+export async function deleteS3ObjectsByKeys(keys) {
+  const bucket = process.env.AWS_BUCKET
+  if (!bucket || keys.length === 0) return { deleted: [], errors: [] }
+
+  const client = createS3Client()
+  const deleted = []
+  const errors = []
+  for (let i = 0; i < keys.length; i += 1000) {
+    const chunk = keys.slice(i, i + 1000)
+    const res = await client.send(new DeleteObjectsCommand({
+      Bucket: bucket,
+      Delete: { Objects: chunk.map(Key => ({ Key })), Quiet: false }
+    }))
+    for (const d of res.Deleted ?? []) deleted.push(d.Key)
+    for (const e of res.Errors ?? []) errors.push({ key: e.Key, message: e.Message })
+  }
+  return { deleted, errors }
 }
 
 export async function uploadToS3(fileBuffer, mimeType, uploadType) {
@@ -53,10 +111,5 @@ export async function uploadToS3(fileBuffer, mimeType, uploadType) {
     ACL: 'public-read'
   }))
 
-  const publicBase = process.env.AWS_PUBLIC_URL
-    || (process.env.AWS_ENDPOINT
-      ? `${process.env.AWS_ENDPOINT}/${bucket}`
-      : `https://${bucket}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com`)
-
-  return `${publicBase}/${key}`
+  return publicUrlForKey(key)
 }
