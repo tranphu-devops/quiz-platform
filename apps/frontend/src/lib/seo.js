@@ -9,11 +9,12 @@ export const APP_ORIGIN = 'https://app.novaquiz.net'
 
 /**
  * Languages the public catalog is published in, in the order the switcher
- * shows them. src/params/lang.js reads this, so adding a code here opens
- * /{code}/exams straight away — only add one that has published exams behind
- * it, or the new prefix serves an empty page.
+ * shows them (English first/default, matching the landing pages). src/params/
+ * lang.js reads this, so adding a code here opens /{code}/exams straight away
+ * — a language with zero published exams still renders (the catalog has an
+ * empty state), just with nothing in it yet.
  */
-export const PUBLIC_LANGS = ['vi', 'en']
+export const PUBLIC_LANGS = ['en', 'vi', 'ja']
 
 /** Endonyms: a language picker is read by people who cannot read the current language. */
 export const LANG_LABELS = { vi: 'Tiếng Việt', en: 'English', ja: '日本語' }

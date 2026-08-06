@@ -51,14 +51,11 @@ const PAGES = [
   { src: 'contact.src.html', slug: 'contact', changefreq: 'monthly', priority: '0.5' }
 ]
 
-// Where each language's landing page links into the public exam catalog. The
-// catalog only exists in the languages exams are published in (PUBLIC_LANGS in
-// apps/frontend/src/lib/seo.js) — no Japanese exams yet, so /ja falls back to
-// the English catalog rather than to a prefix the router 404s. When a /ja
-// catalog ships, change the value here and re-run. A token rather than a
-// literal href keeps that switch to one line instead of a hunt through the
-// generated files.
-const CATALOG_PATH = { en: '/en/exams', vi: '/vi/exams', ja: '/en/exams' }
+// Where each language's landing page links into the public exam catalog —
+// mirrors PUBLIC_LANGS in apps/frontend/src/lib/seo.js. A token rather than a
+// literal href keeps a future change to one line instead of a hunt through
+// the generated files.
+const CATALOG_PATH = { en: '/en/exams', vi: '/vi/exams', ja: '/ja/exams' }
 
 // en lives at the root, the other languages under a /<lang> prefix.
 const pagePath = (slug, code) =>
@@ -440,17 +437,19 @@ console.log(`  ✓ landing/sitemap.xml  (${PAGES.length * LANGS.length} URLs)`)
 // drift is the whole reason partials/ exists — and the output is committed
 // like everything else here, so the frontend build needs nothing from us.
 //
-// Two deliberate differences, both forced by those pages shipping no JS at all
-// (`csr = false` in routes/[lang=lang]/+layout.js):
-//   • the language <select> becomes plain links. A <select> needs nqSetLang()
-//     to navigate, and there is no JS to run it; <a hreflang> works with none
-//     and is what a crawler follows. The set comes from PUBLIC_LANGS via the
-//     `langs` prop, so it lists the languages the catalog is actually
-//     published in — which is a shorter list than the landing pages', where
-//     every language exists.
-//   • links arrive as props instead of %TOKEN%s: the same app answers on both
-//     novaquiz.net and app.novaquiz.net, so every link out must be absolute
-//     and language-aware ($lib/seo.js decides, not this file).
+// One deliberate difference: links arrive as props instead of %TOKEN%s — the
+// same app answers on both novaquiz.net and app.novaquiz.net, so every link
+// out must be absolute and language-aware ($lib/seo.js decides, not this
+// file).
+//
+// The <select> itself survives the conversion (options now come from the
+// `langs` prop so the list always matches PUBLIC_LANGS), and nqSetLang() is
+// injected as a hand-written inline <script> via {@html} — see
+// NQ_SET_LANG_SCRIPT below. That keeps `csr = false` in
+// routes/[lang=lang]/+layout.js intact (no SvelteKit/hydration bundle ships,
+// so no SSR/CSR mismatch class of bug), since the script is plain HTML text
+// at render time, never Svelte-managed markup — the same trick SeoHead.svelte
+// uses for its JSON-LD <script>.
 const SVELTE_EXPR = {
   HOME_PATH: 'homePath',
   CATALOG_PATH: 'catalogPath',
@@ -463,18 +462,16 @@ const TOKEN_ATTR = /(\s[a-zA-Z-]+)="([^"]*%[A-Z_]+%[^"]*)"/g
 const TOKEN = /%([A-Z_]+)%/g
 const LANG_SELECT_BLOCK = /\n?[ \t]*<select class="lang-select"[\s\S]*?<\/select>\n?/
 
-// The no-JS stand-in for the <select>. `aria-current="true"` rather than a
-// disabled control for the active language: it stays readable and announced,
-// and there is nothing to click through to anyway.
-const SVELTE_LANG_LINKS = `    <div class="lang-links">
-      {#each langs as l}
-        {#if l.active}
-          <span class="lang-link active" aria-current="true">{l.label}</span>
-        {:else}
-          <a class="lang-link" href={l.href} hreflang={l.code} rel="alternate">{l.label}</a>
-        {/if}
-      {/each}
-    </div>`
+// Same <select> as the static pages, just with dynamic options built from
+// `langSelectHtml` (computed in the component script from the `langs` prop,
+// so the list always matches PUBLIC_LANGS). It has to arrive as one <select>
+// block via {@html}, like NQ_SET_LANG_SCRIPT below — Svelte rejects a literal
+// onchange="..." string as "not a JavaScript expression", and an
+// onchange={fn} expression would need hydration to ever run, which
+// csr = false rules out. `href` goes unused here — nqSetLang() navigates
+// instead, same as the static pages' onchange handler.
+const SVELTE_LANG_SELECT = `    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+    {@html langSelectHtml}`
 
 const svelteExpr = name => {
   const expr = SVELTE_EXPR[name]
@@ -486,7 +483,7 @@ function toSvelte(html, what) {
   const out = html
     // A function replacement, so $-sequences in the markup are never read as
     // replacement patterns.
-    .replace(LANG_SELECT_BLOCK, () => `\n${SVELTE_LANG_LINKS}\n`)
+    .replace(LANG_SELECT_BLOCK, () => `\n${SVELTE_LANG_SELECT}\n`)
     .replace(TOKEN_ATTR, (_, attr, value) => {
       const whole = value.match(/^%([A-Z_]+)%$/)
       if (whole) return `${attr}={${svelteExpr(whole[1])}}`
@@ -502,10 +499,14 @@ function toSvelte(html, what) {
   return out
 }
 
-// Rules whose selector mentions `.lang-select` go with the markup — Svelte
-// strips unused selectors and warns about each one, which would turn every
-// frontend build into noise.
-function dropRules(css, pattern) {
+// `.lang-select` only ever appears in the DOM via {@html langSelectHtml}, so
+// Svelte's compiler never sees it in static markup — it would otherwise treat
+// the rule as an unused selector and strip it, leaving the <select> in an
+// unstyled browser default. :global() opts each `.lang-select`-prefixed rule
+// out of that scoping/pruning without touching anything else in chrome.css
+// (the static pages don't go through this — :global() is not valid CSS there,
+// which is exactly why this transform runs only on the Svelte copy).
+function globalizeLangSelect(css) {
   let out = ''
   let i = 0
   while (i < css.length) {
@@ -517,11 +518,34 @@ function dropRules(css, pattern) {
       if (css[j] === '{') depth++
       else if (css[j] === '}' && --depth === 0) break
     }
-    if (!pattern.test(css.slice(i, open))) out += css.slice(i, j + 1)
+    const selector = css.slice(i, open)
+    out += (/\.lang-select\b/.test(selector) ? selector.replace(/\.lang-select\b/g, ':global(.lang-select)') : selector) + css.slice(open, j + 1)
     i = j + 1
   }
   return out
 }
+
+// Same allowlist shape as pageScript() below, and for the same reason: `code`
+// and `path` are re-derived as string literals inside the branch rather than
+// carried over from the <select> value, so nothing DOM-read ever reaches
+// `location.href` or `document.cookie` (CodeQL js/xss-through-dom /
+// cookie-injection). The catalog switcher always lands on that language's
+// catalog root, never a translated version of the current page — see
+// langSwitchLinks() in $lib/seo.js for why.
+const NQ_SET_LANG_SCRIPT = (() => {
+  const branches = LANGS.map(
+    (l, i) => `    ${i === 0 ? 'if' : 'else if'} (input === '${l.code}') { code = '${l.code}'; path = '/${l.code}/exams'; }`
+  ).join('\n')
+  return `<script>
+  function nqSetLang(input) {
+    var code, path;
+${branches}
+    else return;
+    document.cookie = 'nqlang=' + code + ';path=/;max-age=31536000;samesite=lax';
+    location.href = path;
+  }
+</script>`
+})()
 
 const chromeComponent = `<!--
   Generated by scripts/build-landing-i18n.js from landing/partials/{header,footer}.html
@@ -535,9 +559,30 @@ const chromeComponent = `<!--
   let { homePath, catalogPath, brandPath, contactPath, langs = [], t, children } = $props()
 
   const appLogin = '${APP_LOGIN}'
+
+  // \`langs\` only ever holds LANG_LABELS values from $lib/seo.js (never
+  // request-derived), so this escaping is belt-and-braces rather than a real
+  // taint concern — kept anyway so the {@html} below stays provably safe on
+  // its own, without relying on that guarantee holding forever.
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
+  }
+
+  // Built here, not as static markup: the <select>'s onchange has to reach
+  // the browser as plain HTML text (see SVELTE_LANG_SELECT in the generator),
+  // and which <option> is selected still has to vary with \`langs\`.
+  const langSelectHtml = $derived(
+    '<select class="lang-select" onchange="nqSetLang(this.value)" aria-label="Language">' +
+    langs.map(l => \`<option value="\${escapeHtml(l.code)}"\${l.active ? ' selected' : ''}>\${escapeHtml(l.label)}</option>\`).join('') +
+    '</select>'
+  )
 </script>
 
 <div class="pub">
+  <!-- Hand-written inline script, not Svelte-managed markup — see the note
+       above SVELTE_EXPR for why this is safe under csr = false. -->
+  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+  {@html ${JSON.stringify(NQ_SET_LANG_SCRIPT)}}
 ${toSvelte(HEADER_HTML, 'header.html')}
 
 <main class="pub-main">
@@ -554,16 +599,7 @@ ${toSvelte(FOOTER_HTML, 'footer.html')}
   .pub-main { flex: 1; width: 100%; max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 3rem; }
   @media (max-width: 768px) { .pub-main { padding: 1.5rem 1rem 2.5rem; } }
 
-  /* Language switcher. Lives here and not in partials/chrome.css because the
-     markup it styles exists only in this component — the static pages use the
-     <select> those rules were written for. */
-  .lang-links { display: flex; align-items: center; gap: .15rem; margin: 0 .25rem; }
-  .lang-link { font-size: .82rem; font-weight: 600; color: var(--muted); text-decoration: none; padding: .35rem .55rem; border-radius: 8px; white-space: nowrap; }
-  a.lang-link:hover { color: var(--primary); background: var(--bg); }
-  .lang-link.active { color: var(--primary); background: var(--primary-light); }
-  @media (max-width: 480px) { .lang-link { padding: .3rem .35rem; font-size: .78rem; } }
-
-${dropRules(CHROME_CSS, /\.lang-select/).trim().split('\n').map(l => (l ? '  ' + l : l)).join('\n')}
+${globalizeLangSelect(CHROME_CSS).trim().split('\n').map(l => (l ? '  ' + l : l)).join('\n')}
 </style>
 `
 

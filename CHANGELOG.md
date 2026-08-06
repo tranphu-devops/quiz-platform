@@ -4,7 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [Unreleased] — 2026-08-05
+## [Unreleased] — 2026-08-06
+
+### Added
+- **Ô chọn ngôn ngữ ở trang đề thi công khai giờ là ô chọn thật (select), giống hệt trang chủ** — trước đây chỉ là link thường vì trang này cố tình không tải JavaScript; nay dùng một đoạn JS thuần nhỏ viết tay (không qua SvelteKit) nên vẫn giữ nguyên tốc độ tải, và ghi nhớ ngôn ngữ đã chọn bằng cùng cookie với trang chủ. **Mở luôn kho đề tiếng Nhật `/ja/exams`** (trước đây chỉ có `/vi/exams` và `/en/exams`) — trang tự hiện thông báo "chưa có đề" cho tới khi có đề tiếng Nhật đầu tiên.
 
 ### Added
 - **Thêm lựa chọn "firecrawl" cho cách đọc file PDF khi tạo đề bằng AI** — chọn ở tab "Tạo đề bằng AI" trong trang quản trị, cạnh 3 lựa chọn sẵn có. Firecrawl chuyển PDF sang văn bản trước khi gửi cho model, giữ bảng biểu và tiêu đề tốt hơn `cloudflare-ai`, và chạy được với mọi model (khác `native`). Cần khai báo `FIRECRAWL_API_KEY` cùng cấu hình `AWS_*`; thiếu một trong hai thì hệ thống tự quay về `cloudflare-ai` và ghi cảnh báo vào log — giáo viên không bị trừ credit cho một lượt chắc chắn hỏng.
