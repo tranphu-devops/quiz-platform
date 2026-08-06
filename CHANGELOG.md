@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] — 2026-08-06
 
 ### Added
+- **Ô chọn ngôn ngữ ở trang đề thi công khai giờ là ô chọn thật (select), giống hệt trang chủ** — trước đây chỉ là link thường vì trang này cố tình không tải JavaScript; nay dùng một đoạn JS thuần nhỏ viết tay (không qua SvelteKit) nên vẫn giữ nguyên tốc độ tải, và ghi nhớ ngôn ngữ đã chọn bằng cùng cookie với trang chủ. **Mở luôn kho đề tiếng Nhật `/ja/exams`** (trước đây chỉ có `/vi/exams` và `/en/exams`) — trang tự hiện thông báo "chưa có đề" cho tới khi có đề tiếng Nhật đầu tiên.
 - **Trang quản trị có màn "Dọn ảnh không dùng"** (`/admin` → tab "Lưu trữ") — so sánh toàn bộ ảnh đang có trên bucket S3/Lightsail với các cột lưu URL ảnh trong database (avatar, ảnh bìa đề thi, ảnh câu hỏi, ảnh huy hiệu bộ sưu tập), liệt kê ảnh nào không còn được tham chiếu ở đâu cả kèm ảnh xem trước, dung lượng, ngày tải lên — admin chọn và xoá thẳng khỏi bucket. Ảnh tải lên trong 24 giờ gần nhất được loại khỏi danh sách để tránh xoá nhầm ảnh thuộc một bản nháp chưa lưu (ví dụ đang tạo đề thi, đã chọn ảnh bìa nhưng chưa bấm lưu).
 
 ### Added

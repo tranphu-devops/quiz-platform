@@ -74,6 +74,36 @@ const DICT = {
     'pager.prev': 'Previous',
     'pager.next': 'Next',
     'pager.page': 'Page {n}'
+  },
+  ja: {
+    'catalog.title': 'オンライン練習問題集',
+    'catalog.subtitle': '無料の練習問題ライブラリ — 受験するとすぐに自動採点され、提出直後に解説が確認できます。',
+    'catalog.metaDescription': 'NovaQuizの無料オンライン練習問題集：ブラウザで受験し、自動採点、提出直後に解答と解説を確認できます。',
+    'catalog.empty': 'まだ公開されている問題集はありません。',
+    'catalog.topics': 'トピック',
+    'catalog.allExams': 'すべての問題集',
+    'topic.metaDescription': 'NovaQuizの{label}に関する練習問題{count}件 — オンラインで無料受験、自動採点。',
+    'topic.heading': '{label}の問題集',
+    'topic.count': '{count}件の問題集',
+    'topic.otherTopics': '他のトピック',
+    'exam.questions': '{count}問',
+    'exam.minutes': '{count}分',
+    'exam.passingScore': '合格基準 {score}%',
+    'exam.attempts': '{count}回受験',
+    'exam.author': '作成者',
+    'exam.sample': 'サンプル問題',
+    'exam.sampleNote': '解答と解説は提出後に表示されます。',
+    'exam.cta': 'NovaQuizでこの問題集を受験する',
+    'exam.ctaNote': 'ログインが必要です。無料登録、パスワード不要。',
+    'exam.scheduled': '{date}に開始',
+    'exam.related': '関連する問題集',
+    'exam.metaFallback': 'NovaQuizのオンライン練習問題集 — 受験して自動採点、解説を確認できます。',
+    'exam.multiple': '複数選択',
+    'exam.single': '単一選択',
+    'nav.home': 'ホーム',
+    'pager.prev': '前へ',
+    'pager.next': '次へ',
+    'pager.page': '{n}ページ'
   }
 }
 

@@ -10,9 +10,30 @@
   let { homePath, catalogPath, brandPath, contactPath, langs = [], t, children } = $props()
 
   const appLogin = 'https://app.novaquiz.net/login'
+
+  // `langs` only ever holds LANG_LABELS values from $lib/seo.js (never
+  // request-derived), so this escaping is belt-and-braces rather than a real
+  // taint concern — kept anyway so the {@html} below stays provably safe on
+  // its own, without relying on that guarantee holding forever.
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
+  }
+
+  // Built here, not as static markup: the <select>'s onchange has to reach
+  // the browser as plain HTML text (see SVELTE_LANG_SELECT in the generator),
+  // and which <option> is selected still has to vary with `langs`.
+  const langSelectHtml = $derived(
+    '<select class="lang-select" onchange="nqSetLang(this.value)" aria-label="Language">' +
+    langs.map(l => `<option value="${escapeHtml(l.code)}"${l.active ? ' selected' : ''}>${escapeHtml(l.label)}</option>`).join('') +
+    '</select>'
+  )
 </script>
 
 <div class="pub">
+  <!-- Hand-written inline script, not Svelte-managed markup — see the note
+       above SVELTE_EXPR for why this is safe under csr = false. -->
+  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+  {@html "<script>\n  function nqSetLang(input) {\n    var code, path;\n    if (input === 'en') { code = 'en'; path = '/en/exams'; }\n    else if (input === 'vi') { code = 'vi'; path = '/vi/exams'; }\n    else if (input === 'ja') { code = 'ja'; path = '/ja/exams'; }\n    else return;\n    document.cookie = 'nqlang=' + code + ';path=/;max-age=31536000;samesite=lax';\n    location.href = path;\n  }\n</script>"}
 <nav>
   <a class="nav-brand" href={homePath}>NovaQuiz</a>
   <div class="nav-links">
@@ -21,15 +42,8 @@
     <a href="{homePath}#security" class="nav-hide">{t('nav.security')}</a>
     <a href="{homePath}#how" class="nav-hide">{t('nav.how')}</a>
     <a href="{homePath}#faq" class="nav-hide">{t('nav.faq')}</a>
-    <div class="lang-links">
-      {#each langs as l}
-        {#if l.active}
-          <span class="lang-link active" aria-current="true">{l.label}</span>
-        {:else}
-          <a class="lang-link" href={l.href} hreflang={l.code} rel="alternate">{l.label}</a>
-        {/if}
-      {/each}
-    </div>
+    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+    {@html langSelectHtml}
     <a href={appLogin} class="btn-nav">{t('nav.cta')}</a>
   </div>
 </nav>
@@ -68,15 +82,6 @@
   .pub-main { flex: 1; width: 100%; max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 3rem; }
   @media (max-width: 768px) { .pub-main { padding: 1.5rem 1rem 2.5rem; } }
 
-  /* Language switcher. Lives here and not in partials/chrome.css because the
-     markup it styles exists only in this component — the static pages use the
-     <select> those rules were written for. */
-  .lang-links { display: flex; align-items: center; gap: .15rem; margin: 0 .25rem; }
-  .lang-link { font-size: .82rem; font-weight: 600; color: var(--muted); text-decoration: none; padding: .35rem .55rem; border-radius: 8px; white-space: nowrap; }
-  a.lang-link:hover { color: var(--primary); background: var(--bg); }
-  .lang-link.active { color: var(--primary); background: var(--primary-light); }
-  @media (max-width: 480px) { .lang-link { padding: .3rem .35rem; font-size: .78rem; } }
-
   nav {
     position: sticky; top: 0; z-index: 100;
     background: rgba(255,255,255,.95); backdrop-filter: blur(16px);
@@ -91,6 +96,18 @@
   .btn-nav { padding: .5rem 1.1rem; border-radius: 8px; border: none; background: linear-gradient(135deg,var(--primary),var(--accent)); color: white; font-size: .875rem; font-weight: 700; cursor: pointer; text-decoration: none; transition: opacity .15s, transform .15s; box-shadow: 0 2px 8px rgba(86,37,209,.3); }
   .btn-nav:hover { opacity: .92; transform: translateY(-1px); }
   @media (max-width: 640px) { .nav-hide { display: none; } }
+
+  /* ─── LANG SELECT ─── */
+  :global(.lang-select) {
+    border: 1.5px solid var(--border); background: white; color: var(--muted);
+    border-radius: 8px; padding: .4rem 1.9rem .4rem .7rem; font-size: .82rem; font-weight: 600;
+    font-family: inherit; cursor: pointer; transition: all .15s;
+    -webkit-appearance: none; -moz-appearance: none; appearance: none;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23595d72' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right .6rem center;
+  }
+  :global(.lang-select):hover { border-color: var(--accent); color: var(--primary); }
+  :global(.lang-select):focus { outline: none; border-color: var(--accent); }
 
   /* ─── FOOTER ─── */
   footer { background: #202331; color: #64748b; text-align: center; padding: 3rem 1.5rem; font-size: .84rem; }
