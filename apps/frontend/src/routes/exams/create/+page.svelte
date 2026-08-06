@@ -342,6 +342,7 @@
     border: 2px dashed var(--border); border-radius: 14px; padding: 2.5rem 1.5rem;
     text-align: center; cursor: pointer; transition: all 0.15s;
     background: var(--bg);
+    display: grid;
   }
   .drop-zone.dragging { border-color: var(--primary); background: var(--primary-light); }
   .drop-zone:hover { border-color: var(--primary); }
