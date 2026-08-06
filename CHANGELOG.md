@@ -4,7 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [Unreleased] — 2026-08-05
+## [Unreleased] — 2026-08-06
+
+### Added
+- **Trang quản trị có màn "Dọn ảnh không dùng"** (`/admin` → tab "Lưu trữ") — so sánh toàn bộ ảnh đang có trên bucket S3/Lightsail với các cột lưu URL ảnh trong database (avatar, ảnh bìa đề thi, ảnh câu hỏi, ảnh huy hiệu bộ sưu tập), liệt kê ảnh nào không còn được tham chiếu ở đâu cả kèm ảnh xem trước, dung lượng, ngày tải lên — admin chọn và xoá thẳng khỏi bucket. Ảnh tải lên trong 24 giờ gần nhất được loại khỏi danh sách để tránh xoá nhầm ảnh thuộc một bản nháp chưa lưu (ví dụ đang tạo đề thi, đã chọn ảnh bìa nhưng chưa bấm lưu).
 
 ### Added
 - **Thêm lựa chọn "firecrawl" cho cách đọc file PDF khi tạo đề bằng AI** — chọn ở tab "Tạo đề bằng AI" trong trang quản trị, cạnh 3 lựa chọn sẵn có. Firecrawl chuyển PDF sang văn bản trước khi gửi cho model, giữ bảng biểu và tiêu đề tốt hơn `cloudflare-ai`, và chạy được với mọi model (khác `native`). Cần khai báo `FIRECRAWL_API_KEY` cùng cấu hình `AWS_*`; thiếu một trong hai thì hệ thống tự quay về `cloudflare-ai` và ghi cảnh báo vào log — giáo viên không bị trừ credit cho một lượt chắc chắn hỏng.

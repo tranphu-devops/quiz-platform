@@ -313,3 +313,10 @@ export const systemApi = {
   getLogs: (service, tail = 200) =>
     apiFetch(`${USER_URL}/admin/system/logs?service=${encodeURIComponent(service)}&tail=${tail}`, { headers: authHeaders(false) })
 }
+
+export const storageApi = {
+  getOrphans: (minAgeHours) =>
+    apiFetch(`${USER_URL}/admin/storage/orphans${minAgeHours != null ? `?minAgeHours=${minAgeHours}` : ''}`, { headers: authHeaders(false) }),
+  deleteOrphans: (keys) =>
+    apiFetch(`${USER_URL}/admin/storage/orphans`, { method: 'DELETE', headers: authHeaders(), body: JSON.stringify({ keys }) })
+}

@@ -10,6 +10,7 @@
   import SystemServicesPanel from '$lib/components/SystemServicesPanel.svelte'
   import SystemDatabasePanel from '$lib/components/SystemDatabasePanel.svelte'
   import SystemLogsPanel from '$lib/components/SystemLogsPanel.svelte'
+  import StorageCleanupPanel from '$lib/components/StorageCleanupPanel.svelte'
   import { t, locale, localeCode } from '$lib/i18n'
 
   let tab = $state('users')
@@ -334,6 +335,7 @@
   <button class="tab-btn" class:active={tab === 'ai'}          onclick={() => tab = 'ai'}>{$t('admin.tabAiGeneration')}</button>
   <button class="tab-btn" class:active={tab === 'notifications'} onclick={() => { tab = 'notifications'; loadNotificationSettings() }}>{$t('admin.tabNotifications')}</button>
   <button class="tab-btn" class:active={tab === 'system'}        onclick={() => tab = 'system'}>{$t('admin.tabSystem')}</button>
+  <button class="tab-btn" class:active={tab === 'storage'}       onclick={() => tab = 'storage'}>{$t('admin.tabStorage')}</button>
 </div>
 
 <div class="admin-content">
@@ -886,6 +888,13 @@
         <SystemServicesPanel />
         <SystemDatabasePanel />
         <SystemLogsPanel />
+      </div>
+    {/if}
+
+    <!-- ── STORAGE TAB ─────────────────────────────────────────────────── -->
+    {#if tab === 'storage'}
+      <div class="system-wrap">
+        <StorageCleanupPanel />
       </div>
     {/if}
 </div>
