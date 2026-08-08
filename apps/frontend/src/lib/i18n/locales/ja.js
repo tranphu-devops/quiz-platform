@@ -54,6 +54,8 @@ export const ja = {
     bannedBack: 'ログインページへ戻る',
     themeLight: 'ライト',
     themeDark: 'ダーク',
+    themeSepia: 'セピア',
+    themeDim: 'ディム',
     switchToTheme: '{theme}に切り替え',
   },
   roles: {

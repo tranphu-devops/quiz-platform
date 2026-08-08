@@ -289,7 +289,8 @@
     padding: 0.75rem 1rem;
     font-size: 0.9rem;
   }
-  :global([data-theme="dark"]) .error-box {
+  :global([data-theme="dark"]) .error-box,
+  :global([data-theme="dim"]) .error-box {
     background: rgba(220,38,38,0.15);
     border-color: rgba(220,38,38,0.35);
     color: #fca5a5;
@@ -303,7 +304,8 @@
     padding: 0.75rem 1rem;
     font-size: 0.9rem;
   }
-  :global([data-theme="dark"]) .success-box {
+  :global([data-theme="dark"]) .success-box,
+  :global([data-theme="dim"]) .success-box {
     background: rgba(22,163,74,0.15);
     border-color: rgba(22,163,74,0.35);
     color: #86efac;

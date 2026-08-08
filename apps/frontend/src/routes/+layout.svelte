@@ -17,7 +17,8 @@
   let theme = $state('light')
 
   onMount(() => {
-    theme = localStorage.getItem('quiz-theme') || 'light'
+    const saved = localStorage.getItem('quiz-theme')
+    theme = ['light', 'dark', 'sepia', 'dim'].includes(saved) ? saved : 'light'
     document.documentElement.dataset.theme = theme
     sidebarCollapsed = localStorage.getItem('quiz-sidebar-collapsed') === 'true'
 
@@ -33,15 +34,20 @@
     localStorage.setItem('quiz-sidebar-collapsed', String(sidebarCollapsed))
   }
 
+  const THEMES = ['light', 'dark', 'sepia', 'dim']
+  const THEME_ICONS = { light: '☀️', dark: '🌙', sepia: '📜', dim: '🌫️' }
+  const THEME_LABEL_KEYS = { light: 'layout.themeLight', dark: 'layout.themeDark', sepia: 'layout.themeSepia', dim: 'layout.themeDim' }
+
   function toggleTheme() {
-    const next = theme === 'light' ? 'dark' : 'light'
+    const next = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length]
     theme = next
     localStorage.setItem('quiz-theme', next)
     document.documentElement.dataset.theme = next
   }
 
-  const themeIcon  = $derived(theme === 'dark' ? '☀️' : '🌙')
-  const themeLabel = $derived(theme === 'dark' ? $t('layout.themeLight') : $t('layout.themeDark'))
+  const themeIcon         = $derived(THEME_ICONS[theme])
+  const currentThemeLabel = $derived($t(THEME_LABEL_KEYS[theme]))
+  const themeLabel        = $derived($t(THEME_LABEL_KEYS[THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length]]))
 
   $effect(() => {
     const u = $user
@@ -209,41 +215,105 @@
     --ix-focus-ring:      rgba(244,244,245,0.15);
   }
 
-  /* ── Global dark mode corrections ─────────────────────────────────────────── */
-  :global([data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"])),
-  :global([data-theme="dark"] select),
-  :global([data-theme="dark"] textarea) {
+  :global([data-theme="sepia"]) {
+    --bg:             #f4ecd8;
+    --surface:        #fbf3e3;
+    --border:         #d9c7a3;
+    --text:           #4a3728;
+    --muted:          #8a7660;
+    --primary:        #8a5a2b;
+    --primary-dark:   #6e4620;
+    --accent:         #a56a2f;
+    --primary-light:  #f0e0c0;
+    --success:        #5a8a3c;
+    --danger:         #b23a2e;
+    --warning:        #c98a1f;
+    --shadow:         0 4px 20px rgba(138,90,43,0.10);
+    --shadow-hover:   0 12px 36px rgba(138,90,43,0.20);
+
+    /* imgix sepia overrides */
+    --ix-bg-app:          #F4ECD8;
+    --ix-bg-surface:      #FBF3E3;
+    --ix-bg-sidebar:      #EFE4C8;
+    --ix-bg-hover:        #E8DAB8;
+    --ix-text-primary:    #3A2B1D;
+    --ix-text-secondary:  #6B5842;
+    --ix-text-muted:      #9C8A6E;
+    --ix-border:          #D9C7A3;
+    --ix-btn-black-bg:    #3A2B1D;
+    --ix-btn-black-fg:    #FBF3E3;
+    --ix-cta-green-bg:    #5A8A3C;
+    --ix-cta-green-fg:    #FFFFFF;
+    --ix-focus-ring:      rgba(58,43,29,0.15);
+  }
+
+  :global([data-theme="dim"]) {
+    --bg:             #22272e;
+    --surface:        #2d333b;
+    --border:         #444c56;
+    --text:           #cdd9e5;
+    --muted:          #909dab;
+    --primary:        #6ca0f0;
+    --primary-dark:   #4f86dc;
+    --accent:         #79c0ff;
+    --primary-light:  rgba(108,160,240,0.15);
+    --success:        #56d364;
+    --danger:         #f47067;
+    --warning:        #d29922;
+    --shadow:         0 4px 20px rgba(0,0,0,0.30);
+    --shadow-hover:   0 12px 36px rgba(0,0,0,0.45);
+
+    /* imgix dim overrides */
+    --ix-bg-app:          #22272E;
+    --ix-bg-surface:      #2D333B;
+    --ix-bg-sidebar:      #22272E;
+    --ix-bg-hover:        #373E47;
+    --ix-text-primary:    #CDD9E5;
+    --ix-text-secondary:  #909DAB;
+    --ix-text-muted:      #768390;
+    --ix-border:          #444C56;
+    --ix-btn-black-bg:    #CDD9E5;
+    --ix-btn-black-fg:    #22272E;
+    --ix-cta-green-bg:    #347D39;
+    --ix-cta-green-fg:    #FFFFFF;
+    --ix-focus-ring:      rgba(205,217,229,0.15);
+  }
+
+  /* ── Global corrections for non-light themes (dark/sepia/dim) ─────────────── */
+  :global([data-theme]:not([data-theme="light"]) input:not([type="checkbox"]):not([type="radio"]):not([type="range"])),
+  :global([data-theme]:not([data-theme="light"]) select),
+  :global([data-theme]:not([data-theme="light"]) textarea) {
     background: var(--surface);
     color: var(--text);
     border-color: var(--border);
   }
-  :global([data-theme="dark"] .card),
-  :global([data-theme="dark"] .stat),
-  :global([data-theme="dark"] .settings-card),
-  :global([data-theme="dark"] .col-card) {
+  :global([data-theme]:not([data-theme="light"]) .card),
+  :global([data-theme]:not([data-theme="light"]) .stat),
+  :global([data-theme]:not([data-theme="light"]) .settings-card),
+  :global([data-theme]:not([data-theme="light"]) .col-card) {
     background: var(--surface);
     color: var(--text);
   }
-  :global([data-theme="dark"] tr:hover td) {
+  :global([data-theme]:not([data-theme="light"]) tr:hover td) {
     background: var(--primary-light) !important;
   }
-  :global([data-theme="dark"] td) {
+  :global([data-theme]:not([data-theme="light"]) td) {
     border-color: var(--border) !important;
   }
-  :global([data-theme="dark"] .login-right) {
+  :global([data-theme]:not([data-theme="light"]) .login-right) {
     background: var(--surface);
   }
-  :global([data-theme="dark"] .option-btn) {
-    background: var(--surface);
-    color: var(--text);
-  }
-  :global([data-theme="dark"] .session-modal),
-  :global([data-theme="dark"] .confirm-card),
-  :global([data-theme="dark"] .modal-card) {
+  :global([data-theme]:not([data-theme="light"]) .option-btn) {
     background: var(--surface);
     color: var(--text);
   }
-  :global([data-theme="dark"] .btn-google) {
+  :global([data-theme]:not([data-theme="light"]) .session-modal),
+  :global([data-theme]:not([data-theme="light"]) .confirm-card),
+  :global([data-theme]:not([data-theme="light"]) .modal-card) {
+    background: var(--surface);
+    color: var(--text);
+  }
+  :global([data-theme]:not([data-theme="light"]) .btn-google) {
     background: var(--surface);
     color: var(--text);
     border-color: var(--border);
@@ -285,10 +355,14 @@
   :global(input[type="time"]::-webkit-calendar-picker-indicator:hover) {
     opacity: 1; background: var(--primary-light);
   }
-  /* Dark mode: let the native picker + spinners render dark to match the app */
+  /* Dark/dim: let the native picker + spinners render dark to match the app.
+     Sepia keeps color-scheme:light — its surface is still a light paper tone. */
   :global([data-theme="dark"] input[type="datetime-local"]),
   :global([data-theme="dark"] input[type="date"]),
-  :global([data-theme="dark"] input[type="time"]) { color-scheme: dark; }
+  :global([data-theme="dark"] input[type="time"]),
+  :global([data-theme="dim"] input[type="datetime-local"]),
+  :global([data-theme="dim"] input[type="date"]),
+  :global([data-theme="dim"] input[type="time"]) { color-scheme: dark; }
 
   /* ── App shell (authenticated) ─────────────────────────────────────────────── */
   .app-shell {
@@ -480,7 +554,7 @@
     >
       <!-- Theme + language toggles in sidebar extra area -->
       <div class="sb-theme-row">
-        <span>{theme === 'dark' ? $t('layout.themeDark') + ' 🌙' : $t('layout.themeLight') + ' ☀️'}</span>
+        <span>{currentThemeLabel} {themeIcon}</span>
         <div style="display:flex; gap:6px; align-items:center;">
           <LanguageSwitcher variant="compact" />
           <button class="sb-theme-btn" onclick={toggleTheme} aria-label={$t('layout.switchToTheme', { theme: themeLabel })}>{themeIcon}</button>

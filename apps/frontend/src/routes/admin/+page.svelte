@@ -1435,7 +1435,8 @@
     color: #dc2626; border-radius: 8px;
     padding: 0.6rem 0.9rem; font-size: 0.85rem; margin: 0;
   }
-  :global([data-theme="dark"]) .create-error {
+  :global([data-theme="dark"]) .create-error,
+  :global([data-theme="dim"]) .create-error {
     background: rgba(220,38,38,0.15); border-color: rgba(220,38,38,0.35); color: #fca5a5;
   }
 </style>

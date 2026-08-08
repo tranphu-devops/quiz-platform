@@ -54,6 +54,8 @@ export const vi = {
     bannedBack: 'Về trang đăng nhập',
     themeLight: 'Sáng',
     themeDark: 'Tối',
+    themeSepia: 'Sepia',
+    themeDim: 'Dịu',
     switchToTheme: 'Chuyển sang {theme}',
   },
   roles: {
