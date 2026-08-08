@@ -54,6 +54,8 @@ export const en = {
     bannedBack: 'Back to login',
     themeLight: 'Light',
     themeDark: 'Dark',
+    themeSepia: 'Sepia',
+    themeDim: 'Dim',
     switchToTheme: 'Switch to {theme}',
   },
   roles: {
