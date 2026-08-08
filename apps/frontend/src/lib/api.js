@@ -163,7 +163,7 @@ export const userApi = {
   adminNormalizeCoverImages: () =>
     apiFetch(`${USER_URL}/admin/normalize-cover-images`, {
       method: 'POST',
-      headers: authHeaders()
+      headers: authHeaders(false)
     })
 }
 
