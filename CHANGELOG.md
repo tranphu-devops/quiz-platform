@@ -10,6 +10,9 @@ All notable changes to this project will be documented in this file.
 - **Trang quản trị có nút "Chuẩn hoá ảnh bìa"** (`/admin` → tab "Cài đặt upload") — resize/crop lại ảnh bìa của những đề thi được tạo trước khi tính năng chuẩn hoá 1024×560 JPEG ra mắt, giúp ảnh bìa hiển thị đồng đều ở mọi nơi thay vì lệch/méo với dữ liệu cũ. Ảnh đã đúng chuẩn được bỏ qua tự động; mỗi đề lỗi không làm dừng cả lượt chạy, hiện chi tiết lỗi kèm kết quả sau khi chạy xong.
 - **Avatar hiện đồng nhất ở mọi nơi hiển thị người dùng** — trước đây chỉ trang cá nhân hiện đúng ảnh avatar; nay danh sách đề thi (avatar người soạn thay icon 👤), bảng người dùng và bảng "Tất cả đề thi" trong trang quản trị, và trang đề thi công khai (SEO) cũng hiện avatar thật, có sẵn dữ liệu nhưng trước đó chưa được dùng.
 
+### Fixed
+- **Nút "Chuẩn hoá ảnh bìa" báo lỗi 400** — request gửi `Content-Type: application/json` nhưng không kèm nội dung, bị Fastify từ chối trước khi vào đến route.
+
 ### Changed
 - **Ảnh avatar được cắt/resize còn đúng 256×256 JPEG khi tải lên** (giống cách ảnh bìa đề thi/câu hỏi đã làm) — trước đây avatar lưu nguyên kích thước gốc, có thể rất nặng dù chỗ hiển thị nhỏ nhất chỉ 28px.
 
