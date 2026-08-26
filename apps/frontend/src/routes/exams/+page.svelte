@@ -2,7 +2,6 @@
   import { examApi, submissionApi } from '$lib/api'
   import { htmlToText } from '$lib/sanitizeHtml'
   import { user } from '$lib/stores/auth'
-  import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
   import PageHeader from '$lib/components/ui/PageHeader.svelte'
   import Avatar from '$lib/components/ui/Avatar.svelte'
@@ -98,13 +97,14 @@
   })
 
   onMount(async () => {
-    if (!$user) { goto('/login'); return }
+    // Guests can browse the catalog too — the login wall only shows up once
+    // they try to actually start an exam. See +page.svelte in exams/[id]/.
     try {
       const examRes = await examApi.list()
       if (!examRes.ok) { error = $t('exams.loadListError'); return }
       exams = await examRes.json()
 
-      if ($user.role === 'student') {
+      if ($user?.role === 'student') {
         const subRes = await submissionApi.list()
         if (subRes.ok) {
           const subs = await subRes.json()
@@ -396,7 +396,7 @@
       <div class="empty-icon">📋</div>
       <h3>{$t('exams.emptyTitle')}</h3>
       <p>
-        {#if $user?.role !== 'student'}
+        {#if $user && $user.role !== 'student'}
           {@html $t('exams.emptyTeacherHint')}
         {:else}
           {$t('exams.emptyStudentHint')}
