@@ -1,11 +1,23 @@
 import { subject } from '@casl/ability'
 import { pool } from '../db.js'
 import { verifyAuth } from '../middleware/auth.js'
+import { defineAbilityFor } from '../lib/ability.js'
 import { getOrSet, invalidate } from '../lib/cache.js'
 import { sanitizeDescription } from '../lib/sanitizeDescription.js'
 import { stripAnswer } from '../lib/publicShape.js'
 
 const LANGUAGES = ['vi', 'en', 'ja']
+
+// A logged-out visitor may read the catalog and a capped preview of a single
+// exam (growth: let people try the product before asking them to sign up).
+// Anything else in this file still requires a token — this only widens the
+// two read routes below, never create/update/delete.
+const GUEST_PREVIEW_LIMIT = 3
+function isGuestReadablePath(req) {
+  if (req.method !== 'GET') return false
+  const path = req.url.split('?')[0]
+  return path === '/exams' || /^\/exams\/[^/]+$/.test(path)
+}
 
 // An exam is offered in one or more `languages`; `language` (0023) is the
 // primary one, which owns its public /{lang}/exams/{slug} URL. The DB CHECK
@@ -57,6 +69,7 @@ const examListKeys = createdBy => [
 const examDetailKeys = (id, slug) => [
   `exam:detail:${id}:student:preview`,
   `exam:detail:${id}:student:full`,
+  `exam:detail:${id}:guest`,
   ...(slug ? [`public:exam:${slug}`] : [])
 ]
 
@@ -70,6 +83,14 @@ export default async function examRoutes(fastify) {
   fastify.addHook('preHandler', async (req, reply) => {
     if (req.url === '/health') return
     if (req.url.startsWith('/exams/internal/')) return
+    // Anonymous only when no credentials were even offered — a bad/expired
+    // token still goes through verifyAuth and gets a proper 401, not a
+    // silent downgrade to guest.
+    if (isGuestReadablePath(req) && !req.headers.authorization && !req.headers['x-api-key']) {
+      req.user = null
+      req.ability = defineAbilityFor({ id: null, role: 'guest' })
+      return
+    }
     await verifyAuth(req, reply)
   })
 
@@ -184,7 +205,9 @@ export default async function examRoutes(fastify) {
   // GET /exams
   fastify.get('/exams', async (req, reply) => {
     try {
-      const isStudent = req.user.role === 'student'
+      // A guest (req.user === null) gets the same published-only, public-field
+      // view as a student — never the teacher/admin fullSelect below.
+      const isStudent = !req.user || req.user.role === 'student'
 
       const { creator_id } = req.query
 
@@ -255,8 +278,12 @@ export default async function examRoutes(fastify) {
   // ?preview=true → returns only first 3 questions (for detail page student view)
   fastify.get('/exams/:id', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id } = req.params
-    const isStudent = req.user.role === 'student'
-    const isPreview = req.query.preview === 'true'
+    const isGuest = !req.user
+    const isPrivileged = !isGuest && (req.user.role === 'teacher' || req.user.role === 'admin')
+    // A guest never gets the query-param preview toggle: they always get the
+    // capped, deterministic teaser regardless of what `?preview=` says, so
+    // the full question bank can never be scraped by simply dropping it.
+    const isPreview = isGuest || req.query.preview === 'true'
 
     try {
       const examResult = await pool.query('SELECT * FROM exams WHERE id = $1 AND deleted_at IS NULL', [id])
@@ -276,22 +303,29 @@ export default async function examRoutes(fastify) {
         )
         const question_count = countResult.rows[0].n
 
-        // Preview (student detail page): a single random sample question.
+        // Guest teaser: first GUEST_PREVIEW_LIMIT questions in authored order
+        // (so it feels like "starting" the exam, not a random sample).
+        // Student preview (detail page, logged in): a single random sample.
         // Full (teacher/take): all questions in authored order.
-        const questionsResult = await pool.query(
-          isPreview
-            ? `SELECT * FROM questions WHERE exam_id = $1 AND deleted_at IS NULL ORDER BY RANDOM() LIMIT 1`
-            : `SELECT * FROM questions WHERE exam_id = $1 AND deleted_at IS NULL ORDER BY order_index`,
-          [id]
-        )
+        const questionsResult = isGuest
+          ? await pool.query(
+              'SELECT * FROM questions WHERE exam_id = $1 AND deleted_at IS NULL ORDER BY order_index LIMIT $2',
+              [id, GUEST_PREVIEW_LIMIT]
+            )
+          : await pool.query(
+              isPreview
+                ? `SELECT * FROM questions WHERE exam_id = $1 AND deleted_at IS NULL ORDER BY RANDOM() LIMIT 1`
+                : `SELECT * FROM questions WHERE exam_id = $1 AND deleted_at IS NULL ORDER BY order_index`,
+              [id]
+            )
 
         let questions = questionsResult.rows
-        if (isStudent) {
+        if (!isPrivileged) {
           questions = questions.map(stripAnswer)
         }
 
-        // Strip internal fields not needed by students
-        if (isStudent) {
+        // Strip internal fields not needed by students/guests
+        if (!isPrivileged) {
           const { created_by, show_explanation, allow_retake, ...examPublic } = exam
           return { ...examPublic, question_count, questions }
         }
@@ -299,13 +333,15 @@ export default async function examRoutes(fastify) {
         return { ...exam, question_count, questions }
       }
 
-      // Only cache the student view of a *published* exam: it's identical for
-      // every student (already stripped of correct_answer/explanation) and the
-      // ability check above still runs fresh on every request, so this can
-      // never leak a draft or another teacher's exam. The privileged (teacher/
-      // admin) view is skipped — low traffic, and it carries correct answers.
-      if (isStudent && exam.is_published) {
-        return await getOrSet(`exam:detail:${id}:student:${isPreview ? 'preview' : 'full'}`, 60, buildResponse)
+      // Only cache the student/guest view of a *published* exam: it's
+      // identical for everyone in that bucket (already stripped of
+      // correct_answer/explanation) and the ability check above still runs
+      // fresh on every request, so this can never leak a draft or another
+      // teacher's exam. The privileged (teacher/admin) view is skipped — low
+      // traffic, and it carries correct answers.
+      if (!isPrivileged && exam.is_published) {
+        const key = isGuest ? `exam:detail:${id}:guest` : `exam:detail:${id}:student:${isPreview ? 'preview' : 'full'}`
+        return await getOrSet(key, 60, buildResponse)
       }
       return await buildResponse()
     } catch (err) {

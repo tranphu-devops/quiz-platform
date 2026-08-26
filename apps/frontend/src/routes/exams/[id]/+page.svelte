@@ -1,7 +1,6 @@
 <script>
   import { examApi, submissionApi, userApi, commentApi, likeApi } from '$lib/api'
   import { user } from '$lib/stores/auth'
-  import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
   import { page } from '$app/stores'
   import { marked } from 'marked'
@@ -49,25 +48,31 @@
   const canStart = $derived(!mySubmission || !!exam?.allow_retake || !hasPassed)
   const creditCost = $derived(exam?.credit_cost ?? 10)
   const hasEnoughCredits = $derived(myCredits === null || myCredits >= creditCost)
-  const previewQuestions = $derived((exam?.questions ?? []).slice(0, 1))
+  // Backend already caps this to the right count per caller: 1 random
+  // question for a logged-in student, a fixed first-N teaser for a guest,
+  // the full set for teacher/admin.
+  const previewQuestions = $derived(exam?.questions ?? [])
   const totalQuestions = $derived(exam?.question_count ?? exam?.questions?.length ?? 0)
   const hiddenCount = $derived(totalQuestions - previewQuestions.length)
   const hasDescription = $derived(!isHtmlEmpty(exam?.description))
+  const loginNext = $derived(`/login?next=${encodeURIComponent($page.url.pathname)}`)
 
   onMount(async () => {
-    // Carry the destination through login: this page is where the "Vào thi"
-    // CTA on the public exam pages at novaquiz.net lands.
-    if (!$user) { goto(`/login?next=${encodeURIComponent($page.url.pathname)}`); return }
+    // Guests get a capped preview instead of being bounced to /login — this
+    // page is also where the "Vào thi" CTA on the public exam pages at
+    // novaquiz.net lands, so it's the first thing a stranger sees of the app.
     const id = $page.params.id
     try {
-      // Students get preview (first 3 questions only); teachers/admins get full
-      const res = $user.role === 'student'
+      // Students get preview (1 sample question); teachers/admins get full;
+      // guests get examApi.get() too — the backend itself detects "no token"
+      // and always returns the capped teaser regardless of query params.
+      const res = $user?.role === 'student'
         ? await examApi.getPreview(id)
         : await examApi.get(id)
       if (!res.ok) { error = $t('examDetail.notFound'); return }
       exam = await res.json()
 
-      if ($user.role === 'student') {
+      if ($user?.role === 'student') {
         const [subRes, profileRes] = await Promise.all([
           submissionApi.list({ examId: id }),
           userApi.getProfile($user.id)
@@ -770,6 +775,14 @@
           {/if}
         {/if}
 
+        <!-- Guest: invite to sign in instead of showing student/teacher UI -->
+        {#if !$user}
+          <div class="status-strip pending">
+            <span class="status-strip-icon">👀</span>
+            <span>{$t('examDetail.guestPreviewNote', { n: hiddenCount })}</span>
+          </div>
+        {/if}
+
         <hr class="divider" />
 
         <!-- Scheduled countdown banner (student) -->
@@ -789,7 +802,11 @@
         {/if}
 
         <!-- Action buttons -->
-        {#if $user?.role === 'student'}
+        {#if !$user}
+          <!-- Guest: no password, no commitment — just a reason to sign in -->
+          <a href={loginNext} class="btn-block btn-primary">▶ {$t('examDetail.guestCtaButton')}</a>
+
+        {:else if $user.role === 'student'}
           {#if isScheduledLocked}
             <button class="btn-block btn-primary" disabled>🔒 {$t('examDetail.notOpenYetShort')}</button>
           {:else if !mySubmission}
@@ -825,7 +842,9 @@
         {/if}
 
         <p style="font-size:0.75rem; color:var(--muted); text-align:center; margin-top: -0.25rem">
-          {#if $user?.role === 'student'}
+          {#if !$user}
+            {$t('examDetail.guestNote')}
+          {:else if $user.role === 'student'}
             {$t('examDetail.creditDeductedNote')}
           {:else}
             {$t('examDetail.roleChangeNote')}
@@ -855,6 +874,10 @@
         </button>
       </div>
     </div>
+  {:else}
+    <p style="font-size:0.85rem; color:var(--muted); margin-bottom:1.5rem">
+      <a href={loginNext} style="color:var(--primary); font-weight:600; text-decoration:none">{$t('examDetail.loginToComment')}</a>
+    </p>
   {/if}
 
   {#if commentsLoading}

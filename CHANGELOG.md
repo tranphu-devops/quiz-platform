@@ -4,7 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [Unreleased] — 2026-08-06
+## [Unreleased] — 2026-08-26
+
+### Added
+- **Khách chưa đăng nhập giờ xem được kho đề (`/exams`) và trang chi tiết một đề** — trước đây cả hai đều bắt đăng nhập ngay lập tức, kể cả khi vào từ link chia sẻ hay từ trang đề thi công khai trên `novaquiz.net`. Trang chi tiết cho khách xem 3 câu hỏi đầu (đúng thứ tự, không kèm đáp án), số câu còn lại, và một nút "Đăng nhập để làm bài" — đăng nhập xong mới trừ credit và chấm điểm như cũ, không gì đổi với người đã có tài khoản.
+
+### Fixed
+- **Trang hồ sơ công khai (`/users/[id]`) không hiện được danh sách đề của người đó khi xem ở trạng thái chưa đăng nhập** — do API đề thi trước đây yêu cầu đăng nhập cho mọi request, kể cả khi lọc theo `creator_id` cho mục đích công khai.
 
 ### Added
 - **Trang quản trị có nút "Chuẩn hoá ảnh bìa"** (`/admin` → tab "Cài đặt upload") — resize/crop lại ảnh bìa của những đề thi được tạo trước khi tính năng chuẩn hoá 1024×560 JPEG ra mắt, giúp ảnh bìa hiển thị đồng đều ở mọi nơi thay vì lệch/méo với dữ liệu cũ. Ảnh đã đúng chuẩn được bỏ qua tự động; mỗi đề lỗi không làm dừng cả lượt chạy, hiện chi tiết lỗi kèm kết quả sau khi chạy xong.
