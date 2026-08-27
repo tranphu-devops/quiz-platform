@@ -97,6 +97,13 @@ export const submissionApi = {
       headers: { ...authHeaders(), ...(sessionId ? { 'x-exam-session': sessionId } : {}) },
       body: JSON.stringify({ answers })
     }),
+  // Anonymous one-shot grading — no session, no credits, nothing saved server-side.
+  guestSubmit: (exam_id, answers) =>
+    apiFetch(`${SUB_URL}/submissions/guest-submit`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ exam_id, answers })
+    }),
   getActive: (exam_id) =>
     apiFetch(`${SUB_URL}/submissions/active?exam_id=${exam_id}`, { headers: authHeaders(false) }),
   get: (id) => apiFetch(`${SUB_URL}/submissions/${id}`, { headers: authHeaders(false) }),

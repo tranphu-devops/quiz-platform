@@ -8,11 +8,11 @@ import { stripAnswer } from '../lib/publicShape.js'
 
 const LANGUAGES = ['vi', 'en', 'ja']
 
-// A logged-out visitor may read the catalog and a capped preview of a single
-// exam (growth: let people try the product before asking them to sign up).
-// Anything else in this file still requires a token — this only widens the
-// two read routes below, never create/update/delete.
-const GUEST_PREVIEW_LIMIT = 3
+// A logged-out visitor may read the catalog and an exam's questions — same
+// shape as a student, so they can actually take the exam (see
+// submission-service's POST /submissions/guest-submit) rather than hit a
+// login wall. Anything else in this file still requires a token — this only
+// widens the two read routes below, never create/update/delete.
 function isGuestReadablePath(req) {
   if (req.method !== 'GET') return false
   const path = req.url.split('?')[0]
@@ -69,7 +69,6 @@ const examListKeys = createdBy => [
 const examDetailKeys = (id, slug) => [
   `exam:detail:${id}:student:preview`,
   `exam:detail:${id}:student:full`,
-  `exam:detail:${id}:guest`,
   ...(slug ? [`public:exam:${slug}`] : [])
 ]
 
@@ -275,15 +274,14 @@ export default async function examRoutes(fastify) {
   })
 
   // GET /exams/:id
-  // ?preview=true → returns only first 3 questions (for detail page student view)
+  // ?preview=true → a single random sample question (detail page teaser)
+  // otherwise → the full question set (take page — same for a guest as for
+  // a logged-in student, so a guest can actually take the exam)
   fastify.get('/exams/:id', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id } = req.params
     const isGuest = !req.user
     const isPrivileged = !isGuest && (req.user.role === 'teacher' || req.user.role === 'admin')
-    // A guest never gets the query-param preview toggle: they always get the
-    // capped, deterministic teaser regardless of what `?preview=` says, so
-    // the full question bank can never be scraped by simply dropping it.
-    const isPreview = isGuest || req.query.preview === 'true'
+    const isPreview = req.query.preview === 'true'
 
     try {
       const examResult = await pool.query('SELECT * FROM exams WHERE id = $1 AND deleted_at IS NULL', [id])
@@ -303,21 +301,14 @@ export default async function examRoutes(fastify) {
         )
         const question_count = countResult.rows[0].n
 
-        // Guest teaser: first GUEST_PREVIEW_LIMIT questions in authored order
-        // (so it feels like "starting" the exam, not a random sample).
-        // Student preview (detail page, logged in): a single random sample.
-        // Full (teacher/take): all questions in authored order.
-        const questionsResult = isGuest
-          ? await pool.query(
-              'SELECT * FROM questions WHERE exam_id = $1 AND deleted_at IS NULL ORDER BY order_index LIMIT $2',
-              [id, GUEST_PREVIEW_LIMIT]
-            )
-          : await pool.query(
-              isPreview
-                ? `SELECT * FROM questions WHERE exam_id = $1 AND deleted_at IS NULL ORDER BY RANDOM() LIMIT 1`
-                : `SELECT * FROM questions WHERE exam_id = $1 AND deleted_at IS NULL ORDER BY order_index`,
-              [id]
-            )
+        // Preview (detail page, student or guest): a single random sample question.
+        // Full (teacher/take, and guest/student taking the exam): authored order.
+        const questionsResult = await pool.query(
+          isPreview
+            ? `SELECT * FROM questions WHERE exam_id = $1 AND deleted_at IS NULL ORDER BY RANDOM() LIMIT 1`
+            : `SELECT * FROM questions WHERE exam_id = $1 AND deleted_at IS NULL ORDER BY order_index`,
+          [id]
+        )
 
         let questions = questionsResult.rows
         if (!isPrivileged) {
@@ -340,8 +331,7 @@ export default async function examRoutes(fastify) {
       // teacher's exam. The privileged (teacher/admin) view is skipped — low
       // traffic, and it carries correct answers.
       if (!isPrivileged && exam.is_published) {
-        const key = isGuest ? `exam:detail:${id}:guest` : `exam:detail:${id}:student:${isPreview ? 'preview' : 'full'}`
-        return await getOrSet(key, 60, buildResponse)
+        return await getOrSet(`exam:detail:${id}:student:${isPreview ? 'preview' : 'full'}`, 60, buildResponse)
       }
       return await buildResponse()
     } catch (err) {

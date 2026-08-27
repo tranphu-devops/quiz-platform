@@ -267,9 +267,7 @@ export const en = {
     publish: 'Publish',
     creditDeductedNote: 'Credit is deducted as soon as you start the exam',
     roleChangeNote: "* A student's new role takes effect after logging in again",
-    guestPreviewNote: 'You’re trying out a preview — {n} more questions after you sign in',
-    guestCtaButton: 'Sign in to start',
-    guestNote: 'Free, no password — sign in with Google or email',
+    guestNote: 'Try it without signing in — your result just won’t be saved. Sign in to save your score, earn badges, and track progress.',
     loginToComment: 'Sign in to comment',
     commentsTitle: 'Comments ({n})',
     commentPlaceholder: 'Share your thoughts about this exam...',
@@ -400,6 +398,7 @@ export const en = {
     saveChanges: '✓ Save changes',
   },
   examTake: {
+    guestModeBanner: 'You’re trying this exam as a guest — your result won’t be saved',
     insufficientCreditMsg: 'Insufficient credit to take this exam',
     notOpenMsg: 'The exam is not open yet. Please check back later.',
     cannotStartNow: 'Cannot start the exam right now',
@@ -440,6 +439,8 @@ export const en = {
     confirmSubmit: 'Confirm submit',
   },
   examResult: {
+    guestSaveNote: 'This is a guest trial result — it hasn’t been saved.',
+    guestSaveLink: 'Sign in to save this result',
     reportCatQuestionWrong: 'Question wrong / unclear',
     reportCatAnswerWrong: 'Answer is wrong',
     reportCatImageIssue: 'Image broken / missing',
