@@ -4,10 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [Unreleased] — 2026-08-26
+## [Unreleased] — 2026-08-27
 
 ### Added
-- **Khách chưa đăng nhập giờ xem được kho đề (`/exams`) và trang chi tiết một đề** — trước đây cả hai đều bắt đăng nhập ngay lập tức, kể cả khi vào từ link chia sẻ hay từ trang đề thi công khai trên `novaquiz.net`. Trang chi tiết cho khách xem 3 câu hỏi đầu (đúng thứ tự, không kèm đáp án), số câu còn lại, và một nút "Đăng nhập để làm bài" — đăng nhập xong mới trừ credit và chấm điểm như cũ, không gì đổi với người đã có tài khoản.
+- **Khách chưa đăng nhập giờ làm được trọn vẹn một đề thi, không cần tài khoản** — trước đây `/exams`, trang chi tiết đề và trang làm bài đều bắt đăng nhập ngay lập tức, kể cả khi vào từ link chia sẻ hay từ trang đề thi công khai trên `novaquiz.net`. Giờ khách xem được kho đề, xem trước 1 câu mẫu ở trang chi tiết, rồi có thể bấm "Bắt đầu làm bài" để làm toàn bộ đề và xem điểm ngay — không trừ credit, không tính vào thống kê/lịch sử, làm lại bao nhiêu lần tuỳ ý. Trang kết quả có ghi chú "chưa được lưu lại" kèm nút đăng nhập để lưu điểm. Toàn bộ hành vi của người đã đăng nhập giữ nguyên như cũ.
 
 ### Fixed
 - **Trang hồ sơ công khai (`/users/[id]`) không hiện được danh sách đề của người đó khi xem ở trạng thái chưa đăng nhập** — do API đề thi trước đây yêu cầu đăng nhập cho mọi request, kể cả khi lọc theo `creator_id` cho mục đích công khai.

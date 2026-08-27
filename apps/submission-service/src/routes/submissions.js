@@ -133,7 +133,68 @@ async function gradeExpiredInline(submission, exam, log) {
 export default async function submissionRoutes(fastify) {
   fastify.addHook('preHandler', async (req, reply) => {
     if (req.url === '/health') return
+    // Anonymous trial: no account, no credits, nothing persisted — see the
+    // route below. Everything else in this file still requires a token.
+    if (req.url === '/submissions/guest-submit') return
     await verifyAuth(req, reply)
+  })
+
+  // POST /submissions/guest-submit
+  // Grades a one-shot anonymous attempt and returns the result directly —
+  // no row is written to `submissions`, no credits move, no badges/notify.
+  // This is deliberately not "the same as a real submission minus the DB
+  // write": it skips start's session/resume/max_attempts/cooldown machinery
+  // entirely, because none of that has meaning without an account to key it
+  // on. A guest can retake the same exam as many times as they like; the
+  // rate limit below is the only throttle.
+  fastify.post('/submissions/guest-submit', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const { exam_id, answers } = req.body ?? {}
+    if (!exam_id) {
+      return reply.status(400).send({ error: 'exam_id required', statusCode: 400 })
+    }
+    if (!isUuid(exam_id)) {
+      return reply.status(400).send({ error: 'exam_id không hợp lệ', statusCode: 400 })
+    }
+
+    try {
+      const examRes = await fetch(
+        `${process.env.EXAM_SERVICE_URL}/exams/internal/${exam_id}`,
+        { headers: { 'x-internal-key': process.env.INTERNAL_API_KEY } }
+      )
+      if (!examRes.ok) {
+        return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
+      }
+      const exam = await examRes.json()
+
+      // The internal endpoint doesn't filter by is_published/scheduled_at
+      // (its only other caller is the grader, acting on submissions that
+      // already exist) — this route is the first fully anonymous entry
+      // point, so it re-checks both explicitly.
+      if (!exam.is_published) {
+        return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
+      }
+      if (exam.scheduled_at && new Date(exam.scheduled_at) > new Date()) {
+        return reply.status(423).send({
+          error: 'Đề thi chưa mở. Vui lòng chờ đến thời gian quy định.',
+          scheduled_at: exam.scheduled_at,
+          statusCode: 423
+        })
+      }
+
+      const { score, total_points, percentage, results_detail } = buildGradeResult(exam, answers ?? {})
+      return reply.send({
+        guest: true,
+        exam_id,
+        score,
+        total_points,
+        percentage,
+        results_detail,
+        submitted_at: new Date().toISOString()
+      })
+    } catch (err) {
+      fastify.log.error(err)
+      return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
+    }
   })
 
   // POST /submissions/start

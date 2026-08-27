@@ -49,8 +49,7 @@
   const creditCost = $derived(exam?.credit_cost ?? 10)
   const hasEnoughCredits = $derived(myCredits === null || myCredits >= creditCost)
   // Backend already caps this to the right count per caller: 1 random
-  // question for a logged-in student, a fixed first-N teaser for a guest,
-  // the full set for teacher/admin.
+  // question for a student or guest teaser, the full set for teacher/admin.
   const previewQuestions = $derived(exam?.questions ?? [])
   const totalQuestions = $derived(exam?.question_count ?? exam?.questions?.length ?? 0)
   const hiddenCount = $derived(totalQuestions - previewQuestions.length)
@@ -58,15 +57,15 @@
   const loginNext = $derived(`/login?next=${encodeURIComponent($page.url.pathname)}`)
 
   onMount(async () => {
-    // Guests get a capped preview instead of being bounced to /login — this
-    // page is also where the "Vào thi" CTA on the public exam pages at
-    // novaquiz.net lands, so it's the first thing a stranger sees of the app.
+    // Guests get the same 1-question teaser as a student instead of being
+    // bounced to /login — this page is also where the "Vào thi" CTA on the
+    // public exam pages at novaquiz.net lands, so it's the first thing a
+    // stranger sees of the app. They can actually take the full exam from
+    // here without signing in (see /exams/[id]/take) — signing in only
+    // matters for saving the result afterward.
     const id = $page.params.id
     try {
-      // Students get preview (1 sample question); teachers/admins get full;
-      // guests get examApi.get() too — the backend itself detects "no token"
-      // and always returns the capped teaser regardless of query params.
-      const res = $user?.role === 'student'
+      const res = (!$user || $user.role === 'student')
         ? await examApi.getPreview(id)
         : await examApi.get(id)
       if (!res.ok) { error = $t('examDetail.notFound'); return }
@@ -744,8 +743,9 @@
           </div>
         </div>
 
-        <!-- Student status + credit check -->
-        {#if $user?.role === 'student'}
+        <!-- Student/guest status + credit check (myCredits stays null for a
+             guest, so the credit-row block below simply never renders for them) -->
+        {#if !$user || $user.role === 'student'}
           {#if mySubmission}
             <div class="status-strip {hasPassed ? 'passed' : 'failed'}">
               <span class="status-strip-icon">{hasPassed ? '🏆' : '📝'}</span>
@@ -775,18 +775,10 @@
           {/if}
         {/if}
 
-        <!-- Guest: invite to sign in instead of showing student/teacher UI -->
-        {#if !$user}
-          <div class="status-strip pending">
-            <span class="status-strip-icon">👀</span>
-            <span>{$t('examDetail.guestPreviewNote', { n: hiddenCount })}</span>
-          </div>
-        {/if}
-
         <hr class="divider" />
 
-        <!-- Scheduled countdown banner (student) -->
-        {#if $user?.role === 'student' && isScheduledLocked}
+        <!-- Scheduled countdown banner (student or guest) -->
+        {#if (!$user || $user.role === 'student') && isScheduledLocked}
           <div class="countdown-banner">
             <div class="countdown-banner-icon">🔒</div>
             <div class="countdown-banner-title">{$t('examDetail.notOpenYetTitle')}</div>
@@ -801,12 +793,10 @@
           </div>
         {/if}
 
-        <!-- Action buttons -->
-        {#if !$user}
-          <!-- Guest: no password, no commitment — just a reason to sign in -->
-          <a href={loginNext} class="btn-block btn-primary">▶ {$t('examDetail.guestCtaButton')}</a>
-
-        {:else if $user.role === 'student'}
+        <!-- Action buttons (guest: mySubmission is always null here since a
+             guest attempt is never fetched/tracked, so this always lands on
+             the "start exam" case below — same button a first-time student sees) -->
+        {#if !$user || $user.role === 'student'}
           {#if isScheduledLocked}
             <button class="btn-block btn-primary" disabled>🔒 {$t('examDetail.notOpenYetShort')}</button>
           {:else if !mySubmission}

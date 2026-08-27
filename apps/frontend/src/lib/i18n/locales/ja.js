@@ -267,9 +267,7 @@ export const ja = {
     publish: '公開する',
     creditDeductedNote: '試験開始と同時にクレジットが差し引かれます',
     roleChangeNote: '※ 受講生の新しいロールは再ログイン後に有効になります',
-    guestPreviewNote: '体験版を表示中 — ログインするとあと{n}問続けられます',
-    guestCtaButton: 'ログインして始める',
-    guestNote: '無料・パスワード不要 — Googleまたはメールでログイン',
+    guestNote: 'ログインなしで試せます — ただし結果は保存されません。スコアの保存・バッジ獲得・進捗管理にはログインが必要です。',
     loginToComment: 'コメントするにはログインしてください',
     commentsTitle: 'コメント（{n}件）',
     commentPlaceholder: 'この試験についての感想をシェアしましょう...',
@@ -400,6 +398,7 @@ export const ja = {
     saveChanges: '✓ 変更を保存',
   },
   examTake: {
+    guestModeBanner: 'ゲストとして試験を受けています — 結果は保存されません',
     insufficientCreditMsg: 'この試験を受けるにはクレジットが不足しています',
     notOpenMsg: 'この試験はまだ公開されていません。後でもう一度お試しください。',
     cannotStartNow: '現在この試験を開始できません',
@@ -440,6 +439,8 @@ export const ja = {
     confirmSubmit: '提出を確認',
   },
   examResult: {
+    guestSaveNote: 'これはゲスト体験の結果です — 保存されていません。',
+    guestSaveLink: 'ログインしてこの結果を保存',
     reportCatQuestionWrong: '問題が誤り／分かりにくい',
     reportCatAnswerWrong: '解答が誤っている',
     reportCatImageIssue: '画像に問題がある／欠落',

@@ -267,9 +267,7 @@ export const vi = {
     publish: 'Xuất bản',
     creditDeductedNote: 'Credit được trừ ngay khi bắt đầu làm bài',
     roleChangeNote: '* Role mới của student có hiệu lực sau khi đăng nhập lại',
-    guestPreviewNote: 'Bạn đang xem thử {n} câu còn lại — đăng nhập để làm tiếp',
-    guestCtaButton: 'Đăng nhập để làm bài',
-    guestNote: 'Miễn phí, không cần mật khẩu — đăng nhập bằng Google hoặc email',
+    guestNote: 'Làm thử không cần đăng nhập — nhưng kết quả sẽ không được lưu lại. Đăng nhập để lưu điểm, nhận huy hiệu và theo dõi tiến độ.',
     loginToComment: 'Đăng nhập để bình luận',
     commentsTitle: 'Bình luận ({n})',
     commentPlaceholder: 'Chia sẻ suy nghĩ của bạn về đề thi này...',
@@ -400,6 +398,7 @@ export const vi = {
     saveChanges: '✓ Lưu thay đổi',
   },
   examTake: {
+    guestModeBanner: 'Bạn đang làm thử ở chế độ khách — kết quả sẽ không được lưu lại',
     insufficientCreditMsg: 'Không đủ credit để làm bài này',
     notOpenMsg: 'Đề thi chưa mở. Vui lòng quay lại sau.',
     cannotStartNow: 'Không thể bắt đầu bài thi lúc này',
@@ -440,6 +439,8 @@ export const vi = {
     confirmSubmit: 'Xác nhận nộp',
   },
   examResult: {
+    guestSaveNote: 'Đây là kết quả làm thử ở chế độ khách, chưa được lưu lại.',
+    guestSaveLink: 'Đăng nhập để lưu kết quả này',
     reportCatQuestionWrong: 'Câu hỏi sai / khó hiểu',
     reportCatAnswerWrong: 'Đáp án sai',
     reportCatImageIssue: 'Hình ảnh lỗi / thiếu',

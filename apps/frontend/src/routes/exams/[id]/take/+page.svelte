@@ -122,7 +122,11 @@
   onDestroy(() => { clearInterval(timer); clearInterval(heartbeatTimer) })
 
   onMount(async () => {
-    if (!$user) { goto('/login'); return }
+    // Guests fall through every `$user?.role === 'student'` gate below (no
+    // resume/credit/session machinery applies without an account) and land
+    // on the plain _beginExam() call at the end — same path teacher/admin
+    // preview already used. submitExam() below is what actually grades a
+    // guest's attempt, via the anonymous endpoint.
     const id = $page.params.id
     _examId = id
     try {
@@ -130,7 +134,7 @@
       if (!res.ok) { error = $t('examDetail.notFound'); loading = false; return }
       exam = randomizeExam(await res.json())
 
-      if ($user.role === 'student' && !exam.allow_retake) {
+      if ($user?.role === 'student' && !exam.allow_retake) {
         const subRes = await submissionApi.list({ examId: id })
         if (subRes.ok) {
           const subs = await subRes.json()
@@ -144,7 +148,7 @@
       const saved = loadSession(id)
 
       // Same-device resume: localStorage has a submission_id — verify it server-side
-      if (saved?.submission_id && $user.role === 'student') {
+      if (saved?.submission_id && $user?.role === 'student') {
         const subRes = await submissionApi.get(saved.submission_id)
         if (subRes.ok) {
           const sub = await subRes.json()
@@ -167,7 +171,7 @@
 
       // Cross-device / re-login resume: no localStorage — check server for an active submission.
       // Handles the case where user lost the tab, cleared browser data, or switched device.
-      if ($user.role === 'student') {
+      if ($user?.role === 'student') {
         const activeRes = await submissionApi.getActive(id).catch(() => null)
         if (activeRes?.status === 423) {
           // Another device is actively taking this exam
@@ -191,7 +195,7 @@
       // is charged. /start is idempotent: if an in_progress row still exists it
       // resumes without charging again (credit_cost: 0). Never trust a localStorage
       // flag to skip the charge — that was the credit-leak path.
-      if ($user.role === 'student') {
+      if ($user?.role === 'student') {
         const profileRes = await userApi.getProfile($user.id).catch(() => null)
         if (profileRes?.ok) {
           const p = await profileRes.json()
@@ -290,6 +294,25 @@
 
   async function submitExam() {
     showConfirm = false
+
+    // Guest: no account, no submissionId — grade via the anonymous endpoint
+    // and hand the result to the result page through sessionStorage, since
+    // there's no server-side row to fetch it back by.
+    if (!$user) {
+      clearInterval(timer); clearInterval(heartbeatTimer); submitting = true
+      try {
+        const res = await submissionApi.guestSubmit(exam.id, answers)
+        const data = await res.json()
+        if (!res.ok) { error = data.error ?? $t('examTake.submitError'); submitting = false; return }
+        clearSession(exam.id)
+        try { sessionStorage.setItem(`guest-result-${exam.id}`, JSON.stringify(data)) } catch {}
+        goto(`/exams/${exam.id}/result?submissionId=guest`, { replaceState: true })
+      } catch {
+        error = $t('examTake.submitError'); submitting = false
+      }
+      return
+    }
+
     // No active submission means the credit/start gate never ran — never grade for free.
     if (!submissionId) {
       error = $t('examTake.invalidSession')
@@ -319,6 +342,14 @@
 </script>
 
 <style>
+  /* ── Guest mode banner ──────────────────────────────────────────────────────*/
+  .guest-banner {
+    background: var(--primary-light); color: var(--primary-dark, var(--primary));
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 0.6rem 1rem; font-size: 0.85rem; font-weight: 600;
+    text-align: center; margin-bottom: 1rem;
+  }
+
   /* ── Top bar ─────────────────────────────────────────────────────────────────*/
   .top-bar {
     position: sticky; top: 0; z-index: 30;
@@ -713,6 +744,10 @@
     <span class="timer {isUrgent ? 'urgent' : ''}">{formatTime(timeLeft)}</span>
   </div>
 </div>
+
+{#if !$user}
+  <div class="guest-banner">👀 {$t('examTake.guestModeBanner')}</div>
+{/if}
 
 <div class="progress-wrap">
   <div class="progress-meta">

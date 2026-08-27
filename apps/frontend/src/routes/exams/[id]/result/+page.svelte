@@ -11,6 +11,7 @@
   let exam = $state(null)
   let loading = $state(true)
   let error = $state('')
+  let isGuestResult = $state(false)
 
   // ── Report a problem ──────────────────────────────────────────────────────
   const REPORT_CATEGORIES = $derived([
@@ -48,9 +49,29 @@
   }
 
   onMount(async () => {
-    if (!$user) { goto('/login'); return }
     const submissionId = $page.url.searchParams.get('submissionId')
     if (!submissionId) { goto('/exams'); return }
+
+    // Guest result: never persisted server-side — handed off via
+    // sessionStorage from the take page's submitExam(). Lost on refresh from
+    // a different tab or after the tab closes; that's the point (not recorded).
+    if (submissionId === 'guest') {
+      isGuestResult = true
+      try {
+        const raw = sessionStorage.getItem(`guest-result-${$page.params.id}`)
+        if (!raw) { error = $t('examResult.notFound'); return }
+        submission = JSON.parse(raw)
+        const examRes = await examApi.get(submission.exam_id)
+        if (examRes.ok) exam = await examRes.json()
+      } catch {
+        error = $t('examResult.loadFailed')
+      } finally {
+        loading = false
+      }
+      return
+    }
+
+    if (!$user) { goto('/login'); return }
     try {
       const res = await submissionApi.get(submissionId)
       if (!res.ok) { error = $t('examResult.notFound'); return }
@@ -139,6 +160,14 @@
     margin-bottom: 1.5rem; line-height: 1.5;
   }
   .fail-banner strong { display: block; font-size: 0.95rem; margin-bottom: 0.25rem; }
+
+  .guest-save-banner {
+    background: var(--primary-light); border: 1.5px solid var(--border);
+    border-radius: 12px; padding: 0.75rem 1.25rem;
+    color: var(--text); font-weight: 500; font-size: 0.88rem;
+    margin-bottom: 1.5rem; line-height: 1.5;
+  }
+  .guest-save-banner a { color: var(--primary); font-weight: 700; text-decoration: underline; margin-left: 0.3rem; }
 
   .actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
   .btn-primary {
@@ -295,6 +324,13 @@
     </div>
   {/if}
 
+  {#if isGuestResult}
+    <div class="guest-save-banner">
+      💾 {$t('examResult.guestSaveNote')}
+      <a href={`/login?next=${encodeURIComponent($page.url.pathname)}`}>{$t('examResult.guestSaveLink')}</a>
+    </div>
+  {/if}
+
   <div class="actions">
     {#if hasPassed}
       <a href="/exams/{submission.exam_id}" class="btn-outline">← {$t('examResult.backToExam')}</a>
@@ -305,9 +341,11 @@
     {/if}
   </div>
 
+  {#if !isGuestResult}
   <button class="report-link" onclick={() => { showReport = true; reportDone = false; reportError = '' }}>
     ⚠ {$t('examResult.reportThisExam')}
   </button>
+  {/if}
 </div>
 
 {#if showReport}
