@@ -640,11 +640,18 @@
 
   /* ── Mobile ───────────────────────────────────────────────────────────────────*/
   @media (max-width: 720px) {
-    .top-bar { margin: -1.25rem -1rem 1.25rem; top: var(--mobile-bar-h, 56px); }
     .layout { grid-template-columns: 1fr; }
     .sidebar { position: static; }
     .q-grid { grid-template-columns: repeat(8, 1fr); overflow-x: auto; }
     .q-dot { min-width: 36px; }
+  }
+
+  /* The bar is full-bleed: its negative margin has to cancel the page
+     container's padding *exactly* or the page scrolls sideways. That padding
+     changes at 768px (main / .no-auth-app in +layout.svelte), which is why
+     this has its own breakpoint instead of joining the 720px block above. */
+  @media (max-width: 768px) {
+    .top-bar { margin: -1.25rem -1rem 1.25rem; top: var(--mobile-bar-h, 56px); }
   }
 
   /* ── Session conflict overlay ────────────────────────────────────────────────*/
@@ -832,7 +839,10 @@
   </div>
 </div>
 
-<!-- Floating scratch note: one note for the whole exam, hidden by default -->
+<!-- Floating scratch note: one note for the whole exam, hidden by default.
+     Not offered to guests — a trial run is short and the note is in-memory
+     only, so it would be one more control to explain for no real payoff. -->
+{#if $user}
 <div class="note-widget">
   {#if showNote}
     <div class="note-panel">
@@ -852,6 +862,7 @@
     {#if showNote}✕ {$t('examTake.hideNote')}{:else}📝 {$t('examTake.noteTitle')}{#if note.trim()}<span class="note-fab-dot"></span>{/if}{/if}
   </button>
 </div>
+{/if}
 {/if}
 
 {#if showConfirm}

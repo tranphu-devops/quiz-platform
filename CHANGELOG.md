@@ -8,8 +8,10 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - **Khách chưa đăng nhập giờ làm được trọn vẹn một đề thi, không cần tài khoản** — trước đây `/exams`, trang chi tiết đề và trang làm bài đều bắt đăng nhập ngay lập tức, kể cả khi vào từ link chia sẻ hay từ trang đề thi công khai trên `novaquiz.net`. Giờ khách xem được kho đề, xem trước 1 câu mẫu ở trang chi tiết, rồi có thể bấm "Bắt đầu làm bài" để làm toàn bộ đề và xem điểm ngay — không trừ credit, không tính vào thống kê/lịch sử, làm lại bao nhiêu lần tuỳ ý. Trang kết quả có ghi chú "chưa được lưu lại" kèm nút đăng nhập để lưu điểm. Toàn bộ hành vi của người đã đăng nhập giữ nguyên như cũ.
+  - Màn làm bài ở chế độ khách được gọn lại cho đúng một việc: bỏ ô ghi chú nháp và bỏ ô chọn ngôn ngữ (đề đã ở sẵn một ngôn ngữ, đổi giữa chừng không có ý nghĩa).
 
 ### Fixed
+- **Các trang xem ở trạng thái chưa đăng nhập bị tràn ngang, nội dung sát mép màn hình** — khung bao ngoài dành cho khách không có lề trong như khung của người đã đăng nhập, nên thanh tiêu đề khi làm bài (vốn cố ý tràn hết chiều ngang) bị đẩy quá mép và sinh thanh cuộn ngang, còn kho đề/trang chi tiết thì dính sát viền. Nay hai khung dùng chung một mức lề.
 - **Trang hồ sơ công khai (`/users/[id]`) không hiện được danh sách đề của người đó khi xem ở trạng thái chưa đăng nhập** — do API đề thi trước đây yêu cầu đăng nhập cho mọi request, kể cả khi lọc theo `creator_id` cho mục đích công khai.
 
 ### Added
