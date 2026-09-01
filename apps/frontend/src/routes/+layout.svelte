@@ -79,6 +79,19 @@
 
   let isBanned = $derived($user?.role === 'banned')
 
+  // The unauthenticated wrapper at the bottom of this file serves two very
+  // different kinds of page: the auth screens, which lay themselves out
+  // full-bleed, and the ordinary app pages a guest can now reach (exam
+  // catalog/detail/take/result). The latter are written against <main>'s
+  // padding — most visibly the take page's sticky bar, which cancels that
+  // padding with a negative margin and pushes the page sideways without it.
+  const GUEST_BARE_ROUTES = ['/login', '/register', '/auth-callback']
+  let guestBare = $derived(GUEST_BARE_ROUTES.includes($page.route.id ?? ''))
+  // Taking an exam is a single-task screen: nothing should float over the
+  // timer, and the language picker has nothing to offer mid-exam — the
+  // questions are already in one language.
+  let guestImmersive = $derived($page.route.id === '/exams/[id]/take')
+
   $effect(() => {
     if (isBanned) clearAuth()
   })
@@ -454,7 +467,14 @@
     min-height: 100vh;
     background: var(--bg);
     position: relative;
+    /* This branch renders no app bar, so sticky elements inside pages offset
+       by nothing (see .top-bar in exams/[id]/take). */
+    --mobile-bar-h: 0px;
   }
+  /* App pages reached as a guest keep <main>'s padding contract — page CSS is
+     written against it, and a full-bleed element that cancels the wrong
+     padding overflows the viewport. Keep the two in sync. */
+  .no-auth-app { padding: 2rem 1.5rem; }
   .no-auth-lang {
     position: absolute;
     top: 1rem;
@@ -510,6 +530,7 @@
   @media (max-width: 768px) {
     .app-mobile-bar { display: flex; }
     main { padding: 1.25rem 1rem; }
+    .no-auth-app { padding: 1.25rem 1rem; }
   }
 </style>
 
@@ -583,10 +604,12 @@
 
 {:else}
   <!-- Unauthenticated: full-screen, no sidebar -->
-  <div class="no-auth">
-    <div class="no-auth-lang">
-      <LanguageSwitcher />
-    </div>
+  <div class="no-auth" class:no-auth-app={!guestBare}>
+    {#if !guestImmersive}
+      <div class="no-auth-lang">
+        <LanguageSwitcher />
+      </div>
+    {/if}
     {@render children()}
   </div>
 {/if}
