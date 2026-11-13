@@ -4,6 +4,7 @@ import { pool } from '../db.js'
 import { verifyAuth } from '../middleware/auth.js'
 import { getOrSet, invalidate } from '../lib/cache.js'
 import { notify } from '../lib/notify.js'
+import { isInternalRequest } from '../lib/internalKey.js'
 
 // Cached at first call — deriving public key from private is deterministic
 let _backendPublicKey = null
@@ -14,6 +15,28 @@ function backendPublicKey() {
   ecdh.setPrivateKey(Buffer.from(process.env.API_ENCRYPTION_KEY, 'base64'))
   _backendPublicKey = ecdh.getPublicKey('base64')
   return _backendPublicKey
+}
+
+// Every key PUT /admin/settings may write, with the shape its readers assume
+// (most are cast with ::int or Number() at use — a stray string there turns
+// into a 500 on an unrelated route). Add new settings here.
+const nonNegInt = (v) => /^\d{1,9}$/.test(v)
+const positiveNumber = (v) => /^\d{1,6}(\.\d{1,3})?$/.test(v) && Number(v) > 0
+const SETTING_RULES = {
+  default_credits: nonNegInt,
+  default_exam_cost: nonNegInt,
+  teacher_upgrade_cost: nonNegInt,
+  referral_reward_credits: nonNegInt,
+  referral_signup_bonus_credits: nonNegInt,
+  upload_max_size_mb: positiveNumber,
+  upload_allowed_types: (v) => v.length > 0 && v.split(',').every(s => /^image\/[a-z0-9.+-]+$/.test(s.trim())),
+  ai_generation_enabled: (v) => v === 'true' || v === 'false',
+  ai_generation_credit_cost: nonNegInt,
+  ai_generation_max_file_size_mb: positiveNumber,
+  ai_generation_max_questions: (v) => nonNegInt(v) && Number(v) >= 1,
+  // '' = fall back to generator-service's built-in default
+  ai_generation_default_model: (v) => v === '' || (v.length < 100 && v.includes('/') && !/\s/.test(v)),
+  ai_generation_pdf_engine: (v) => ['native', 'cloudflare-ai', 'mistral-ocr', 'firecrawl'].includes(v)
 }
 
 // Linear-time shape check (no backtracking regex) — avoids ReDoS on crafted input.
@@ -91,8 +114,7 @@ async function applyReferral(fastify, newUserId, rawCode, referredName) {
 export default async function userRoutes(fastify) {
   // Internal endpoint — no JWT auth, uses x-internal-key
   fastify.post('/internal/credits/deduct', { config: { rateLimit: { max: 100, timeWindow: '1 minute' } } }, async (req, reply) => {
-    const key = req.headers['x-internal-key']
-    if (!key || key !== process.env.INTERNAL_API_KEY) {
+    if (!isInternalRequest(req)) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
     const { user_id, amount } = req.body ?? {}
@@ -218,7 +240,10 @@ export default async function userRoutes(fastify) {
       if (result.rows.length === 0) {
         return reply.status(404).send({ error: 'User not found', statusCode: 404 })
       }
-      return result.rows[0]
+      if (req.user.id === id || req.user.role === 'admin') return result.rows[0]
+      // Anyone else gets what the public profile page already shows.
+      const { credits, birth_year, gender, ...publicFields } = result.rows[0]
+      return publicFields
     } catch (err) {
       fastify.log.error(err)
       return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
@@ -239,6 +264,12 @@ export default async function userRoutes(fastify) {
     }
 
     try {
+      // Only columns present in the body are overwritten on update. Before,
+      // any field left out was reset to NULL — a client saving just a name
+      // wiped the bio and every social link.
+      const body = req.body ?? {}
+      const optional = { bio, birth_year, gender, interests, facebook_url, zalo, tiktok_url, youtube_url, instagram_url, linkedin_url, website_url }
+      const updates = Object.keys(optional).filter(k => k in body).map(k => `${k} = EXCLUDED.${k}`)
       const result = await pool.query(
         `INSERT INTO profiles (id, full_name, avatar_url, role, credits, bio, birth_year, gender, interests,
            facebook_url, zalo, tiktok_url, youtube_url, instagram_url, linkedin_url, website_url, updated_at)
@@ -248,17 +279,7 @@ export default async function userRoutes(fastify) {
          ON CONFLICT (id) DO UPDATE
          SET full_name      = COALESCE(EXCLUDED.full_name, profiles.full_name),
              avatar_url     = COALESCE(EXCLUDED.avatar_url, profiles.avatar_url),
-             bio            = EXCLUDED.bio,
-             birth_year     = EXCLUDED.birth_year,
-             gender         = EXCLUDED.gender,
-             interests      = EXCLUDED.interests,
-             facebook_url   = EXCLUDED.facebook_url,
-             zalo           = EXCLUDED.zalo,
-             tiktok_url     = EXCLUDED.tiktok_url,
-             youtube_url    = EXCLUDED.youtube_url,
-             instagram_url  = EXCLUDED.instagram_url,
-             linkedin_url   = EXCLUDED.linkedin_url,
-             website_url    = EXCLUDED.website_url,
+             ${updates.map(u => `${u},`).join('\n             ')}
              updated_at     = NOW()
          RETURNING *, (xmax = 0) AS was_inserted`,
         [id, full_name ?? null, avatar_url ?? null,
@@ -584,6 +605,15 @@ export default async function userRoutes(fastify) {
   fastify.put('/admin/settings', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     if (req.user.role !== 'admin') return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     const settings = req.body ?? {}
+    for (const [key, value] of Object.entries(settings)) {
+      const check = SETTING_RULES[key]
+      if (!check) {
+        return reply.status(400).send({ error: `Unknown setting: ${key}`, statusCode: 400 })
+      }
+      if (!check(String(value))) {
+        return reply.status(400).send({ error: `Invalid value for ${key}`, statusCode: 400 })
+      }
+    }
     for (const [key, value] of Object.entries(settings)) {
       await pool.query(
         `INSERT INTO admin_settings (key, value, updated_at) VALUES ($1, $2, NOW())

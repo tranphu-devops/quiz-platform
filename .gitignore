@@ -5,3 +5,6 @@ build/
 .svelte-kit/
 *.log
 .DS_Store
+
+# deploy.sh pre-update database snapshots
+backups/

@@ -5,6 +5,8 @@ import { defineAbilityFor } from '../lib/ability.js'
 import { getOrSet, invalidate } from '../lib/cache.js'
 import { sanitizeDescription } from '../lib/sanitizeDescription.js'
 import { stripAnswer } from '../lib/publicShape.js'
+import { normalizeAnswerKey } from '../lib/answerKey.js'
+import { isInternalRequest } from '../lib/internalKey.js'
 
 const LANGUAGES = ['vi', 'en', 'ja']
 
@@ -95,8 +97,7 @@ export default async function examRoutes(fastify) {
 
   // Internal endpoint for submission-service grading (not via Nginx)
   fastify.get('/exams/internal/:id', { config: { rateLimit: { max: 100, timeWindow: '1 minute' } } }, async (req, reply) => {
-    const internalKey = req.headers['x-internal-key']
-    if (!internalKey || internalKey !== process.env.INTERNAL_API_KEY) {
+    if (!isInternalRequest(req)) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
 
@@ -122,8 +123,7 @@ export default async function examRoutes(fastify) {
   // Internal endpoint: list exams with a cover image, for the admin cover-image
   // normalization backfill (user-service owns S3/sharp, exam-service owns the row)
   fastify.get('/exams/internal/covers', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
-    const internalKey = req.headers['x-internal-key']
-    if (!internalKey || internalKey !== process.env.INTERNAL_API_KEY) {
+    if (!isInternalRequest(req)) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
 
@@ -140,8 +140,7 @@ export default async function examRoutes(fastify) {
 
   // Internal endpoint: write back a normalized cover_image_url from the backfill above
   fastify.patch('/exams/internal/:id/cover-image', { config: { rateLimit: { max: 200, timeWindow: '1 minute' } } }, async (req, reply) => {
-    const internalKey = req.headers['x-internal-key']
-    if (!internalKey || internalKey !== process.env.INTERNAL_API_KEY) {
+    if (!isInternalRequest(req)) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
 
@@ -436,11 +435,14 @@ export default async function examRoutes(fastify) {
   fastify.post('/exams/:id/questions', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id } = req.params
     const { content, image_url = null, options, correct_answer: ca, points = 1.0, order_index = 0, explanation = null, question_type = 'single' } = req.body ?? {}
-    const correct_answer = Array.isArray(ca) ? [...ca].sort().join(',') : ca
-
-    if (!content || !options || !correct_answer) {
+    if (!content || !options || ca == null || ca === '') {
       return reply.status(400).send({ error: 'content, options, correct_answer required', statusCode: 400 })
     }
+    const key = normalizeAnswerKey({ correct_answer: ca, options, question_type })
+    if (key.error) {
+      return reply.status(400).send({ error: key.error, statusCode: 400 })
+    }
+    const correct_answer = key.correct_answer
 
     try {
       const examResult = await pool.query('SELECT * FROM exams WHERE id = $1 AND deleted_at IS NULL', [id])
@@ -470,7 +472,7 @@ export default async function examRoutes(fastify) {
   fastify.put('/exams/:id/questions/:qid', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id, qid } = req.params
     const { content, image_url, options, correct_answer: ca2, points, order_index, explanation, question_type } = req.body ?? {}
-    const correct_answer = ca2 != null ? (Array.isArray(ca2) ? [...ca2].sort().join(',') : ca2) : undefined
+    let correct_answer
 
     try {
       const examResult = await pool.query('SELECT * FROM exams WHERE id = $1 AND deleted_at IS NULL', [id])
@@ -480,6 +482,28 @@ export default async function examRoutes(fastify) {
 
       if (req.ability.cannot('update', subject('Exam', examResult.rows[0]))) {
         return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+      }
+
+      // Key, options and type are validated together against what the row
+      // will hold after this update — changing any one of them can orphan
+      // the answer key (e.g. removing the option it points at).
+      if (ca2 != null || options || question_type) {
+        const current = await pool.query(
+          'SELECT options, correct_answer, question_type FROM questions WHERE id = $1 AND exam_id = $2 AND deleted_at IS NULL',
+          [qid, id]
+        )
+        if (current.rows.length === 0) {
+          return reply.status(404).send({ error: 'Question not found', statusCode: 404 })
+        }
+        const key = normalizeAnswerKey({
+          correct_answer: ca2 ?? current.rows[0].correct_answer,
+          options: options ?? current.rows[0].options,
+          question_type: question_type ?? current.rows[0].question_type ?? 'single'
+        })
+        if (key.error) {
+          return reply.status(400).send({ error: key.error, statusCode: 400 })
+        }
+        correct_answer = key.correct_answer
       }
 
       const result = await pool.query(

@@ -7,10 +7,28 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] — 2026-08-27
 
 ### Added
+- **Bộ test tự động đầu tiên cho backend** (`npm test` trong exam/submission/generator/notification/user-service) — hơn 100 test, không cần DB/Docker: chấm điểm, phân quyền, auth, sanitize HTML, ẩn đáp án, mã hoá LLM key, chuẩn hoá output LLM, render email, chuẩn hoá ảnh. Chạy trên mọi PR và là bước bắt buộc trước khi build image — test đỏ thì không deploy.
+- **`deploy.sh --update` tự chụp snapshot database** (`pg_dump`, giữ 7 bản gần nhất trong `backups/`) trước khi chạy migration.
+- **Healthcheck cho 6 service backend** trong `docker-compose.yml` — `docker compose ps` giờ cho biết service nào thực sự trả lời được.
 - **Khách chưa đăng nhập giờ làm được trọn vẹn một đề thi, không cần tài khoản** — trước đây `/exams`, trang chi tiết đề và trang làm bài đều bắt đăng nhập ngay lập tức, kể cả khi vào từ link chia sẻ hay từ trang đề thi công khai trên `novaquiz.net`. Giờ khách xem được kho đề, xem trước 1 câu mẫu ở trang chi tiết, rồi có thể bấm "Bắt đầu làm bài" để làm toàn bộ đề và xem điểm ngay — không trừ credit, không tính vào thống kê/lịch sử, làm lại bao nhiêu lần tuỳ ý. Trang kết quả có ghi chú "chưa được lưu lại" kèm nút đăng nhập để lưu điểm. Toàn bộ hành vi của người đã đăng nhập giữ nguyên như cũ.
   - Màn làm bài ở chế độ khách được gọn lại cho đúng một việc: bỏ ô ghi chú nháp và bỏ ô chọn ngôn ngữ (đề đã ở sẵn một ngôn ngữ, đổi giữa chừng không có ý nghĩa).
 
+### Changed
+- **Quyền (role) của người dùng được đọc từ hồ sơ trong database ở mọi request**, không còn lấy từ token đăng nhập. Nâng cấp lên teacher, đổi role hay khoá tài khoản có hiệu lực ngay, không cần đăng xuất/đăng nhập lại. ⚠️ Trước khi deploy nên đối chiếu `profiles.role` với `auth.users.raw_user_meta_data->>'role'` (xem mô tả PR).
+- **Phần xem lại đáp án chỉ được trả về khi bài làm đã đạt và đề có bật "hiện giải thích"** — đúng như trang kết quả vẫn hiển thị, nhưng nay áp dụng ngay tại API (cả bài của khách). Giáo viên chỉ xem được bài nộp của đề do mình tạo.
+- **Nộp bài sau khi hết giờ** (quá 30 giây): hệ thống chấm theo đáp án đã lưu tự động gần nhất, không nhận đáp án gửi kèm. Bài hết giờ được chấm trong vòng 1 phút (trước là 15 phút).
+- **Teacher API kiểm tra đáp án chặt hơn**: `correct_answer` phải là key có trong `options`; câu `single` phải có đúng 1 đáp án; dạng chuỗi `"C,A"` được chuẩn hoá thành `"A,C"`. Request sai trả 400 thay vì lưu một câu không ai trả lời đúng được. API key chỉ còn dùng được cho exam-service và `POST /api/users/upload`.
+- **Trang cài đặt admin từ chối giá trị không hợp lệ** (chữ ở ô số, key lạ) thay vì lưu vào rồi gây lỗi ở nơi khác.
+- `sharp` 0.33 → 0.35 (bản vá bảo mật).
+
 ### Fixed
+- **Bấm "Bắt đầu làm bài" hai lần liên tiếp có thể bị trừ credit hai lần** và tạo hai lượt làm song song; nay lượt thứ hai bị từ chối trước khi trừ credit. Nếu trừ credit thất bại thì lượt làm cũng không được tạo.
+- **Đề nháp (chưa xuất bản) có thể bị bắt đầu làm** nếu biết đường dẫn.
+- **Khoá "một thiết bị" khi làm bài có thể bị bỏ qua** khi request không kèm mã phiên.
+- **Lưu hồ sơ chỉ với một vài trường làm mất các trường còn lại** (tiểu sử, link mạng xã hội) — nay chỉ ghi đè trường được gửi lên.
+- **Xem hồ sơ người khác qua API trả về cả số credit, năm sinh, giới tính** — nay chỉ chủ tài khoản và admin thấy.
+- Đề AI sinh ra câu `single` có nhiều đáp án đúng nay bị từ chối ngay ở bước kiểm tra thay vì tạo ra câu hỏi lỗi.
+- Tài khoản mẫu (`seed.sql`) có sẵn hồ sơ đúng role.
 - **Các trang xem ở trạng thái chưa đăng nhập bị tràn ngang, nội dung sát mép màn hình** — khung bao ngoài dành cho khách không có lề trong như khung của người đã đăng nhập, nên thanh tiêu đề khi làm bài (vốn cố ý tràn hết chiều ngang) bị đẩy quá mép và sinh thanh cuộn ngang, còn kho đề/trang chi tiết thì dính sát viền. Nay hai khung dùng chung một mức lề.
 - **Trang hồ sơ công khai (`/users/[id]`) không hiện được danh sách đề của người đó khi xem ở trạng thái chưa đăng nhập** — do API đề thi trước đây yêu cầu đăng nhập cho mọi request, kể cả khi lọc theo `creator_id` cho mục đích công khai.
 

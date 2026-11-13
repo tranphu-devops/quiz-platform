@@ -10,6 +10,7 @@ import adminImageRoutes from './routes/admin-images.js'
 import adminStorageRoutes from './routes/admin-storage.js'
 import { encryptOnSend } from './lib/encryptResponse.js'
 import { pool } from './db.js'
+import { isInternalRequest } from './lib/internalKey.js'
 
 const fastify = Fastify({ logger: true, trustProxy: true })
 
@@ -18,7 +19,7 @@ await fastify.register(multipart, { limits: { fileSize: 10 * 1024 * 1024, files:
 await fastify.register(rateLimit, {
   max: 300,
   timeWindow: '1 minute',
-  allowList: (req) => req.headers['x-internal-key'] === process.env.INTERNAL_API_KEY,
+  allowList: isInternalRequest,
   errorResponseBuilder: (req, context) => ({
     statusCode: 429,
     error: 'Too Many Requests',

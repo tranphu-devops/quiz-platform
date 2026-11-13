@@ -1,6 +1,8 @@
 import { notify } from './lib/notify.js'
 
-function isCorrect(q, studentAnswer) {
+export function isCorrect(q, studentAnswer) {
+  // Keep in step with submission-service's isCorrect (a test compares them).
+  if (!q.correct_answer) return false
   if (q.question_type === 'multiple') {
     const sorted = Array.isArray(studentAnswer) ? [...studentAnswer].sort().join(',') : ''
     return sorted === q.correct_answer
@@ -69,7 +71,7 @@ async function awardBadgesIfEarned(pool, userId, examId) {
 
 export async function runAutoGrade(pool) {
   const { rows } = await pool.query(
-    `SELECT * FROM submissions WHERE status = 'in_progress' AND expires_at < NOW()`
+    `SELECT * FROM submissions WHERE status = 'in_progress' AND expires_at < NOW() ORDER BY expires_at LIMIT 200`
   )
   if (!rows.length) return 0
 

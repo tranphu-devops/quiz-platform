@@ -8,6 +8,7 @@ import adminRoutes from './routes/admin.js'
 import contactRoutes from './routes/contact.js'
 import { tick } from './lib/worker.js'
 import { pool } from './db.js'
+import { isInternalRequest } from './lib/internalKey.js'
 
 const fastify = Fastify({ logger: true, trustProxy: true })
 
@@ -15,7 +16,7 @@ await fastify.register(cors, { origin: true })
 await fastify.register(rateLimit, {
   max: 300,
   timeWindow: '1 minute',
-  allowList: (req) => req.headers['x-internal-key'] === process.env.INTERNAL_API_KEY,
+  allowList: isInternalRequest,
   errorResponseBuilder: (req, context) => ({
     statusCode: 429,
     error: 'Too Many Requests',

@@ -2,6 +2,7 @@ import { subject } from '@casl/ability'
 import { pool } from '../db.js'
 import { verifyAuth } from '../middleware/auth.js'
 import { getOrSet, invalidate } from '../lib/cache.js'
+import { isInternalRequest } from '../lib/internalKey.js'
 
 // Cache keys for GET /collections list variants that could include a given collection
 const collectionListKeys = createdBy => [
@@ -264,8 +265,7 @@ export default async function collectionRoutes(fastify) {
 
   // GET /collections/internal/check-badge — called by submission-service
   fastify.get('/collections/internal/check-badge', { config: { rateLimit: { max: 100, timeWindow: '1 minute' } } }, async (req, reply) => {
-    const key = req.headers['x-internal-key']
-    if (!key || key !== process.env.INTERNAL_API_KEY) {
+    if (!isInternalRequest(req)) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
     const { exam_id } = req.query

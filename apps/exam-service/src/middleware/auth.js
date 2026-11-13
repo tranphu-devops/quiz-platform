@@ -52,9 +52,11 @@ export async function verifyAuth(req, reply) {
   }
 
   try {
-    const payload = jwt.verify(auth.slice(7), process.env.JWT_SECRET)
+    const payload = jwt.verify(auth.slice(7), process.env.JWT_SECRET, { algorithms: ['HS256'] })
 
-    // Check live ban status — JWT role may be stale until token refresh
+    // Role comes from profiles (source of truth), never from the token's
+    // user_metadata — that claim is writable by the account owner. Also makes
+    // bans and role changes take effect immediately.
     const { rows } = await pool.query(
       'SELECT role FROM quiz_users.profiles WHERE id = $1',
       [payload.sub]
@@ -66,7 +68,7 @@ export async function verifyAuth(req, reply) {
     req.user = {
       id: payload.sub,
       email: payload.email,
-      role: payload.user_metadata?.role ?? 'student'
+      role: rows[0]?.role ?? 'student'
     }
     req.ability = defineAbilityFor(req.user)
   } catch (err) {
