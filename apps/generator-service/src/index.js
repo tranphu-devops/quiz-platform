@@ -4,6 +4,7 @@ import multipart from '@fastify/multipart'
 import rateLimit from '@fastify/rate-limit'
 import generateRoutes from './routes/generate.js'
 import { pool } from './db.js'
+import { isInternalRequest } from './lib/internalKey.js'
 
 const fastify = Fastify({ logger: true, trustProxy: true })
 
@@ -12,7 +13,7 @@ await fastify.register(multipart, { limits: { fileSize: 20 * 1024 * 1024, files:
 await fastify.register(rateLimit, {
   max: 300,
   timeWindow: '1 minute',
-  allowList: (req) => req.headers['x-internal-key'] === process.env.INTERNAL_API_KEY,
+  allowList: isInternalRequest,
   errorResponseBuilder: (req, context) => ({
     statusCode: 429,
     error: 'Too Many Requests',

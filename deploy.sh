@@ -371,6 +371,21 @@ info "Phase 8: Starting services"
 hr
 
 if [[ "$UPDATE_MODE" == true ]]; then
+  # Snapshot the database first: `up -d` runs the migrate service, and a
+  # migration is the one step of an update that can't be undone by re-pulling
+  # the previous image. Best-effort — a failed dump warns but doesn't block.
+  BACKUP_DIR="${BACKUP_DIR:-$APP_DIR/backups}"
+  BACKUP_FILE="$BACKUP_DIR/pre-deploy-$(date +%Y%m%d-%H%M%S).sql.gz"
+  mkdir -p "$BACKUP_DIR" && chmod 700 "$BACKUP_DIR"
+  if (umask 077; docker compose -f "$COMPOSE_FILE" exec -T postgres pg_dump -U postgres -d quizdb | gzip > "$BACKUP_FILE"); then
+    log "Database snapshot: $BACKUP_FILE ($(du -h "$BACKUP_FILE" | cut -f1))"
+    # Keep the 7 most recent snapshots
+    ls -1t "$BACKUP_DIR"/pre-deploy-*.sql.gz 2>/dev/null | tail -n +8 | xargs -r rm -f || true
+  else
+    rm -f "$BACKUP_FILE"
+    warn "Database snapshot failed — continuing without one"
+  fi
+
   # Pull-based deploy: images already pulled from GHCR above
   docker compose -f "$COMPOSE_FILE" up -d
 else

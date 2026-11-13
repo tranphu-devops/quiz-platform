@@ -15,7 +15,10 @@ const isUuid = (v) => typeof v === 'string' && UUID_RE.test(v)
 
 // ── Shared grading logic ──────────────────────────────────────────────────────
 
-function isCorrect(q, studentAnswer) {
+export function isCorrect(q, studentAnswer) {
+  // A question with no answer key can't be answered correctly — without this,
+  // an unanswered single question (null) would equal a null key.
+  if (!q.correct_answer) return false
   if (q.question_type === 'multiple') {
     const sorted = Array.isArray(studentAnswer) ? [...studentAnswer].sort().join(',') : ''
     return sorted === q.correct_answer
@@ -23,7 +26,7 @@ function isCorrect(q, studentAnswer) {
   return studentAnswer === q.correct_answer
 }
 
-function buildGradeResult(exam, answers) {
+export function buildGradeResult(exam, answers) {
   const questions = exam.questions
   let score = 0, total_points = 0
 
@@ -53,6 +56,26 @@ function buildGradeResult(exam, answers) {
   }
 
   return { score, total_points, percentage, results_detail }
+}
+
+// How long after expires_at a submit may still carry new answers. Covers the
+// take page's auto-submit at 00:00 plus network latency; past it, only what
+// was already saved via /progress is graded.
+const SUBMIT_GRACE_MS = 30_000
+
+// Hard cap on GET /submissions — the endpoint has no paging and the dashboards
+// only show recent rows.
+const LIST_LIMIT = 1000
+
+// The answer key (and per-question correctness, which leaks it by elimination)
+// is only for someone who passed an exam whose author enabled the review —
+// the same rule the result page applies. Enforced here so it can't be read
+// straight off the API. Teachers/admins always get the full detail.
+export function redactResults(results_detail, percentage, { privileged = false } = {}) {
+  if (!results_detail || privileged) return results_detail
+  const passed = results_detail.passing_score == null || percentage >= results_detail.passing_score
+  if (passed && results_detail.show_explanation) return results_detail
+  return { ...results_detail, questions: [] }
 }
 
 async function awardBadgesIfEarned(userId, examId, log, studentName = null) {
@@ -188,7 +211,7 @@ export default async function submissionRoutes(fastify) {
         score,
         total_points,
         percentage,
-        results_detail,
+        results_detail: redactResults(results_detail, percentage),
         submitted_at: new Date().toISOString()
       })
     } catch (err) {
@@ -224,6 +247,12 @@ export default async function submissionRoutes(fastify) {
         return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
       }
       const exam = await examRes.json()
+
+      // The internal endpoint returns drafts too (the grader needs them for
+      // rows that already exist) — a draft must not be startable.
+      if (!exam.is_published && req.user.role !== 'admin') {
+        return reply.status(404).send({ error: 'Exam not found', statusCode: 404 })
+      }
 
       // ── Scheduled exam lock ────────────────────────────────────────────────
       if (exam.scheduled_at && new Date(exam.scheduled_at) > new Date()) {
@@ -313,39 +342,60 @@ export default async function submissionRoutes(fastify) {
         }
       }
 
-      // ── Deduct credits ─────────────────────────────────────────────────────
+      // ── Create the in_progress row, then charge ────────────────────────────
+      // Row first: the partial unique index (one in_progress row per
+      // exam+user, migration 0025) makes a concurrent second start fail here,
+      // before any credit moves — so a double-click can't be charged twice,
+      // and max_attempts/cooldown can't be raced past. If charging then fails,
+      // the row is removed again.
       const creditCost = exam.credit_cost ?? 10
-
-      const deductRes = await fetch(
-        `${process.env.USER_SERVICE_URL}/internal/credits/deduct`,
-        {
-          method: 'POST',
-          headers: { 'x-internal-key': process.env.INTERNAL_API_KEY, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: req.user.id, amount: creditCost })
+      const timeLimit = exam.time_limit ?? 30
+      const sessionId = crypto.randomUUID()
+      let insertRes
+      try {
+        insertRes = await pool.query(
+          `INSERT INTO submissions (exam_id, user_id, status, started_at, expires_at, exam_session_id, session_last_active)
+           VALUES ($1, $2, 'in_progress', NOW(), NOW() + ($3 * interval '1 minute'), $4, NOW())
+           RETURNING id, expires_at`,
+          [exam_id, req.user.id, timeLimit, sessionId]
+        )
+      } catch (err) {
+        if (err.code === '23505') {
+          return reply.status(409).send({ error: 'Bài thi này đang được bắt đầu ở một phiên khác', reason: 'already_started', statusCode: 409 })
         }
-      )
+        throw err
+      }
+      const { id: submission_id, expires_at } = insertRes.rows[0]
+      const discard = () => pool.query(`DELETE FROM submissions WHERE id = $1 AND status = 'in_progress'`, [submission_id])
+        .catch((err) => fastify.log.error({ err, submission_id }, 'failed to discard uncharged submission'))
+
+      let deductRes
+      try {
+        deductRes = await fetch(
+          `${process.env.USER_SERVICE_URL}/internal/credits/deduct`,
+          {
+            method: 'POST',
+            headers: { 'x-internal-key': process.env.INTERNAL_API_KEY, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: req.user.id, amount: creditCost })
+          }
+        )
+      } catch (err) {
+        await discard()
+        throw err
+      }
 
       if (deductRes.status === 402) {
+        await discard()
         const err = await deductRes.json()
         return reply.status(402).send({ error: err.error, credit_cost: creditCost, statusCode: 402 })
       }
       if (!deductRes.ok) {
+        await discard()
         const rawBody = await deductRes.text().catch(() => '')
         fastify.log.error({ status: deductRes.status, body: rawBody }, 'user-service credit deduct failed')
         return reply.status(500).send({ error: 'Credit service error', detail: deductRes.status, statusCode: 500 })
       }
       const { new_balance } = await deductRes.json()
-
-      // ── Create in_progress submission row ──────────────────────────────────
-      const timeLimit = exam.time_limit ?? 30
-      const sessionId = crypto.randomUUID()
-      const insertRes = await pool.query(
-        `INSERT INTO submissions (exam_id, user_id, status, started_at, expires_at, exam_session_id, session_last_active)
-         VALUES ($1, $2, 'in_progress', NOW(), NOW() + ($3 * interval '1 minute'), $4, NOW())
-         RETURNING id, expires_at`,
-        [exam_id, req.user.id, timeLimit, sessionId]
-      )
-      const { id: submission_id, expires_at } = insertRes.rows[0]
 
       return reply.send({ success: true, submission_id, expires_at, session_id: sessionId, credit_cost: creditCost, new_balance })
     } catch (err) {
@@ -359,6 +409,9 @@ export default async function submissionRoutes(fastify) {
   fastify.put('/submissions/:id/progress', { config: { rateLimit: { max: 120, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id } = req.params
     const { answers } = req.body ?? {}
+    if (!isUuid(id)) {
+      return reply.status(404).send({ error: 'Submission not found', statusCode: 404 })
+    }
 
     try {
       const result = await pool.query('SELECT * FROM submissions WHERE id = $1', [id])
@@ -378,7 +431,7 @@ export default async function submissionRoutes(fastify) {
       }
       // Reject saves from a session that was superseded by another device
       const incomingSession = req.headers['x-exam-session']
-      if (sub.exam_session_id && incomingSession && sub.exam_session_id !== incomingSession) {
+      if (sub.exam_session_id && sub.exam_session_id !== incomingSession) {
         return reply.status(409).send({ error: 'Phiên làm bài không còn hiệu lực', reason: 'session_conflict', statusCode: 409 })
       }
 
@@ -403,6 +456,9 @@ export default async function submissionRoutes(fastify) {
 
     const { id } = req.params
     const { answers } = req.body ?? {}
+    if (!isUuid(id)) {
+      return reply.status(404).send({ error: 'Submission not found', statusCode: 404 })
+    }
 
     try {
       const result = await pool.query('SELECT * FROM submissions WHERE id = $1', [id])
@@ -418,7 +474,7 @@ export default async function submissionRoutes(fastify) {
         return reply.status(409).send({ error: 'Bài thi đã được nộp', submission_id: sub.id, statusCode: 409 })
       }
       const incomingSession = req.headers['x-exam-session']
-      if (sub.exam_session_id && incomingSession && sub.exam_session_id !== incomingSession) {
+      if (sub.exam_session_id && sub.exam_session_id !== incomingSession) {
         return reply.status(409).send({ error: 'Phiên làm bài không còn hiệu lực', reason: 'session_conflict', submission_id: sub.id, statusCode: 409 })
       }
 
@@ -434,16 +490,20 @@ export default async function submissionRoutes(fastify) {
       }
       const exam = await examRes.json()
 
-      const finalAnswers = answers ?? sub.answers ?? {}
+      // Past the deadline (plus grace) the request body is ignored: only the
+      // answers already saved via /progress count, exactly as if the batch
+      // grader had got there first.
+      const late = sub.expires_at && Date.now() > new Date(sub.expires_at).getTime() + SUBMIT_GRACE_MS
+      const finalAnswers = late ? (sub.answers ?? {}) : (answers ?? sub.answers ?? {})
       const { score, total_points, percentage, results_detail } = buildGradeResult(exam, finalAnswers)
 
       const updateRes = await pool.query(
         `UPDATE submissions
-            SET status = 'completed', answers = $1, score = $2, total_points = $3,
+            SET status = $7, answers = $1, score = $2, total_points = $3,
                 percentage = $4, results_detail = $5, submitted_at = NOW()
           WHERE id = $6 AND status = 'in_progress'
-          RETURNING id, exam_id, user_id, score, total_points, percentage, submitted_at`,
-        [JSON.stringify(finalAnswers), score, total_points, percentage, JSON.stringify(results_detail), id]
+          RETURNING id, exam_id, user_id, score, total_points, percentage, status, submitted_at`,
+        [JSON.stringify(finalAnswers), score, total_points, percentage, JSON.stringify(results_detail), id, late ? 'timed_out' : 'completed']
       )
 
       if (!updateRes.rows.length) {
@@ -492,8 +552,8 @@ export default async function submissionRoutes(fastify) {
   // Used by take page to detect a resumable session after re-login or cross-device navigation.
   fastify.get('/submissions/active', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { exam_id } = req.query
-    if (!exam_id) {
-      return reply.status(400).send({ error: 'exam_id required', statusCode: 400 })
+    if (!isUuid(exam_id)) {
+      return reply.status(400).send({ error: 'exam_id không hợp lệ', statusCode: 400 })
     }
 
     try {
@@ -541,6 +601,9 @@ export default async function submissionRoutes(fastify) {
   // GET /submissions/:id
   fastify.get('/submissions/:id', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { id } = req.params
+    if (!isUuid(id)) {
+      return reply.status(404).send({ error: 'Submission not found', statusCode: 404 })
+    }
 
     try {
       const result = await pool.query('SELECT * FROM submissions WHERE id = $1', [id])
@@ -552,8 +615,17 @@ export default async function submissionRoutes(fastify) {
       if (req.ability.cannot('read', subject('Submission', sub))) {
         return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
       }
+      const isOwner = sub.user_id === req.user.id
+      // A teacher reads submissions to their own exams, not everyone's.
+      if (req.user.role === 'teacher' && !isOwner) {
+        const own = await pool.query(
+          'SELECT 1 FROM quiz_exams.exams WHERE id = $1 AND created_by = $2', [sub.exam_id, req.user.id]
+        )
+        if (!own.rows.length) return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
+      }
 
-      return sub
+      const privileged = !isOwner && (req.user.role === 'teacher' || req.user.role === 'admin')
+      return { ...sub, results_detail: redactResults(sub.results_detail, sub.percentage, { privileged }) }
     } catch (err) {
       fastify.log.error(err)
       return reply.status(500).send({ error: 'Internal server error', statusCode: 500 })
@@ -575,6 +647,14 @@ export default async function submissionRoutes(fastify) {
         conditions.push(`user_id = $${params.length}`)
       } else {
         conditions.push(`status != 'in_progress'`)
+        if ((examId && !isUuid(examId)) || (userId && !isUuid(userId))) {
+          return reply.status(400).send({ error: 'examId/userId không hợp lệ', statusCode: 400 })
+        }
+        if (req.user.role === 'teacher') {
+          // Own attempts + attempts on exams this teacher authored.
+          params.push(req.user.id)
+          conditions.push(`(user_id = $${params.length} OR exam_id IN (SELECT id FROM quiz_exams.exams WHERE created_by = $${params.length}))`)
+        }
         if (examId) {
           params.push(examId)
           conditions.push(`exam_id = $${params.length}`)
@@ -593,7 +673,7 @@ export default async function submissionRoutes(fastify) {
 
       const result = await pool.query(
         `SELECT id, exam_id, user_id, score, total_points, percentage, status, submitted_at, expires_at
-         FROM submissions WHERE ${conditions.join(' AND ')} ORDER BY submitted_at DESC`,
+         FROM submissions WHERE ${conditions.join(' AND ')} ORDER BY submitted_at DESC LIMIT ${LIST_LIMIT}`,
         params
       )
       return result.rows

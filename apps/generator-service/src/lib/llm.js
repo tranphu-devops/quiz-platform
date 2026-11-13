@@ -296,6 +296,9 @@ function normalizeExam(exam) {
     if (correctAnswer.length === 0) {
       throw new Error(`Câu hỏi #${index + 1} không có đáp án đúng hợp lệ`)
     }
+    if (q.question_type !== 'multiple' && correctAnswer.length !== 1) {
+      throw new Error(`Câu hỏi #${index + 1} là "single" nhưng có ${correctAnswer.length} đáp án đúng`)
+    }
     if (q.question_type === 'multiple' && correctAnswer.length < 2) {
       throw new Error(`Câu hỏi #${index + 1} là "multiple" nhưng chỉ có 1 đáp án đúng`)
     }

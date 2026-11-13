@@ -64,6 +64,18 @@ INSERT INTO auth.users (
 ON CONFLICT (email) WHERE is_sso_user = false DO NOTHING;
 
 -- =============================================================
+-- PROFILES
+-- Backends read the role from quiz_users.profiles, not from the token, so the
+-- seeded accounts need a profile row up front (the app otherwise creates one
+-- as 'student' on first login).
+-- =============================================================
+INSERT INTO quiz_users.profiles (id, full_name, role, credits, updated_at)
+SELECT id, raw_user_meta_data->>'full_name', raw_user_meta_data->>'role', 100, NOW()
+  FROM auth.users
+ WHERE email LIKE '%@quiz.test'
+ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role;
+
+-- =============================================================
 -- EXAM 1: Lịch sử Việt Nam
 --   chính thức | pass=60% | teacher: gv.nguyen
 -- =============================================================

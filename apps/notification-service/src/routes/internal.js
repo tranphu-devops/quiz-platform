@@ -1,12 +1,12 @@
 import { enqueue } from '../lib/queue.js'
+import { isInternalRequest } from '../lib/internalKey.js'
 
 // Fire-and-forget entry point for producer services (submission-service,
 // grader-service, interaction-service, generator-service, user-service).
 // Not exposed externally — Nginx blocks /api/notifications/internal/.
 export default async function internalRoutes(fastify) {
   fastify.post('/internal/notify', async (req, reply) => {
-    const internalKey = req.headers['x-internal-key']
-    if (!internalKey || internalKey !== process.env.INTERNAL_API_KEY) {
+    if (!isInternalRequest(req)) {
       return reply.status(403).send({ error: 'Forbidden', statusCode: 403 })
     }
 

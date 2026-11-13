@@ -64,9 +64,9 @@ sudo bash deploy.sh                  # prod: fresh install (Ubuntu server, run a
 sudo bash deploy.sh --update         # prod: pull latest, rebuild, rolling restart
 sudo bash deploy.sh --set-admin      # prod: promote ADMIN_EMAIL to admin role without full redeploy
 ```
-`mint-test-jwt.js` requires the local stack running (`docker compose up`); signs with the local `JWT_SECRET` for a user seeded in `infra/postgres/seed.sql`. Paste the printed `localStorage.setItem('quiz_session', ...)` snippet into the browser console for UI testing, or use the token as a Bearer header for API testing. Dev/local only — never run against a production `JWT_SECRET`/database.
+`mint-test-jwt.js` requires the local stack running (`docker compose up`); signs with the local `JWT_SECRET` for a user seeded in `infra/postgres/seed.sql` (the seed also creates each user's `profiles` row — that row, not the token, is what gives the seeded teacher/admin their role; re-run the seed on a database seeded before that was added). Paste the printed `localStorage.setItem('quiz_session', ...)` snippet into the browser console for UI testing, or use the token as a Bearer header for API testing. Dev/local only — never run against a production `JWT_SECRET`/database.
 
-**Tests:** none in this repo — verify by running the app and exercising the feature manually.
+**Tests:** `node:test` unit/route suites (no DB, no Docker) in `apps/{exam,submission,generator,notification,user}-service/test/` — `cd apps/<service> && npm test`, or one file: `node --test test/routes.test.js`. Route tests replace `pool.query` and `globalThis.fetch` with in-memory fakes and drive the real Fastify routes via `inject()`; the fake's `profiles` row decides the caller's role (see Auth flow). CI: `.github/workflows/test.yml` on every PR, and as a required first job of `build-push.yml` — a red suite blocks the image build and therefore the deploy. Anything touching real Postgres/GoTrue/Nginx still needs manual verification on the running stack.
 
 **Workspace:** pnpm workspace (`pnpm-workspace.yaml`); top-level `package.json` declares `"workspaces": ["apps/*"]`. Use npm inside each service for Dockerfiles.
 
@@ -146,7 +146,7 @@ Nginx has two `server` blocks: `novaquiz.net`/`www.novaquiz.net` (landing page a
 > `apps/auth-service/` is a legacy prototype, not wired into compose/Nginx — ignore it.
 
 ### Auth flow — GoTrue + local JWT verification
-**GoTrue** (`supabase/gotrue:v2.151.0`) handles signup, login, Google OAuth, JWT issuance. Claims: `sub`→`req.user.id`, `email`→`req.user.email`, `user_metadata.role`→`req.user.role` (`student|teacher|admin`), `role` is always `"authenticated"` (GoTrue-internal, **not** our app role). **No passwords for end users** — login is Google OAuth or passwordless email magic link (`signInWithOtp`, `apps/frontend/src/routes/login/+page.svelte`), both provisioning the same `auth.users`/`profiles` rows keyed by email/`sub`. GoTrue's SMTP relays through Resend (`docker-compose.yml`, reusing `RESEND_API_KEY`), `GOTRUE_MAILER_OTP_EXP: 600` (magic links expire in 10 min). Locked-out recovery: admin changes the user's email via `PATCH /admin/users/:id/email` (`/admin/users/:id/edit`) — no self-service password reset.
+**GoTrue** (`supabase/gotrue:v2.151.0`) handles signup, login, Google OAuth, JWT issuance. Claims: `sub`→`req.user.id`, `email`→`req.user.email`. **The app role is not taken from the token** — `req.user.role` is `quiz_users.profiles.role` (`student|teacher|admin|banned`), read on every request. `user_metadata.role` is still written alongside it (the frontend reads it to decide what UI to show) but `user_metadata` is account-owned data in GoTrue, not an authorization claim, so no backend may authorize on it. The token's top-level `role` is always `"authenticated"` (GoTrue-internal). **No passwords for end users** — login is Google OAuth or passwordless email magic link (`signInWithOtp`, `apps/frontend/src/routes/login/+page.svelte`), both provisioning the same `auth.users`/`profiles` rows keyed by email/`sub`. GoTrue's SMTP relays through Resend (`docker-compose.yml`, reusing `RESEND_API_KEY`), `GOTRUE_MAILER_OTP_EXP: 600` (magic links expire in 10 min). Locked-out recovery: admin changes the user's email via `PATCH /admin/users/:id/email` (`/admin/users/:id/edit`) — no self-service password reset.
 
 **Three GoTrue gotchas, each of which fails silently — all three were shipped as bugs before being caught:**
 1. **The `/auth` prefix belongs in `GOTRUE_MAILER_URLPATHS_*`, never in `API_EXTERNAL_URL`.** Emailed links are built as `externalURL.ResolveReference(urlPath)` (`internal/mailer/template.go`); the URL paths are absolute (`/verify`), so per RFC 3986 the base URL's path is **discarded**. `API_EXTERNAL_URL=<site>/auth` therefore silently produces `<site>/verify` — a 404 against the SPA. Hence `GOTRUE_MAILER_URLPATHS_{INVITE,CONFIRMATION,RECOVERY,EMAIL_CHANGE}: /auth/verify` (magic link uses the **RECOVERY** path).
@@ -154,14 +154,14 @@ Nginx has two `server` blocks: `novaquiz.net`/`www.novaquiz.net` (landing page a
 3. **A broken mail template degrades to plain text without any error.** `GOTRUE_MAILER_TEMPLATES_*` accepts **http(s) only** (`file://` does not work) and is re-fetched on every send; on failure `supabase/mailme` just logs `Error loading template from …` and uses its built-in plain default — which is how the unstyled "Magic Link / Alternatively, enter the code: 123456" mail gets out. The branded template is `infra/nginx/mail-templates/magic-link.html` (styled like `notification-service`'s `emailLayout.js`; GoTrue is a separate Go binary so it can't import that JS module — the shared header, including the logo URL, has to be kept in sync by hand).
    It is served by its **own `mail-templates` container**, not by `nginx`. That is deliberate: `nginx` is recreated and restarted on every `deploy.sh --update` (the script ends with `docker compose restart nginx`), and a magic link requested inside that window silently arrives unstyled. `mail-templates` has no upstreams and no config that changes between deploys, so `docker compose up -d` leaves it running. The failure is not sticky — mailme re-fetches on the next send, so a single bad send does not poison the process. If magic-link mail arrives unstyled, check: `docker compose logs gotrue | grep "Error loading template"` and `docker compose exec gotrue wget -qO- http://mail-templates/magic-link.html`.
 
-Each backend verifies JWT locally via `JWT_SECRET` in `src/middleware/auth.js`, setting `req.user`/`req.ability`, then does a **live DB query** to check `banned` role — bans take effect immediately, no waiting for token expiry.
+Each backend verifies the JWT locally (`JWT_SECRET`, HS256 only) in `src/middleware/auth.js`, then does a **live DB query** for `profiles.role` and builds `req.user`/`req.ability` from it — bans, upgrades and demotions take effect on the next request, no waiting for token expiry. No profile row yet (first request after signup) means `student`. Every path that changes a role writes **both** `profiles.role` and `auth.users.raw_user_meta_data` (admin role route, teacher upgrade, `deploy.sh --set-admin`, `seed.sql`); a new one must too, or the UI and the API disagree.
 
 ### Teacher API — API key auth (exam-service only)
 Long-lived credentials so teachers can automate exam management without a browser session.
 
 - Storage: `quiz_users.api_keys` (`id, user_id, name, key_prefix, key_hash, last_used_at, created_at, revoked_at`) — only SHA-256 hash stored; plaintext (`qz_live_<48 hex>`) returned once at creation.
 - Management (user-service, JWT, teacher/admin): `POST/GET/DELETE /api-keys` (`apps/user-service/src/routes/api-keys.js`). Via Nginx: `/api/users/api-keys`.
-- Consumption (exam-service `middleware/auth.js`): `X-API-Key` header accepted when no `Authorization: Bearer`; resolves key cross-schema, rejects missing/revoked (401) and banned (403), sets `req.user`/`req.ability` from profile role. **Only exam-service** accepts API keys.
+- Consumption (exam-service `middleware/auth.js`): `X-API-Key` header accepted when no `Authorization: Bearer`; resolves key cross-schema, rejects missing/revoked (401) and banned (403), sets `req.user`/`req.ability` from profile role. **exam-service accepts API keys on every route; user-service accepts them on `POST /upload` only** (so automation can upload the images an exam references) and 401s them everywhere else — profile, credit, key-management and admin routes need a browser session.
 - Frontend: `apiKeyApi`; "API Access" card on `/profile`; docs at `/api-docs`. Question images passed as `image_url` (no file upload over API in v1).
 
 ### Authorization — CASL
@@ -325,7 +325,7 @@ Active only when `NODE_ENV=production` AND `API_ENCRYPTION_KEY` set (transparent
 - Frontend: `src/lib/crypto.js` (session init, `decryptIfNeeded()`), `src/lib/api.js`'s `apiFetch()` wraps all calls.
 
 ### Grader service (`apps/grader-service`)
-Standalone Node worker, no HTTP server. `node-cron` every 15 min (+ once at startup): queries `quiz_submissions.submissions WHERE status='in_progress' AND expires_at < NOW()`, fetches questions via `EXAM_SERVICE_URL/exams/internal/:id` (internal key), grades, then `UPDATE ... SET status='timed_out'` (the `WHERE status='in_progress'` is an optimistic lock against the user-submit race). Env: `DATABASE_URL` (=`SUBMISSION_DATABASE_URL`), `EXAM_SERVICE_URL`, `INTERNAL_API_KEY`.
+Standalone Node worker, no HTTP server. `node-cron` every minute (+ once at startup; runs never overlap, 200 rows per run): queries `quiz_submissions.submissions WHERE status='in_progress' AND expires_at < NOW()`, fetches questions via `EXAM_SERVICE_URL/exams/internal/:id` (internal key), grades, then `UPDATE ... SET status='timed_out'` (the `WHERE status='in_progress'` is an optimistic lock against the user-submit race). Env: `DATABASE_URL` (=`SUBMISSION_DATABASE_URL`), `EXAM_SERVICE_URL`, `INTERNAL_API_KEY`.
 
 ### Admin System Overview (`user-service` `/admin/system/*`, read-only)
 "System" tab on `/admin` — service health/logs/DB stats without SSH, gated by manual `role !== 'admin'` check.
@@ -415,7 +415,8 @@ Contact form posts JSON to `POST /api/notifications/contact` (`apps/notification
 
 ### CI/CD
 - `build-push.yml` — on push to `main`; multi-platform (amd64+arm64) images to GHCR. Matrix: `auth-service` (legacy, built not deployed), `user/exam/submission/interaction/generator/notification/grader-service`, `frontend`.
-- `deploy.yml` — after `build-push.yml` succeeds; SSHs into prod, runs `deploy.sh --update`.
+- `test.yml` — unit/route suites on every PR; also called by `build-push.yml` as a required first job.
+- `deploy.yml` — after `build-push.yml` succeeds; SSHs into prod, runs `deploy.sh --update` (which first writes a `pg_dump` snapshot to `/opt/quiz-platform/backups/`, keeping the last 7, since the update runs migrations).
 - `cleanup-images.yml` — weekly (Sun 00:00 ICT); deletes GHCR versions beyond 5 most recent, keeps semver releases.
 
 `GHCR_ORG` env var (default `tranphu-devops`) controls image name prefix.
@@ -423,19 +424,24 @@ Contact form posts JSON to `POST /api/notifications/contact` (`apps/notification
 ## Conventions
 
 - **Package manager:** npm per service (Dockerfiles use `npm install`). pnpm only for workspace tooling.
-- **JWT role:** always `payload.user_metadata.role`. `payload.role` is GoTrue-internal (`"authenticated"`).
+- **Role:** always `req.user.role`, which the auth middleware loads from `profiles.role`. Never read `payload.user_metadata.role` in a backend (user-writable) or `payload.role` (GoTrue-internal, always `"authenticated"`).
+- **Internal key checks:** `isInternalRequest(req)` from `src/lib/internalKey.js` (constant-time, false when the env var is unset) — not a bare `===`. Nginx 403s every `/api/*/internal/` prefix; add the block when a service gains one.
 - **DB search_path:** via `?search_path=<schema>` in `DATABASE_URL`; never hardcode.
 - **Exam answers visibility:** strip `correct_answer`/`explanation` from student-facing questions. `multiple` type returns `correct_count` instead.
 - **Internal exam endpoint:** `GET /exams/internal/:id` requires `x-internal-key`, used only by submission-service, Nginx-blocked externally.
-- **Multiple-choice answers:** sorted comma-separated option keys, e.g. `"A,C"` — always sort before storing.
+- **Multiple-choice answers:** sorted comma-separated option keys, e.g. `"A,C"`. `normalizeAnswerKey()` (`exam-service/src/lib/answerKey.js`) is the one place that produces the stored form from an array or a string, and rejects a key that isn't a subset of the option keys or a `single` question with ≠1 answer — grading is a string compare, so any other form is a question nobody can get right.
 - **Image URL construction:** `${AWS_PUBLIC_URL}/${key}`, key = `uploads/{type}/{timestamp}-{uuid}.{ext}`; extract key for deletion by slicing from `uploads/`.
 - **Admin settings:** read from DB at runtime, never env. New configurable thresholds go in `quiz_users.admin_settings`.
 - **Credit system:** `profiles.credits`; deducted by `POST /api/submissions/start` (user-service internal API). `exams.credit_cost` defaults from `admin_settings.default_exam_cost`. Admin configures `default_credits`, `teacher_upgrade_cost`, `default_exam_cost` in Credits tab.
-- **Internal credit endpoint:** `POST /internal/credits/deduct` (user-service) — atomic `credits >= amount` UPDATE, 402 if insufficient, called only by submission-service with `x-internal-key`.
+- **Internal credit endpoint:** `POST /internal/credits/deduct` (user-service) — atomic `credits >= amount` UPDATE, 402 if insufficient, called only by submission-service/generator-service with `x-internal-key`; Nginx-blocked externally.
+- **Starting an attempt:** `POST /submissions/start` inserts the `in_progress` row **before** charging. A partial unique index (one `in_progress` row per exam+user, `0025`) turns a concurrent second start into a 409 before any credit moves; if the charge then fails the row is deleted. Drafts 404 (the internal exam endpoint returns them, so the route checks `is_published` itself).
+- **Late submit:** past `expires_at` + 30s (`SUBMIT_GRACE_MS`) `POST /submissions/:id/submit` ignores the request body, grades what `/progress` last saved and marks the row `timed_out`.
+- **Who sees the answer key:** `results_detail.questions` is returned only when the attempt passed **and** the exam has `show_explanation` — `redactResults()` in submission-service applies this to `GET /submissions/:id` (owner) and `guest-submit`; otherwise the array is empty. The stored JSON is always complete; exam owners and admins get it in full. Teachers read submissions to their own exams only.
+- **Admin settings are allowlisted:** `SETTING_RULES` in `user-service/src/routes/users.js` names every key `PUT /admin/settings` accepts and its value shape — a new setting needs an entry there or the save 400s.
 - **Public settings:** `GET /api/users/public/settings` — `teacher_upgrade_cost`, `default_credits`, `default_exam_cost`, no auth.
 - **Teacher upgrade:** `POST /api/users/upgrade-to-teacher` — deducts credits, updates `auth.users.raw_user_meta_data` directly; user must log out/in for new role to apply.
 - **Session credit flag:** take-page stores `credit_deducted: true` in localStorage to avoid double-charging on refresh.
-- **Single-device exam session:** `POST /submissions/start` issues a UUID `exam_session_id`; every `PUT /submissions/:id/progress` and `POST /submissions/:id/submit` must pass it in `X-Session-Id` — mismatch → 409 (blocks a second tab/device). Stale session (>300s, `SESSION_STALE_SECS`) may be claimed by a new one. `GET /submissions/active?exam_id=` returns any existing `in_progress` submission.
+- **Single-device exam session:** `POST /submissions/start` issues a UUID `exam_session_id`; every `PUT /submissions/:id/progress` and `POST /submissions/:id/submit` must pass it in the `x-exam-session` header — missing or mismatched → 409 (blocks a second tab/device). Stale session (>300s, `SESSION_STALE_SECS`) may be claimed by a new one. `GET /submissions/active?exam_id=` returns any existing `in_progress` submission.
 - **Scheduled publish:** `exams.scheduled_at` future + `is_published=true` → visible but locked (live countdown, `POST /submissions/start` blocked with 423). Create/edit forms: draft/now/scheduled selector. `PUT /exams/:id` uses `(has_scheduled_at, scheduled_at_val)` pair so `null` can clear it.
 - **Interactions gating:** comments — any authenticated user; likes — students only (403 otherwise); reports — only after a completed submission. Comment moderation: author+admin only. Report responses: owner+admin, flip to `resolved`.
 - **Exam notes are not persisted:** take-page note is in-memory `$state` only — don't add a notes table/endpoint.

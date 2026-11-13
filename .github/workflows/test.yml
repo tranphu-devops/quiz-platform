@@ -1,0 +1,25 @@
+name: Tests
+
+on:
+  pull_request:
+  workflow_call:   # build-push.yml runs this first, so a red suite never ships
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [exam-service, submission-service, generator-service, notification-service, user-service]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --no-audit --no-fund
+        working-directory: apps/${{ matrix.service }}
+      - run: npm test
+        working-directory: apps/${{ matrix.service }}
