@@ -37,12 +37,7 @@ beforeEach(() => {
 
 async function app() {
   const f = Fastify()
-  // index.js registers userRoutes behind a verifyAuth preHandler; mirror that.
-  const { verifyAuth } = await import('../src/middleware/auth.js')
-  f.addHook('preHandler', async (req, reply) => {
-    if (req.url.startsWith('/internal/') || req.url.startsWith('/public/') || req.url.startsWith('/badges/')) return
-    await verifyAuth(req, reply)
-  })
+  // userRoutes installs its own verifyAuth preHandler (public/internal paths exempt).
   f.register(userRoutes)
   await f.ready()
   return f
